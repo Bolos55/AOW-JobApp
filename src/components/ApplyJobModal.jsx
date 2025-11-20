@@ -55,7 +55,7 @@ export default function ApplyJobModal({ open, onClose, job }) {
       fd.append("profile", profile);
       fd.append("resume", resume);
 
-      const res = await fetch(`${API_BASE}/api/applications`, {
+      const res = await fetch(`${API_BASE}/applications`, {
         method: "POST",
         headers: { ...authHeader() },
         body: fd,
