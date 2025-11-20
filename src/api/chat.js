@@ -14,7 +14,7 @@ export async function ensureThread({ jobId, participantId, token }) {
     throw new Error("ไม่พบข้อมูลงานหรือผู้สนทนา (jobId / participantId)");
   }
 
-  const res = await fetch(`${API_BASE}/api/chats/start`, {
+  const res = await fetch(`${API_BASE}/chats/start`, {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify({ jobId, participantId }),
@@ -39,7 +39,7 @@ export async function ensureThread({ jobId, participantId, token }) {
 
 // ดึงห้องแชทของเรา
 export async function listMyThreads({ token } = {}) {
-  const res = await fetch(`${API_BASE}/api/chats/my`, {
+  const res = await fetch(`${API_BASE}/chats/my`, {
     headers: {
       Authorization: `Bearer ${token || localStorage.getItem("token") || ""}`,
     },
@@ -62,7 +62,7 @@ export async function listMyThreads({ token } = {}) {
 
 // ดึงข้อความในห้องแชท
 export async function fetchMessages({ threadId, after, token }) {
-  const url = new URL(`${API_BASE}/api/chats/${threadId}/messages`);
+  const url = new URL(`${API_BASE}/chats/${threadId}/messages`);
   if (after) url.searchParams.set("after", after);
 
   const res = await fetch(url, {
@@ -88,7 +88,7 @@ export async function fetchMessages({ threadId, after, token }) {
 
 // ส่งข้อความ
 export async function sendMessage({ threadId, text, token }) {
-  const res = await fetch(`${API_BASE}/api/chats/${threadId}/messages`, {
+  const res = await fetch(`${API_BASE}/chats/${threadId}/messages`, {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify({ text }),
