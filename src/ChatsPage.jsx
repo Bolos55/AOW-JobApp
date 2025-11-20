@@ -9,7 +9,7 @@ export default function ChatsPage({ user }) {
   const [active, setActive] = useState(null);
 
   const load = async () => {
-    const r = await fetch(`${API_BASE}/api/chats/threads`, {
+    const r = await fetch(`${API_BASE}/chats/threads`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await r.json();
