@@ -13,7 +13,7 @@ export default function ChatWindow({ open, onClose, thread, token, meId }) {
     let alive = true;
 
     const load = async () => {
-      const r = await fetch(`${API_BASE}/api/chats/${thread._id}/messages`, {
+      const r = await fetch(`${API_BASE}/chats/${thread._id}/messages`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await r.json();
