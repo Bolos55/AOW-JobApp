@@ -14,7 +14,7 @@ export default function ReviewSection({ jobId }) {
     if (!jobId) return;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/jobs/${jobId}/reviews`, {
+        const res = await fetch(`${API_BASE}/jobs/${jobId}/reviews`, {
           headers: { ...authHeader() },
         });
         if (res.status === 403) {
@@ -35,7 +35,7 @@ export default function ReviewSection({ jobId }) {
   // ส่งรีวิว
   const submit = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/jobs/${jobId}/reviews`, {
+      const res = await fetch(`${API_BASE}/jobs/${jobId}/reviews`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
