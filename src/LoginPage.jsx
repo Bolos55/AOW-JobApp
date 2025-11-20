@@ -1,4 +1,4 @@
-// src/LoginPage.jsx
+  // src/LoginPage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "./api";
@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     try {
       const endpoint =
-        mode === "login" ? "/api/auth/login" : "/api/auth/register";
+        mode === "login" ? "/api/auth/login" : "/auth/register";
 
       const body =
         mode === "login"
