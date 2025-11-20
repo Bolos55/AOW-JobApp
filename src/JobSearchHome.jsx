@@ -120,7 +120,7 @@ export default function JobSearchHome({ user: userFromApp }) {
 
   // โหลดงานทั้งหมด
   useEffect(() => {
-    fetch(`${API_BASE}/api/jobs`)
+    fetch(`${API_BASE}/jobs`)
       .then((r) => r.json())
       .then((data) => setJobs(Array.isArray(data) ? data : []))
       .catch(() => {});
@@ -132,7 +132,7 @@ export default function JobSearchHome({ user: userFromApp }) {
     setMyAppsLoading(true);
     setMyAppsError("");
     try {
-      const res = await fetch(`${API_BASE}/api/my-applications`, {
+      const res = await fetch(`${API_BASE}/my-applications`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -177,7 +177,7 @@ export default function JobSearchHome({ user: userFromApp }) {
   const handleDeleteJob = async (id) => {
     if (!window.confirm("ลบงานนี้ใช่ไหม?")) return;
     try {
-      const res = await fetch(`${API_BASE}/api/jobs/${id}`, {
+      const res = await fetch(`${API_BASE}/jobs/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -196,7 +196,7 @@ export default function JobSearchHome({ user: userFromApp }) {
 
     try {
       const res = await fetch(
-        `${API_BASE}/api/jobs/${selectedJob._id}/close`,
+        `${API_BASE}/jobs/${selectedJob._id}/close`,
         {
           method: "PATCH",
           headers: {
@@ -230,7 +230,7 @@ export default function JobSearchHome({ user: userFromApp }) {
     setAppError("");
     try {
       const res = await fetch(
-        `${API_BASE}/api/jobs/${selectedJob._id}/applications`,
+        `${API_BASE}/jobs/${selectedJob._id}/applications`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
