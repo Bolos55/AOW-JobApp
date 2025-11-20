@@ -34,7 +34,7 @@ export default function ChatWindow({ open, onClose, thread, token, meId }) {
     const body = text.trim();
     if (!body) return;
     setText("");
-    await fetch(`${API_BASE}/api/chats/${thread._id}/messages`, {
+    await fetch(`${API_BASE}/chats/${thread._id}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ body }),
