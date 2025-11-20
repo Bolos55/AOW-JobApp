@@ -26,7 +26,7 @@ export default function AuthSystem({ onSuccess }) {
   });
 
   // ชี้ไปที่ backend ของคุณ
-  const API_BASE = "http://localhost:5000/api/auth";
+  const API_BASE = "http://localhost:5000/auth";
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
