@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     try {
       const endpoint =
-        mode === "login" ? "/api/auth/login" : "/auth/register";
+        mode === "login" ? "/auth/login" : "/auth/register";
 
       const body =
         mode === "login"
