@@ -15,6 +15,22 @@ const createToken = (user) =>
     { expiresIn: process.env.JWT_EXPIRE || "7d" }
   );
 
+// ✅ เช็กชื่อผู้ใช้ซ้ำ (สำหรับฝั่ง frontend เรียก)
+router.get("/check-name", async (req, res) => {
+  try {
+    const { name } = req.query || {};
+    if (!name) {
+      return res.status(400).json({ message: "name is required" });
+    }
+
+    const user = await User.findOne({ name });
+    return res.json({ exists: !!user });
+  } catch (err) {
+    console.log("check-name error:", err);
+    return res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+  }
+});
+
 // สมัครสมาชิก
 router.post("/register", async (req, res) => {
   try {
@@ -23,9 +39,16 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "กรอกข้อมูลไม่ครบ" });
     }
 
-    const existed = await User.findOne({ email });
-    if (existed) {
+    // ✅ เช็กอีเมลซ้ำ
+    const existedByEmail = await User.findOne({ email });
+    if (existedByEmail) {
       return res.status(400).json({ message: "อีเมลนี้ถูกใช้แล้ว" });
+    }
+
+    // ✅ เช็กชื่อผู้ใช้ซ้ำ
+    const existedByName = await User.findOne({ name });
+    if (existedByName) {
+      return res.status(400).json({ message: "ชื่อผู้ใช้นี้ถูกใช้แล้ว" });
     }
 
     const hashed = await bcrypt.hash(password, 10);
@@ -39,6 +62,17 @@ router.post("/register", async (req, res) => {
     });
   } catch (err) {
     console.log("register error:", err);
+
+    // ✅ กันเคส duplicate key จาก MongoDB (กรณีมี unique index ที่ name/email)
+    if (err.code === 11000 && err.keyPattern) {
+      if (err.keyPattern.email) {
+        return res.status(400).json({ message: "อีเมลนี้ถูกใช้แล้ว" });
+      }
+      if (err.keyPattern.name) {
+        return res.status(400).json({ message: "ชื่อผู้ใช้นี้ถูกใช้แล้ว" });
+      }
+    }
+
     res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
   }
 });
@@ -94,11 +128,16 @@ router.post("/forgot-password", async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.json({ message: "ถ้ามีอีเมลนี้ในระบบ เราได้สร้างลิงก์รีเซ็ตให้แล้ว" });
+      return res.json({
+        message: "ถ้ามีอีเมลนี้ในระบบ เราได้สร้างลิงก์รีเซ็ตให้แล้ว",
+      });
     }
 
     const resetToken = crypto.randomBytes(20).toString("hex");
-    const resetTokenHashed = crypto.createHash("sha256").update(resetToken).digest("hex");
+    const resetTokenHashed = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
 
     user.resetPasswordToken = resetTokenHashed;
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
@@ -122,14 +161,19 @@ router.post("/reset-password", async (req, res) => {
       return res.status(400).json({ message: "ข้อมูลไม่ครบ" });
     }
 
-    const resetTokenHashed = crypto.createHash("sha256").update(token).digest("hex");
+    const resetTokenHashed = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
     const user = await User.findOne({
       resetPasswordToken: resetTokenHashed,
       resetPasswordExpire: { $gt: Date.now() },
     });
 
     if (!user) {
-      return res.status(400).json({ message: "โทเคนไม่ถูกต้อง หรือหมดอายุแล้ว" });
+      return res
+        .status(400)
+        .json({ message: "โทเคนไม่ถูกต้อง หรือหมดอายุแล้ว" });
     }
 
     user.password = await bcrypt.hash(password, 10);
