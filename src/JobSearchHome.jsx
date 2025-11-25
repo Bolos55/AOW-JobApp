@@ -355,6 +355,21 @@ export default function JobSearchHome({ user: userFromApp }) {
           <TrendingUp className="w-16 h-16 opacity-50" />
         </div>
 
+                {/* 🔹 การ์ดส่งกำลังใจพี่น้องชาวภาคใต้ */}
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 shadow-sm flex items-start gap-3">
+          <span className="text-2xl">🤍</span>
+          <div className="text-sm text-gray-700">
+            <p className="font-semibold text-blue-900">
+              ส่งกำลังใจให้พี่น้องชาวภาคใต้ที่กำลังประสบปัญหาน้ำท่วม
+            </p>
+            <p className="mt-1">
+              ขอให้ทุกคนปลอดภัย ดูแลสุขภาพกันด้วยนะครับ
+              เชื่อว่าทุกอย่างจะค่อยๆ ดีขึ้น และผ่านช่วงเวลานี้ไปได้อย่างเข้มแข็ง
+              เราอยู่ข้างๆ และเป็นกำลังใจให้เสมอ 💙
+            </p>
+          </div>
+        </div>
+
         {/* ⭐ ส่วน “งานที่เคยสมัครแล้ว” */}
         <div>
           <div className="flex items-center justify-between mb-2">
