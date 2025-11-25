@@ -355,18 +355,23 @@ export default function JobSearchHome({ user: userFromApp }) {
           <TrendingUp className="w-16 h-16 opacity-50" />
         </div>
 
-                {/* 🔹 การ์ดส่งกำลังใจพี่น้องชาวภาคใต้ */}
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 shadow-sm flex items-start gap-3">
-          <span className="text-2xl">🤍</span>
-          <div className="text-sm text-gray-700">
-            <p className="font-semibold text-blue-900">
-              ส่งกำลังใจให้พี่น้องชาวภาคใต้ที่กำลังประสบปัญหาน้ำท่วม
-            </p>
-            <p className="mt-1">
-              ขอให้ทุกคนปลอดภัย ดูแลสุขภาพกันด้วยนะครับ
-              เชื่อว่าทุกอย่างจะค่อยๆ ดีขึ้น และผ่านช่วงเวลานี้ไปได้อย่างเข้มแข็ง
-              เราอยู่ข้างๆ และเป็นกำลังใจให้เสมอ 💙
-            </p>
+        {/* 🔥 แบนเนอร์ให้กำลังใจพี่น้องชาวภาคใต้ (แบบเด่นพิเศษ) */}
+        <div className="relative overflow-hidden rounded-3xl shadow-xl p-6 bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 text-white">
+          {/* ลวดลายพื้นหลัง */}
+          <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/asfalt-dark.png')]"></div>
+
+          <div className="relative z-10 flex items-center gap-4">
+            <div className="text-4xl animate-bounce">🤍</div>
+            <div>
+              <h2 className="text-2xl font-extrabold drop-shadow">
+                ขอเป็นกำลังใจให้พี่น้องชาวภาคใต้ทุกพื้นที่
+              </h2>
+              <p className="text-sm mt-2 text-blue-50 leading-relaxed">
+                เราขอส่งพลังใจและความห่วงใยให้ทุกคนที่กำลังเผชิญเหตุการณ์น้ำท่วม
+                <br />
+                ขอให้ผ่านวิกฤตครั้งนี้ไปได้อย่างปลอดภัย แข็งแรง และมีกำลังใจต่อสู้ในทุกวัน 💙
+              </p>
+            </div>
           </div>
         </div>
 
