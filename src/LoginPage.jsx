@@ -104,6 +104,18 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* 💙 กล่องข้อความให้กำลังใจพี่น้องชาวภาคใต้ (สไตล์เรียบ ๆ ในฟอร์ม) */}
+<div className="mb-6 rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 text-xs text-blue-900 text-left">
+  <p className="font-semibold flex items-center gap-2">
+    <span className="text-lg">🤍</span>
+    ส่งกำลังใจให้พี่น้องชาวภาคใต้ที่กำลังประสบปัญหาน้ำท่วม
+  </p>
+  <p className="mt-1 text-[11px] leading-relaxed">
+    ขอให้ทุกคนปลอดภัย ดูแลสุขภาพและพักผ่อนให้เพียงพอ
+    เชื่อว่าทุกอย่างจะค่อย ๆ ดีขึ้น และเราขอเป็นกำลังใจให้เสมอค่ะ 💙
+  </p>
+</div>
+
         {/* แท็บสลับโหมด เข้าสู่ระบบ / สมัครสมาชิก */}
         <div className="flex mb-6 rounded-xl bg-gray-100 p-1">
           <button
