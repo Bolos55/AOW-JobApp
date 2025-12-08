@@ -11,6 +11,9 @@ import jobRoutes from "./routes/jobRoutes.js";
 import applicationRoutes from "./routes/applicationRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import employerRoutes from "./routes/employerRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -25,6 +28,7 @@ const allowlist = [
   "http://127.0.0.1:4173",
   "http://localhost:5500",
   "http://127.0.0.1:5500",
+  process.env.FRONTEND_URL,
 ];
 
 const corsOptions = {
@@ -57,17 +61,28 @@ mongoose
   .catch((err) => console.log("❌ MongoDB error:", err.message));
 
 /* Routes พื้นฐาน */
-app.get("/", (_req, res) => res.json({ message: "API is running" }));
+app.get("/api", (_req, res) => {
+  res.json({ message: "API is running" });
+});
+
+// ✅ health check / เอาไว้ปลุกเซิร์ฟเวอร์ให้ตื่นเร็ว ๆ
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok" });
+});
 
 // ✅ ผูก route ต่าง ๆ ให้ frontend เรียกได้
-app.use("/api/auth", authRoutes);   // /api/auth/register, /api/auth/login, ...
-app.use("/api/jobs", jobRoutes);    // /api/jobs/...
+app.use("/api/auth", authRoutes); // /api/auth/register, /api/auth/login, ...
+app.use("/api/jobs", jobRoutes); // /api/jobs/...
 app.use("/api", applicationRoutes); // /api/applications..., /api/jobs/:id/applications
-app.use("/api/jobs", reviewRoutes); // /api/jobs/:id/reviews ...
-app.use("/api/chats", chatRoutes);  // แชท
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/chats", chatRoutes); // แชท
+app.use("/api/admin", adminRoutes); // ✅ เส้นทางสำหรับหน้า AdminView
+app.use("/api/employer", employerRoutes);
+app.use("/api/profile", profileRoutes); // ✅ เส้นทางโปรไฟล์ (ใหม่)
 
 /* START */
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
   console.log(`💖 Server running on port ${PORT}`);
 });

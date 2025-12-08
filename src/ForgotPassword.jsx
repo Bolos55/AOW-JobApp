@@ -1,135 +1,233 @@
-// src/ForgotPassword.jsx
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Mail, AlertCircle, CheckCircle } from "lucide-react";
+// src/EmployerView.jsx
+import React, { useState, useEffect } from "react";
+import {
+  User as UserIcon,
+  Building2,
+  Users,
+  CheckCircle2,
+  Briefcase,
+  Plus,            // ✅ เพิ่มไอคอนปุ่มประกาศงานใหม่
+} from "lucide-react";
+import { API_BASE, authHeader } from "./api";
+import AddJobModal from "./components/AddJobModal";   // ✅ ใช้ตัวเดียวกับหน้า JobSearchHome
 
-const API_BASE = "http://localhost:5000";
+export default function EmployerView({ user, onLogout }) {
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalJobs: 0,
+    totalApplications: 0,
+    totalAccepted: 0,
+  });
+  const [jobs, setJobs] = useState([]);
+  const [latestApplications, setLatestApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-export default function ForgotPassword() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
-  const [resetLink, setResetLink] = useState("");
+  // ✅ state สำหรับเปิด/ปิดฟอร์มเพิ่มงาน
+  const [showAddForm, setShowAddForm] = useState(false);
 
-  const validateEmail = (email) => /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email);
+  // ✅ token ใช้ส่งให้ AddJobModal
+  const token = localStorage.getItem("token") || "";
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage({ type: "", text: "" });
-    setResetLink("");
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/employer/dashboard`, {
+          headers: authHeader(),
+        });
 
-    if (!email) {
-      setMessage({ type: "error", text: "กรุณากรอกอีเมล" });
-      return;
-    }
+        let data = {};
+        try {
+          data = await res.json();
+        } catch {
+          data = {};
+        }
 
-    if (!validateEmail(email)) {
-      setMessage({ type: "error", text: "รูปแบบอีเมลไม่ถูกต้อง" });
-      return;
-    }
+        if (!res.ok) {
+          console.error("employer dashboard error:", data);
+          return;
+        }
 
-    setIsLoading(true);
-
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
+        setStats(data.stats || {});
+        setJobs(Array.isArray(data.jobs) ? data.jobs : []);
+        setLatestApplications(
+          Array.isArray(data.latestApplications)
+            ? data.latestApplications
+            : []
+        );
+      } catch (e) {
+        console.error("loadDashboard error:", e);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // backend ของคุณส่ง { message, resetLink } มา
-      setMessage({ type: "success", text: data.message || "สร้างลิงก์รีเซ็ตแล้ว" });
-      if (data.resetLink) {
-        setResetLink(data.resetLink);
-      }
-    } catch (err) {
-      setMessage({
-        type: "error",
-        text: err.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    loadDashboard();
+  }, []);
+
+  const formatDateTime = (value) => {
+    if (!value) return "-";
+    return new Date(value).toLocaleString();
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8">
-        <div className="text-center mb-6">
-          <div className="mx-auto mb-4 w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center">
-            <Mail className="w-8 h-8 text-purple-500" />
+    <div className="min-h-screen bg-gray-50">
+      {/* Header ไล่สีชมพู-ม่วง */}
+      <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-fuchsia-500 text-white p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Building2 className="w-6 h-6" />
+              <span>สวัสดี, {user?.name || "นายจ้าง"}</span>
+            </h1>
+            <p className="text-sm opacity-90">
+              นายจ้าง – จัดการงานที่โพสต์และผู้สมัครของคุณ
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">ลืมรหัสผ่าน</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            กรอกอีเมลที่ใช้สมัคร เราจะสร้างลิงก์ให้คุณรีเซ็ต
-          </p>
+
+          <div className="flex items-center gap-3">
+            {/* ✅ ปุ่มประกาศงานใหม่ ใช้ AddJobModal */}
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              ประกาศงานใหม่
+            </button>
+
+            <button
+              onClick={onLogout}
+              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+            >
+              <UserIcon className="w-4 h-4" />
+              ออกจากระบบ
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-8">
+        {/* การ์ดสรุปสถิติ */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl shadow-sm border p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+              <Briefcase className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">งานที่โพสต์</p>
+              <p className="text-2xl font-bold">
+                {stats.totalJobs ?? 0}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
+              <Users className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">ผู้สมัครทั้งหมด</p>
+              <p className="text-2xl font-bold">
+                {stats.totalApplicants ?? 0}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">รับเข้าทำงาน</p>
+              <p className="text-2xl font-bold">
+                {stats.totalAccepted ?? 0}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {message.text && (
-            <div
-              className={`mb-4 p-4 rounded-xl flex gap-3 items-start ${
-                message.type === "success"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
-            >
-              {message.type === "success" ? (
-                <CheckCircle className="w-5 h-5 mt-0.5" />
-              ) : (
-                <AlertCircle className="w-5 h-5 mt-0.5" />
-              )}
-              <div>
-                <p className="text-sm font-medium">{message.text}</p>
-                {resetLink && (
-                  <p className="text-xs mt-2 break-all">
-                    ลิงก์รีเซ็ต: <span className="font-mono">{resetLink}</span>
-                  </p>
-                )}
+        {/* สองคอลัมน์: งานที่ฉันโพสต์ / ผู้สมัครล่าสุด */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* งานที่ฉันโพสต์ */}
+          <div className="bg-white rounded-xl shadow-sm border p-4">
+            <h2 className="text-lg font-semibold mb-3">
+              งานที่ฉันโพสต์
+            </h2>
+            {loading ? (
+              <p className="text-sm text-gray-400">กำลังโหลดข้อมูล...</p>
+            ) : jobs.length === 0 ? (
+              <p className="text-sm text-gray-400">
+                ยังไม่มีงานที่โพสต์
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {jobs.map((job) => (
+                  <div
+                    key={job._id}
+                    className="border rounded-lg px-3 py-2 hover:bg-gray-50"
+                  >
+                    <p className="font-medium text-sm">
+                      {job.title}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      โพสต์เมื่อ {formatDateTime(job.createdAt)}
+                    </p>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              อีเมลที่ใช้สมัคร
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
-                placeholder="your@email.com"
-                disabled={isLoading}
-              />
-            </div>
+            )}
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-50"
-          >
-            {isLoading ? "กำลังส่ง..." : "ขอรีเซ็ตรหัสผ่าน"}
-          </button>
-        </form>
-
-        <button
-          onClick={() => navigate("/")}
-          className="w-full mt-6 text-sm text-blue-600 hover:text-blue-700 font-medium"
-        >
-          กลับไปหน้าเข้าสู่ระบบ
-        </button>
+          {/* ผู้สมัครล่าสุด */}
+          <div className="bg-white rounded-xl shadow-sm border p-4">
+            <h2 className="text-lg font-semibold mb-3">
+              ผู้สมัครล่าสุด
+            </h2>
+            {loading ? (
+              <p className="text-sm text-gray-400">กำลังโหลดข้อมูล...</p>
+            ) : latestApplications.length === 0 ? (
+              <p className="text-sm text-gray-400">
+                ยังไม่มีผู้สมัคร
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {latestApplications.map((app) => (
+                  <div
+                    key={app._id}
+                    className="border rounded-lg px-3 py-2 hover:bg-gray-50"
+                  >
+                    <p className="font-medium text-sm">
+                      {app.applicant?.name || "ไม่ทราบชื่อ"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      สมัครงาน: {app.job?.title || "-"}
+                    </p>
+                    <p className="text-[11px] text-gray-400">
+                      เมื่อ {formatDateTime(app.createdAt)} | สถานะ:{" "}
+                      {app.status || "pending"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* ✅ โมดัลประกาศงานใหม่ ใช้โค้ดเหมือน JobSearchHome */}
+      <AddJobModal
+        open={showAddForm}
+        onClose={() => setShowAddForm(false)}
+        token={token}
+        onCreated={(job) => {
+          // ใส่งานใหม่เพิ่มเข้า list + อัปเดตตัวเลขสถิติ
+          setJobs((prev) => [job, ...prev]);
+          setStats((prev) => ({
+            ...prev,
+            totalJobs: (prev.totalJobs || 0) + 1,
+          }));
+          setShowAddForm(false);
+        }}
+      />
     </div>
   );
 }

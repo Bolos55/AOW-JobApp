@@ -55,7 +55,7 @@ export default function ApplicantsModal({
     setIntLoading(true);
     setIntError("");
     try {
-      const res = await fetch(`${API_BASE}/api/jobs/${job._id}/applications`, {
+      const res = await fetch(`${API_BASE}/jobs/${job._id}/applications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -128,7 +128,7 @@ export default function ApplicantsModal({
   const patchStatus = async (app, status) => {
     try {
       const res = await fetch(
-        `${API_BASE}/api/applications/${app._id}/status`,
+        `${API_BASE}/applications/${app._id}/status`,
         {
           method: "PATCH",
           headers: {

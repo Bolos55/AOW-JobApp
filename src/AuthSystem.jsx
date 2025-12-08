@@ -26,7 +26,23 @@ export default function AuthSystem({ onSuccess }) {
   });
 
   // ชี้ไปที่ backend ของคุณ
-  const API_BASE = "http://localhost:5000/api/auth";
+  const API_BASE = "http://localhost:5000/auth";
+
+  // ✅ ฟังก์ชันเช็กว่าชื่อผู้ใช้ถูกใช้แล้วหรือยัง
+  const checkNameExists = async (name) => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/check-name?name=${encodeURIComponent(name)}`
+      );
+      const data = await res.json();
+      if (!res.ok) return false;
+      return !!data.exists; // true = มีชื่อในระบบแล้ว
+    } catch (err) {
+      console.error("checkNameExists error:", err);
+      // ถ้าเช็กไม่ได้ จะไม่บล็อกฝั่งนี้ ปล่อยให้ backend เช็กตอน register อีกที
+      return false;
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -115,6 +131,22 @@ export default function AuthSystem({ onSuccess }) {
       return;
     }
 
+    // ✅ เช็กชื่อผู้ใช้ว่าซ้ำไหมก่อนยิงสมัคร
+    try {
+      const exists = await checkNameExists(formData.name);
+      if (exists) {
+        setMessage({
+          type: "error",
+          text: "ชื่อผู้ใช้นี้ถูกใช้แล้ว กรุณาใช้ชื่ออื่น",
+        });
+        setIsLoading(false);
+        return;
+      }
+    } catch (e) {
+      console.error("checkName before register error:", e);
+      // ถ้า error ก็ปล่อยให้ backend เป็นตัวกันซ้ำแทน
+    }
+
     try {
       const res = await fetch(`${API_BASE}/register`, {
         method: "POST",
@@ -129,9 +161,17 @@ export default function AuthSystem({ onSuccess }) {
       const data = await res.json();
 
       if (!res.ok) {
+        // แปลข้อความ backend ให้เป็นข้อความสวย ๆ
+        const msg =
+          data.message &&
+          (data.message.includes("ชื่อผู้ใช้") ||
+            data.message.toLowerCase().includes("name"))
+            ? "ชื่อผู้ใช้นี้ถูกใช้แล้ว กรุณาใช้ชื่ออื่น"
+            : data.message || "สมัครสมาชิกไม่สำเร็จ";
+
         setMessage({
           type: "error",
-          text: data.message || "สมัครสมาชิกไม่สำเร็จ",
+          text: msg,
         });
       } else {
         localStorage.setItem("token", data.token);

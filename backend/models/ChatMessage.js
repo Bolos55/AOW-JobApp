@@ -10,11 +10,24 @@ const chatMessageSchema = new Schema(
       ref: "ChatThread",
       required: true,
     },
+
+        senderName: {
+      type: String,
+      trim: true,
+    },
+
     sender: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
+
+    // ✅ เก็บชื่อผู้ส่งซ้ำไว้ตรงนี้เลย (เอาไปโชว์หน้าแชททันที)
+    senderName: {
+      type: String,
+      default: "",
+    },
+
     text: {
       type: String,
       required: true,

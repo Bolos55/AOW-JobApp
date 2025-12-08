@@ -1,0 +1,1029 @@
+// src/EmployerView.jsx
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  User as UserIcon,
+  Plus,
+  Users,
+  CheckCircle,
+  Building2,
+  RefreshCw,
+  AlertTriangle,
+  Filter,
+  Briefcase,
+  X,
+  MessageCircle,
+  Lock,
+} from "lucide-react";
+import { API_BASE, authHeader } from "./api";
+import AddJobModal from "./components/AddJobModal";
+import ReviewSection from "./components/ReviewSection";
+
+export default function EmployerView({ user, onLogout }) {
+  const [myJobs, setMyJobs] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [openAddJob, setOpenAddJob] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // filter ผู้สมัคร
+  const [statusFilter, setStatusFilter] = useState("all"); // all | pending | hired | rejected
+  const [jobFilter, setJobFilter] = useState("all"); // all หรือ job._id
+
+  // modal state
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+
+  // กำลังอัปเดตสถานะใบสมัคร
+  const [updatingAppId, setUpdatingAppId] = useState(null);
+
+  // state สำหรับแชท
+  const [openChat, setOpenChat] = useState(false);
+  const [chatTarget, setChatTarget] = useState(null); // application ที่จะคุยด้วย
+
+  // โหลด dashboard
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const headers = {
+        "Content-Type": "application/json",
+        ...authHeader(),
+      };
+
+      // งานที่ฉันโพสต์
+      const jobsRes = await fetch(`${API_BASE}/api/employer/my-jobs`, {
+        headers,
+      });
+      if (jobsRes.ok) {
+        const data = await jobsRes.json().catch(() => []);
+        setMyJobs(Array.isArray(data) ? data : []);
+      } else {
+        console.error("โหลด my-jobs ไม่ได้:", jobsRes.status);
+        setMyJobs([]);
+        setError("โหลดรายการงานไม่สำเร็จ");
+      }
+
+      // ผู้สมัครทั้งหมดของงานฉัน
+      const appsRes = await fetch(
+        `${API_BASE}/api/employer/my-applications-received`,
+        { headers }
+      );
+      if (appsRes.ok) {
+        const data = await appsRes.json().catch(() => []);
+        setApplications(Array.isArray(data) ? data : []);
+      } else {
+        console.error(
+          "โหลด my-applications-received ไม่ได้:",
+          appsRes.status
+        );
+        setApplications([]);
+        setError((prev) => prev || "โหลดข้อมูลผู้สมัครไม่สำเร็จ");
+      }
+    } catch (err) {
+      console.error("โหลด dashboard นายจ้างพัง:", err);
+      setMyJobs([]);
+      setApplications([]);
+      setError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  // เรียกตอนสร้างงานเสร็จจาก Modal
+  const handleJobCreated = () => {
+    setOpenAddJob(false);
+    loadDashboard();
+  };
+
+  // คำนวณสถิติจาก applications
+  const { totalPending, totalHired, totalRejected } = useMemo(() => {
+    let pending = 0;
+    let hired = 0;
+    let rejected = 0;
+
+    applications.forEach((a) => {
+      const status = a.status || "pending";
+      if (status === "pending") pending++;
+      else if (status === "hired") hired++;
+      else if (status === "rejected") rejected++;
+    });
+
+    return {
+      totalPending: pending,
+      totalHired: hired,
+      totalRejected: rejected,
+    };
+  }, [applications]);
+
+  // filter รายการผู้สมัคร
+  const filteredApplications = useMemo(() => {
+    return applications.filter((app) => {
+      const status = app.status || "pending";
+
+      if (statusFilter !== "all" && status !== statusFilter) return false;
+      if (jobFilter !== "all" && app.job?._id !== jobFilter) return false;
+
+      return true;
+    });
+  }, [applications, statusFilter, jobFilter]);
+
+  // เปิดปิด Modal รายละเอียดงาน
+  const openJobDetail = (job) => setSelectedJob(job);
+  const closeJobDetail = () => setSelectedJob(null);
+
+  // เปิดปิด Modal รายละเอียดผู้สมัคร
+  const openApplicationDetail = (app) => setSelectedApplication(app);
+  const closeApplicationDetail = () => setSelectedApplication(null);
+
+  // อัปเดตสถานะใบสมัคร (รับเข้าทำงาน / ปฏิเสธ)
+  const updateApplicationStatus = async (app, newStatus) => {
+    if (!app?._id) return;
+    if (app.status === newStatus) return;
+
+    const confirmText =
+      newStatus === "hired"
+        ? "ยืนยันการรับผู้สมัครคนนี้เข้าทำงานหรือไม่?"
+        : "ยืนยันการปฏิเสธผู้สมัครคนนี้หรือไม่?";
+
+    if (!window.confirm(confirmText)) return;
+
+    try {
+      setUpdatingAppId(app._id);
+
+      const res = await fetch(
+        `${API_BASE}/api/employer/applications/${app._id}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeader(),
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      if (!res.ok) {
+        console.error("อัปเดตสถานะใบสมัครไม่สำเร็จ:", res.status);
+        alert("อัปเดตสถานะไม่สำเร็จ กรุณาลองใหม่");
+        return;
+      }
+
+      const updated = await res.json().catch(() => null);
+
+      setApplications((prev) =>
+        prev.map((p) =>
+          p._id === app._id
+            ? { ...p, ...(updated || {}), status: newStatus }
+            : p
+        )
+      );
+
+      setSelectedApplication((prev) =>
+        prev && prev._id === app._id
+          ? { ...prev, ...(updated || {}), status: newStatus }
+          : prev
+      );
+    } catch (err) {
+      console.error("error updateApplicationStatus:", err);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+    } finally {
+      setUpdatingAppId(null);
+    }
+  };
+
+  // ปิดงาน (ใช้ isCompleted จาก backend จริง ๆ)
+  const closeJob = async (job) => {
+    if (!job?._id) return;
+
+    if (!window.confirm(`ยืนยันปิดงาน "${job.title}" หรือไม่?`)) return;
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/employer/jobs/${job._id}/close`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeader(),
+          },
+        }
+      );
+
+      if (!res.ok) {
+        console.error("ปิดงานไม่สำเร็จ:", res.status);
+        alert("ปิดงานไม่สำเร็จ กรุณาลองใหม่");
+        return;
+      }
+
+      const updated = await res.json().catch(() => null);
+      if (!updated) return;
+
+      // ใช้ค่า isCompleted ที่มาจาก backend โดยตรง
+      setMyJobs((prev) =>
+        prev.map((j) => (j._id === job._id ? { ...j, ...updated } : j))
+      );
+
+      // ถ้า modal งานเปิดอยู่ก็อัปเดตด้วย
+      setSelectedJob((prev) =>
+        prev && prev._id === job._id ? { ...prev, ...updated } : prev
+      );
+    } catch (err) {
+      console.error("closeJob error:", err);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6">
+        <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold">🏢 สวัสดี, {user.name}</h1>
+            <p className="text-sm opacity-90">
+              นายจ้าง - จัดการงานและผู้สมัคร
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* ปุ่ม Refresh */}
+            <button
+              onClick={loadDashboard}
+              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
+              รีโหลดข้อมูล
+            </button>
+
+            <button
+              onClick={onLogout}
+              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+            >
+              <UserIcon className="w-4 h-4" />
+              ออกจากระบบ
+            </button>
+          </div>
+        </div>
+
+        {/* ปุ่มเปิด AddJobModal */}
+        <button
+          onClick={() => setOpenAddJob(true)}
+          className="bg-white text-purple-600 px-6 py-3 rounded-lg font-medium flex items-center gap-2 hover:bg-purple-50"
+        >
+          <Plus className="w-5 h-5" /> ประกาศงานใหม่
+        </button>
+
+        {/* แถบแจ้งสถานะโหลด / error */}
+        <div className="mt-3">
+          {loading && (
+            <p className="text-xs opacity-80">กำลังโหลดข้อมูลจากเซิร์ฟเวอร์...</p>
+          )}
+          {error && !loading && (
+            <div className="mt-2 bg-red-500/70 text-xs px-3 py-2 rounded-lg flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modal เพิ่มงานใหม่ */}
+      <AddJobModal
+        open={openAddJob}
+        onClose={() => setOpenAddJob(false)}
+        onCreated={handleJobCreated}
+      />
+
+      {/* Modal รายละเอียดงาน */}
+      <JobDetailModal
+        open={!!selectedJob}
+        job={selectedJob}
+        onClose={closeJobDetail}
+      />
+
+      {/* Modal รายละเอียดใบสมัคร/ผู้สมัคร */}
+      <ApplicationDetailModal
+        open={!!selectedApplication}
+        app={selectedApplication}
+        onClose={closeApplicationDetail}
+        onUpdateStatus={updateApplicationStatus}
+        updatingAppId={updatingAppId}
+      />
+
+      {/* Modal แชท */}
+      <ChatModal
+        open={openChat}
+        app={chatTarget}
+        user={user}
+        onClose={() => setOpenChat(false)}
+      />
+
+      <div className="p-6 space-y-6">
+        {/* สถิติ */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg border flex items-center gap-3">
+            <Building2 className="w-8 h-8 text-blue-600" />
+            <div>
+              <p className="text-xs text-gray-500 uppercase">งานที่โพสต์</p>
+              <p className="text-2xl font-bold">{myJobs.length}</p>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg border flex items-center gap-3">
+            <Users className="w-8 h-8 text-green-600" />
+            <div>
+              <p className="text-xs text-gray-500 uppercase">
+                ผู้สมัครทั้งหมด
+              </p>
+              <p className="text-2xl font-bold">{applications.length}</p>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg border flex items-center gap-3">
+            <CheckCircle className="w-8 h-8 text-purple-600" />
+            <div>
+              <p className="text-xs text-gray-500 uppercase">
+                รับเข้าทำงานแล้ว
+              </p>
+              <p className="text-2xl font-bold">{totalHired}</p>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg border flex items-center gap-3">
+            <AlertTriangle className="w-8 h-8 text-yellow-500" />
+            <div>
+              <p className="text-xs text-gray-500 uppercase">
+                รอพิจารณา (pending)
+              </p>
+              <p className="text-2xl font-bold">{totalPending}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* งานของฉัน */}
+        <div>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-purple-600" />
+              งานที่ฉันโพสต์
+            </h2>
+            <p className="text-xs text-gray-500">
+              เคล็ดลับ: คลิก "ดูผู้สมัครงานนี้" เพื่อ filter ด้านล่าง
+            </p>
+          </div>
+
+          {myJobs.length === 0 ? (
+            <p className="text-sm text-gray-400">ยังไม่มีงานที่โพสต์</p>
+          ) : (
+            <div className="space-y-3">
+              {myJobs.map((job) => {
+                const isClosed = !!job.isCompleted; // ✅ ใช้ field จริงจาก DB
+
+                return (
+                  <div
+                    key={job._id}
+                    className="bg-white p-4 rounded-lg border hover:shadow-md transition"
+                  >
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold">{job.title}</h3>
+                          {isClosed && (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                              <Lock className="w-3 h-3" />
+                              ปิดรับสมัครแล้ว
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {job.company || "บริษัทของคุณ"}
+                        </p>
+                        {job.location && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            สถานที่ทำงาน: {job.location}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-400 mt-1">
+                          ผู้สมัคร: {job.applicantCount || 0} คน
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <button
+                          className="text-blue-600 text-sm hover:underline"
+                          onClick={() => openJobDetail(job)}
+                        >
+                          ดูรายละเอียด
+                        </button>
+                        <button
+                          className={`text-xs px-3 py-1 rounded-full border ${
+                            jobFilter === job._id
+                              ? "bg-blue-50 text-blue-700 border-blue-300"
+                              : "bg-gray-50 text-gray-600 border-gray-200"
+                          }`}
+                          onClick={() =>
+                            setJobFilter((prev) =>
+                              prev === job._id ? "all" : job._id
+                            )
+                          }
+                        >
+                          {jobFilter === job._id
+                            ? "แสดงผู้สมัครทุกงาน"
+                            : "ดูผู้สมัครงานนี้"}
+                        </button>
+
+                        {!isClosed && (
+                          <button
+                            onClick={() => closeJob(job)}
+                            className="text-xs mt-1 inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-gray-800 text-white hover:bg-black"
+                          >
+                            <Lock className="w-3 h-3" />
+                            ปิดงานนี้
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ผู้สมัคร + filter */}
+        <div>
+          <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <Users className="w-5 h-5 text-green-600" />
+              ผู้สมัคร
+              <span className="text-xs font-normal text-gray-500">
+                ({filteredApplications.length} รายการหลังจาก filter)
+              </span>
+            </h2>
+
+            <div className="flex items-center gap-2 text-sm">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border rounded-md px-2 py-1 text-sm"
+              >
+                <option value="all">สถานะ: ทั้งหมด</option>
+                <option value="pending">รอพิจารณา</option>
+                <option value="hired">รับเข้าทำงาน</option>
+                <option value="rejected">ปฏิเสธ</option>
+              </select>
+              <select
+                value={jobFilter}
+                onChange={(e) => setJobFilter(e.target.value)}
+                className="border rounded-md px-2 py-1 text-sm"
+              >
+                <option value="all">งาน: ทุกงาน</option>
+                {myJobs.map((job) => (
+                  <option key={job._id} value={job._id}>
+                    {job.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {applications.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              ยังไม่มีผู้สมัคร (ลองโพสต์งานใหม่ดูสิ 🎉)
+            </p>
+          ) : filteredApplications.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              ไม่มีผู้สมัครที่ตรงกับเงื่อนไข filter ที่เลือก
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {filteredApplications.slice(0, 50).map((app) => {
+                const status = app.status || "pending";
+                const isUpdating = updatingAppId === app._id;
+
+                // ✅ เลือกรูปผู้สมัคร (ถ้ามี)
+                const applicantPhoto =
+                  app.applicant?.photoUrl ||
+                  app.applicant?.profilePhotoUrl ||
+                  app.applicant?.avatarUrl ||
+                  "";
+
+                return (
+                  <div
+                    key={app._id}
+                    className="bg-white p-4 rounded-lg border flex justify-between items-center gap-4"
+                  >
+                    <div className="flex-1 flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                        {applicantPhoto ? (
+                          <img
+                            src={applicantPhoto}
+                            alt={app.applicant?.name || "ผู้สมัคร"}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <UserIcon className="w-5 h-5 text-gray-400" />
+                        )}
+                      </div>
+
+                      <div className="flex-1">
+                        <p className="font-semibold">
+                          {app.applicant?.name || "ผู้สมัคร"}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          สมัคร: {app.job?.title || "-"}
+                        </p>
+                        {app.coverLetter && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            แนะนำตัวสั้นๆ: {app.coverLetter}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-400 mt-1">
+                          ส่งเมื่อ:{" "}
+                          {app.createdAt
+                            ? new Date(app.createdAt).toLocaleString()
+                            : "-"}
+                        </p>
+                        <button
+                          className="mt-2 text-xs text-blue-600 hover:underline"
+                          onClick={() => openApplicationDetail(app)}
+                        >
+                          ดูรายละเอียดใบสมัคร / โปรไฟล์
+                        </button>
+                        <button
+                          className="mt-1 inline-flex items-center gap-1 text-xs text-purple-600 hover:underline"
+                          onClick={() => {
+                            setChatTarget(app);
+                            setOpenChat(true);
+                          }}
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          แชทกับผู้สมัคร
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2">
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          status === "hired"
+                            ? "bg-green-100 text-green-700"
+                            : status === "rejected"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {status}
+                      </span>
+
+                      <div className="flex gap-2">
+                        {status !== "hired" && (
+                          <button
+                            disabled={isUpdating}
+                            onClick={() =>
+                              updateApplicationStatus(app, "hired")
+                            }
+                            className="text-xs px-3 py-1 rounded-lg bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
+                          >
+                            {isUpdating && status !== "hired"
+                              ? "กำลังบันทึก..."
+                              : "รับเข้าทำงาน"}
+                          </button>
+                        )}
+                        {status !== "rejected" && (
+                          <button
+                            disabled={isUpdating}
+                            onClick={() =>
+                              updateApplicationStatus(app, "rejected")
+                            }
+                            className="text-xs px-3 py-1 rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                          >
+                            {isUpdating && status !== "rejected"
+                              ? "กำลังบันทึก..."
+                              : "ปฏิเสธ"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== Modal แสดงรายละเอียดงาน ===== */
+function JobDetailModal({ open, job, onClose }) {
+  if (!open || !job) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
+      <div className="bg-white w-full max-w-lg rounded-2xl shadow-lg p-6 relative">
+        <button
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+          onClick={onClose}
+        >
+          <X className="w-5 h-5" />
+        </button>
+        <h3 className="text-xl font-bold mb-2">{job.title}</h3>
+        <p className="text-sm text-gray-600 mb-1">
+          {job.company || "บริษัทของคุณ"}
+        </p>
+        {job.location && (
+          <p className="text-sm text-gray-500 mb-2">
+            สถานที่ทำงาน: {job.location}
+          </p>
+        )}
+        {job.salary && (
+          <p className="text-sm text-gray-500 mb-2">
+            เงินเดือน: {job.salary}
+          </p>
+        )}
+        <hr className="my-3" />
+        <div className="text-sm text-gray-700 space-y-2">
+          {job.description && (
+            <div>
+              <p className="font-semibold mb-1">รายละเอียดงาน</p>
+              <p>{job.description}</p>
+            </div>
+          )}
+          {job.requirements && (
+            <div>
+              <p className="font-semibold mb-1">คุณสมบัติ</p>
+              <p>{job.requirements}</p>
+            </div>
+          )}
+        </div>
+
+        {/* ✅ ส่วนรีวิวจากผู้สมัคร / คนที่เคยทำงาน */}
+        <hr className="my-4" />
+        <div className="text-sm">
+          <p className="font-semibold mb-2">
+            รีวิวจากผู้สมัคร / ผู้ที่เคยเข้าทำงาน
+          </p>
+          <ReviewSection jobId={job._id} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== Modal แสดงรายละเอียดใบสมัคร / โปรไฟล์ผู้สมัคร ===== */
+function ApplicationDetailModal({
+  open,
+  app,
+  onClose,
+  onUpdateStatus,
+  updatingAppId,
+}) {
+  if (!open || !app) return null;
+
+  const status = app.status || "pending";
+  const isUpdating = updatingAppId === app._id;
+
+  const applicantPhoto =
+    app.applicant?.photoUrl ||
+    app.applicant?.profilePhotoUrl ||
+    app.applicant?.avatarUrl ||
+    "";
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
+      <div className="bg-white w-full max-w-lg rounded-2xl shadow-lg p-6 relative">
+        <button
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+          onClick={onClose}
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* ส่วนหัว + รูปโปรไฟล์ */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
+            {applicantPhoto ? (
+              <img
+                src={applicantPhoto}
+                alt={app.applicant?.name || "ผู้สมัคร"}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <UserIcon className="w-6 h-6 text-gray-400" />
+            )}
+          </div>
+          <div>
+            <h3 className="text-xl font-bold mb-1">
+              {app.applicant?.name || "ผู้สมัคร"}
+            </h3>
+            <p className="text-sm text-gray-600">
+              สมัครงาน: {app.job?.title || "-"}
+            </p>
+          </div>
+        </div>
+
+        {app.applicant?.email && (
+          <p className="text-xs text-gray-500 mb-1">
+            อีเมล: {app.applicant.email}
+          </p>
+        )}
+        {app.applicant?.phone && (
+          <p className="text-xs text-gray-500 mb-1">
+            เบอร์โทร: {app.applicant.phone}
+          </p>
+        )}
+        <p className="text-xs text-gray-400 mb-3">
+          ส่งเมื่อ:{" "}
+          {app.createdAt ? new Date(app.createdAt).toLocaleString() : "-"}
+        </p>
+
+        <span
+          className={`inline-block text-xs px-2 py-1 rounded-full mb-3 ${
+            status === "hired"
+              ? "bg-green-100 text-green-700"
+              : status === "rejected"
+              ? "bg-red-100 text-red-700"
+              : "bg-yellow-100 text-yellow-700"
+          }`}
+        >
+          สถานะ: {status}
+        </span>
+
+        <div className="space-y-3 text-sm text-gray-700">
+          {app.coverLetter && (
+            <div>
+              <p className="font-semibold mb-1">
+                จดหมายแนะนำตัว (Cover Letter)
+              </p>
+              <p className="whitespace-pre-line">{app.coverLetter}</p>
+            </div>
+          )}
+
+          {app.profile && (
+            <div>
+              <p className="font-semibold mb-1">ข้อมูลโปรไฟล์เพิ่มเติม</p>
+              <p className="whitespace-pre-line">{app.profile}</p>
+            </div>
+          )}
+
+          {app.resumeUrl && (
+            <div>
+              <p className="font-semibold mb-1">เรซูเม่</p>
+              <a
+                href={app.resumeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 text-sm hover:underline"
+              >
+                เปิดเรซูเม่ในแท็บใหม่
+              </a>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          {status !== "hired" && (
+            <button
+              disabled={isUpdating}
+              onClick={() => onUpdateStatus(app, "hired")}
+              className="text-xs px-3 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
+            >
+              {isUpdating && status !== "hired"
+                ? "กำลังบันทึก..."
+                : "รับเข้าทำงาน"}
+            </button>
+          )}
+          {status !== "rejected" && (
+            <button
+              disabled={isUpdating}
+              onClick={() => onUpdateStatus(app, "rejected")}
+              className="text-xs px-3 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+            >
+              {isUpdating && status !== "rejected"
+                ? "กำลังบันทึก..."
+                : "ปฏิเสธ"}
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-xs px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+          >
+            ปิด
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== Modal แชทกับผู้สมัคร ===== */
+function ChatModal({ open, app, user, onClose }) {
+  const [thread, setThread] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [input, setInput] = useState("");
+  const [error, setError] = useState("");
+
+  const myId = user?._id || user?.id;
+
+  // โหลดหรือสร้างห้อง + โหลดข้อความ เมื่อเปิดแชท
+  useEffect(() => {
+    if (!open || !app) return;
+
+    setThread(null);
+    setMessages([]);
+    setError("");
+    setInput("");
+
+    const jobId = app.job?._id;
+    const participantId = app.applicant?._id;
+
+    if (!jobId || !participantId) {
+      setError("ไม่พบข้อมูลงานหรือผู้สมัครสำหรับเปิดห้องแชท");
+      return;
+    }
+
+    const initChat = async () => {
+      try {
+        setLoading(true);
+
+        // 1) สร้าง/หา thread
+        const startRes = await fetch(`${API_BASE}/api/chats/start`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeader(),
+          },
+          body: JSON.stringify({
+            jobId,
+            participantId,
+          }),
+        });
+
+        if (!startRes.ok) {
+          throw new Error("สร้างห้องแชทไม่สำเร็จ");
+        }
+
+        const threadData = await startRes.json();
+        const t = threadData.thread || threadData;
+        setThread(t);
+
+        // 2) โหลดข้อความในห้อง
+        const msgRes = await fetch(
+          `${API_BASE}/api/chats/${t._id}/messages`,
+          {
+            headers: {
+              ...authHeader(),
+            },
+          }
+        );
+
+        if (!msgRes.ok) {
+          throw new Error("โหลดข้อความไม่สำเร็จ");
+        }
+
+        const msgs = await msgRes.json().catch(() => []);
+        setMessages(Array.isArray(msgs) ? msgs : []);
+      } catch (e) {
+        console.error("init chat error:", e);
+        setError(e.message || "ไม่สามารถเปิดแชทได้");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initChat();
+  }, [open, app]);
+
+  const sendMessage = async () => {
+    if (!input.trim() || !thread?._id) return;
+
+    try {
+      setSending(true);
+      setError("");
+
+      const res = await fetch(
+        `${API_BASE}/api/chats/${thread._id}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeader(),
+          },
+          body: JSON.stringify({ text: input }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("ส่งข้อความไม่สำเร็จ");
+      }
+
+      const msg = await res.json();
+      setMessages((prev) => [...prev, msg]);
+      setInput("");
+    } catch (e) {
+      console.error("send message error:", e);
+      setError(e.message || "ส่งข้อความไม่สำเร็จ");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (!open || !app) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-lg p-4 relative flex flex-col">
+        <button
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+          onClick={onClose}
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-2 mb-2">
+          <MessageCircle className="w-4 h-4 text-purple-600" />
+          <h3 className="font-bold text-sm">
+            แชทกับ {app.applicant?.name || "ผู้สมัคร"}
+          </h3>
+        </div>
+
+        {error && (
+          <div className="mb-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+            {error}
+          </div>
+        )}
+
+        {/* กล่องข้อความ */}
+        <div className="flex-1 overflow-y-auto space-y-2 bg-gray-50 p-2 rounded mb-3">
+          {loading ? (
+            <p className="text-xs text-gray-500">กำลังโหลดข้อความ...</p>
+          ) : messages.length === 0 ? (
+            <p className="text-xs text-gray-400">
+              ยังไม่มีข้อความ เริ่มคุยกับผู้สมัครได้เลย ✨
+            </p>
+          ) : (
+            messages.map((m, idx) => {
+              const senderId =
+                (m.sender && (m.sender._id || m.sender.id || m.sender)) || "";
+              const isMe =
+                myId && senderId && String(senderId) === String(myId);
+
+              return (
+                <div
+                  key={idx}
+                  className={`text-xs p-2 rounded max-w-[80%] ${
+                    isMe
+                      ? "bg-purple-500 text-white ml-auto"
+                      : "bg-white border"
+                  }` }
+                >
+                  {!isMe && m.sender?.name && (
+                    <p className="font-semibold mb-0.5">{m.sender.name}</p>
+                  )}
+                  <p>{m.text}</p>
+                  {m.createdAt && (
+                    <p className="mt-1 text-[10px] opacity-70">
+                      {new Date(m.createdAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* ช่องพิมพ์ */}
+        <div className="flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="พิมพ์ข้อความ..."
+            className="flex-1 border rounded-lg px-3 py-2 text-sm"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!sending && !loading) sendMessage();
+              }
+            }}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={sending || loading || !thread?._id}
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50"
+          >
+            {sending ? "กำลังส่ง..." : "ส่ง"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

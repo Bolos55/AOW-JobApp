@@ -1,20 +1,51 @@
 // src/components/AddJobModal.jsx
 import React, { useState } from "react";
 import { X } from "lucide-react";
-import { API_BASE } from "../api";
+import { API_BASE, authHeader } from "../api";
 
+// ✅ หมวดหมู่งาน (Job Categories)
 const CATEGORIES = [
   { id: "it", name: "IT & Tech" },
   { id: "mkt", name: "การตลาด" },
   { id: "acc", name: "บัญชี" },
-  { id: "pt", name: "พาร์ทไทม์" },
-  { id: "remote", name: "รีโมต" },
+  { id: "pt", name: "พาร์ทไทม์ (ทั่วไป)" },
+  { id: "remote", name: "รีโมต (ทั่วไป)" },
 
-  // ✅ เพิ่มหมวดอื่นๆ ตรงนี้
+  { id: "law", name: "งานกฎหมาย" },
+  { id: "arch", name: "งานสถาปัตย์/เขียนแบบ" },
+  { id: "fin", name: "งานการเงิน/ธนาคาร" },
+  { id: "sale", name: "งานขาย/เซลส์" },
+  { id: "cs", name: "งานบริการลูกค้า/คอลเซ็นเตอร์" },
+  { id: "hr", name: "งานทรัพยากรบุคคล (HR)" },
+  { id: "admin", name: "งานธุรการ/ประสานงาน/เลขา" },
+  { id: "logistic", name: "งานขนส่ง/โลจิสติกส์/คลังสินค้า" },
+  { id: "driver", name: "งานขับรถ" },
+
+  { id: "design", name: "งานออกแบบ/กราฟิก/สื่อสร้างสรรค์" },
+  { id: "content", name: "งานคอนเทนต์/โซเชียลมีเดีย" },
+  { id: "media", name: "งานสื่อ/โฆษณา/ประชาสัมพันธ์" },
+
+  { id: "eng", name: "งานวิศวกรรม/ช่างเทคนิค" },
+  { id: "factory", name: "งานผลิต/ควบคุมคุณภาพ/โรงงาน" },
+
+  { id: "health", name: "งานการแพทย์/พยาบาล/เภสัช" },
+  { id: "beauty", name: "งานความงาม/สปา/ฟิตเนส" },
+
+  { id: "hotel", name: "งานโรงแรม/ท่องเที่ยว/ร้านอาหาร" },
+  { id: "service", name: "งานบริการทั่วไป" },
+
+  { id: "teacher", name: "งานสอน/ติวเตอร์/การศึกษา" },
+  { id: "research", name: "งานวิจัย/วิเคราะห์ข้อมูล" },
+
+  { id: "house", name: "งานแม่บ้าน/ทำความสะอาด/ซักรีด" },
+  { id: "security", name: "งานรักษาความปลอดภัย" },
+
+  { id: "agri", name: "งานเกษตร/ปศุสัตว์/ประมง" },
+  { id: "pet", name: "งานดูแลสัตว์เลี้ยง" },
+
   { id: "other", name: "อื่นๆ" },
 ];
 
-// ที่เหลือในไฟล์นี้ให้เหมือนเดิมได้เลย
 const emptyForm = {
   title: "",
   company: "",
@@ -22,7 +53,7 @@ const emptyForm = {
   minSalary: "",
   maxSalary: "",
   skills: [],
-  category: "it",          
+  category: "it",
   type: "Full-time",
   workMode: "On-site",
   location: "",
@@ -36,7 +67,6 @@ const emptyForm = {
   deadline: "",
 };
 
-
 const salaryText = (min, max) => {
   const a = Number(min || 0);
   const b = Number(max || 0);
@@ -47,7 +77,7 @@ const salaryText = (min, max) => {
   return "ตามตกลง";
 };
 
-export default function AddJobModal({ open, onClose, token, onCreated }) {
+export default function AddJobModal({ open, onClose, onCreated }) {
   const [form, setForm] = useState(emptyForm);
   const [skillInput, setSkillInput] = useState("");
   const [message, setMessage] = useState("");
@@ -64,6 +94,7 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
     setForm((p) => ({ ...p, skills: [...p.skills, v] }));
     setSkillInput("");
   };
+
   const removeSkill = (s) => {
     setForm((p) => ({ ...p, skills: p.skills.filter((x) => x !== s) }));
   };
@@ -110,21 +141,29 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
     try {
       const res = await fetch(`${API_BASE}/api/jobs`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),          // ✅ ดึง token จาก localStorage
+        },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
         setMessage(data.message || "เพิ่มงานไม่สำเร็จ");
         return;
       }
-      // ส่งงานที่เพิ่มกลับไปให้หน้า Home เติมใน list
+
+      // ✅ แจ้งให้ parent รู้ว่าเพิ่มงานสำเร็จแล้ว
       onCreated?.(data);
-      // ล้าง state แล้วปิด
+
+      // เคลียร์ฟอร์ม + ปิด modal
       setForm(emptyForm);
       setSkillInput("");
       onClose?.();
-    } catch {
+    } catch (err) {
+      console.error("POST /api/jobs error:", err);
       setMessage("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
     }
   };
@@ -149,25 +188,36 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 pt-2 pb-4 space-y-5">
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto px-6 pt-2 pb-4 space-y-5"
+        >
           {/* แถว: ชื่อตำแหน่ง / บริษัท */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อตำแหน่งงาน *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                ชื่อตำแหน่งงาน *
+              </label>
               <input
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.title}
-                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, title: e.target.value }))
+                }
                 placeholder="เช่น Frontend Developer"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">บริษัท *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                บริษัท *
+              </label>
               <input
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.company}
-                onChange={(e) => setForm((p) => ({ ...p, company: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, company: e.target.value }))
+                }
                 placeholder="เช่น Fastmark Co., Ltd."
                 required
               />
@@ -176,14 +226,18 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
 
           {/* เงินเดือน */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">ช่วงเงินเดือน</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              ช่วงเงินเดือน
+            </label>
             <div className="grid grid-cols-2 gap-3">
               <input
                 type="number"
                 min="0"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.minSalary}
-                onChange={(e) => setForm((p) => ({ ...p, minSalary: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, minSalary: e.target.value }))
+                }
                 placeholder="ขั้นต่ำ (บาท)"
               />
               <input
@@ -191,7 +245,9 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
                 min="0"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.maxSalary}
-                onChange={(e) => setForm((p) => ({ ...p, maxSalary: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, maxSalary: e.target.value }))
+                }
                 placeholder="สูงสุด (บาท)"
               />
             </div>
@@ -202,11 +258,15 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
 
           {/* รายละเอียดงาน */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียดงาน *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              รายละเอียดงาน *
+            </label>
             <textarea
               className="w-full border rounded-xl px-3 py-2 text-sm min-h-[120px]"
               value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value }))
+              }
               placeholder="สรุปหน้าที่ ความรับผิดชอบ และคุณสมบัติ"
               required
             />
@@ -215,9 +275,11 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
             </p>
           </div>
 
-          {/* ทักษะ (chip) */}
+          {/* ทักษะ */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">ทักษะที่ต้องการ</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              ทักษะที่ต้องการ
+            </label>
             <div className="flex gap-2">
               <input
                 className="flex-1 border rounded-xl px-3 py-2 text-sm"
@@ -247,7 +309,13 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
                     className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs"
                   >
                     {s}
-                    <button type="button" onClick={() => removeSkill(s)} className="hover:text-red-600">×</button>
+                    <button
+                      type="button"
+                      onClick={() => removeSkill(s)}
+                      className="hover:text-red-600"
+                    >
+                      ×
+                    </button>
                   </span>
                 ))}
               </div>
@@ -257,11 +325,15 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
           {/* ประเภท/หมวด/โหมดทำงาน */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ประเภทงาน</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                ประเภทงาน
+              </label>
               <select
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.type}
-                onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, type: e.target.value }))
+                }
               >
                 <option>Full-time</option>
                 <option>Part-time</option>
@@ -271,23 +343,33 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                หมวดหมู่
+              </label>
               <select
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.category}
-                onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, category: e.target.value }))
+                }
               >
                 {CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">โหมดการทำงาน</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                โหมดการทำงาน
+              </label>
               <select
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.workMode}
-                onChange={(e) => setForm((p) => ({ ...p, workMode: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, workMode: e.target.value }))
+                }
               >
                 <option>On-site</option>
                 <option>Hybrid</option>
@@ -299,20 +381,28 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
           {/* สถานที่/ลิงก์แผนที่ */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">สถานที่ทำงาน</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                สถานที่ทำงาน
+              </label>
               <input
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.location}
-                onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, location: e.target.value }))
+                }
                 placeholder="เช่น Bangkok, Thailand"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ลิงก์แผนที่ (ถ้ามี)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                ลิงก์แผนที่ (ถ้ามี)
+              </label>
               <input
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.mapLink}
-                onChange={(e) => setForm((p) => ({ ...p, mapLink: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, mapLink: e.target.value }))
+                }
                 placeholder="ลิงก์ Google Maps"
               />
             </div>
@@ -321,40 +411,56 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
           {/* เวลา/วันหยุด/สวัสดิการ */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">เวลาทำงาน</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                เวลาทำงาน
+              </label>
               <input
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.workingHours}
-                onChange={(e) => setForm((p) => ({ ...p, workingHours: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, workingHours: e.target.value }))
+                }
                 placeholder="เช่น จันทร์–ศุกร์ 9:00–18:00"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">วันหยุด</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                วันหยุด
+              </label>
               <input
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.dayOff}
-                onChange={(e) => setForm((p) => ({ ...p, dayOff: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, dayOff: e.target.value }))
+                }
                 placeholder="เช่น หยุดเสาร์–อาทิตย์"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">วันปิดรับสมัคร</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                วันปิดรับสมัคร
+              </label>
               <input
                 type="date"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.deadline}
-                onChange={(e) => setForm((p) => ({ ...p, deadline: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, deadline: e.target.value }))
+                }
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">สวัสดิการ</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              สวัสดิการ
+            </label>
             <textarea
               className="w-full border rounded-xl px-3 py-2 text-sm min-h-[90px]"
               value={form.benefits}
-              onChange={(e) => setForm((p) => ({ ...p, benefits: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, benefits: e.target.value }))
+              }
               placeholder="เช่น ประกันสุขภาพ/โบนัส/OT/กองทุนสำรองเลี้ยงชีพ"
             />
           </div>
@@ -362,30 +468,42 @@ export default function AddJobModal({ open, onClose, token, onCreated }) {
           {/* ติดต่อ */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">อีเมลติดต่อ</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                อีเมลติดต่อ
+              </label>
               <input
                 type="email"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.contactEmail}
-                onChange={(e) => setForm((p) => ({ ...p, contactEmail: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, contactEmail: e.target.value }))
+                }
                 placeholder="hr@example.com"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์ติดต่อ</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                เบอร์ติดต่อ
+              </label>
               <input
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.contactPhone}
-                onChange={(e) => setForm((p) => ({ ...p, contactPhone: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, contactPhone: e.target.value }))
+                }
                 placeholder="080-xxx-xxxx"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">เว็บไซต์/ลิงก์</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                เว็บไซต์/ลิงก์
+              </label>
               <input
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.contactWebsite}
-                onChange={(e) => setForm((p) => ({ ...p, contactWebsite: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, contactWebsite: e.target.value }))
+                }
                 placeholder="ลิงก์ประกาศงาน/เว็บไซต์บริษัท"
               />
             </div>

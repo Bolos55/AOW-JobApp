@@ -9,7 +9,7 @@ export default function ChatBell({ token, onOpenList }) {
   useEffect(() => {
     const tick = async () => {
       if (!token) return;
-      const r = await fetch(`${API_BASE}/api/chats/unread-count`, {
+      const r = await fetch(`${API_BASE}/chats/unread-count`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await r.json();
