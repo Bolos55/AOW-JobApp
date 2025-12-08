@@ -1,128 +1,198 @@
 // src/components/ReviewSection.jsx
 import React, { useEffect, useState } from "react";
-import { MessageCircle, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
 
-export default function ReviewSection({ jobId }) {
+export default function ReviewSection({ jobId, readOnly = false }) {
   const [reviews, setReviews] = useState([]);
-  const [lock, setLock] = useState({ locked: false, reason: "" });
-  const [text, setText] = useState("");
+  const [canReview, setCanReview] = useState(false);
+  const [checkReason, setCheckReason] = useState("");
   const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [loadingCheck, setLoadingCheck] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  // โหลดรีวิว
-  useEffect(() => {
+  // โหลดรีวิวทั้งหมดของงานนี้
+  const loadReviews = async () => {
     if (!jobId) return;
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/jobs/${jobId}/reviews`, {
-          headers: { ...authHeader() },
-        });
-        if (res.status === 403) {
-          const d = await res.json().catch(() => ({}));
-          setLock({ locked: true, reason: d.message || "" });
-          setReviews([]);
-          return;
-        }
-        const data = await res.json();
-        setReviews(Array.isArray(data) ? data : []);
-        setLock({ locked: false, reason: "" });
-      } catch {
-        setReviews([]);
-      }
-    })();
-  }, [jobId]);
+    setLoadingReviews(true);
+    setError("");
 
-  // ส่งรีวิว
-  const submit = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/jobs/${jobId}/reviews`, {
+      const res = await fetch(`${API_BASE}/api/reviews/job/${jobId}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "โหลดรีวิวไม่สำเร็จ");
+      }
+      setReviews(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setError(e.message || "โหลดรีวิวไม่สำเร็จ");
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
+  // เช็คว่าสามารถรีวิวได้ไหม
+  const checkCanReview = async () => {
+    if (!jobId) return;
+    setLoadingCheck(true);
+    setCheckReason("");
+    try {
+      const res = await fetch(`${API_BASE}/api/reviews/can-review/${jobId}`, {
+        headers: {
+          ...authHeader(),
+        },
+      });
+
+      // ถ้าไม่ล็อกอินเลย backend จะส่ง 401 กลับมา
+      if (res.status === 401) {
+        setCanReview(false);
+        setCheckReason("กรุณาเข้าสู่ระบบเพื่อเขียนรีวิว");
+        return;
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "ตรวจสอบสิทธิ์รีวิวไม่สำเร็จ");
+      }
+
+      setCanReview(!!data.canReview);
+      if (!data.canReview && data.message) {
+        setCheckReason(data.message);
+      } else {
+        setCheckReason("");
+      }
+    } catch (e) {
+      console.error(e);
+      setCanReview(false);
+      setCheckReason(e.message || "ตรวจสอบสิทธิ์รีวิวไม่สำเร็จ");
+    } finally {
+      setLoadingCheck(false);
+    }
+  };
+
+useEffect(() => {
+  loadReviews();
+  if (!readOnly) {
+    checkCanReview();
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [jobId, readOnly]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canReview || !jobId) return;
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/reviews`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...authHeader(),
         },
-        body: JSON.stringify({ rating, comment: text }),
+        body: JSON.stringify({ jobId, rating, comment }),
       });
-      if (res.status === 403) {
-        const j = await res.json().catch(() => ({}));
-        alert(j.message || "ยังไม่สามารถรีวิวงานนี้ได้");
-        return;
-      }
+
       const data = await res.json();
       if (!res.ok) {
-        alert(data.message || "รีวิวไม่ได้");
-        return;
+        throw new Error(data.message || "ส่งรีวิวไม่สำเร็จ");
       }
-      setReviews((p) => [data, ...p]);
-      setText("");
+
+      // เคลียร์ฟอร์ม + โหลดรีวิวใหม่ + บอกว่าหมดสิทธิ์แล้ว (กันรีวิวซ้ำ)
+      setComment("");
       setRating(5);
-    } catch {
-      alert("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
+      await loadReviews();
+      await checkCanReview();
+    } catch (e) {
+      console.error(e);
+      setError(e.message || "ส่งรีวิวไม่สำเร็จ");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="border-t pt-4">
-      <h3 className="font-semibold mb-3 flex items-center gap-2">
-        <MessageCircle className="w-4 h-4" />
-        รีวิวงานนี้
-      </h3>
+    <div className="space-y-3">
+      {/* สถานะโหลด / error */}
+      {loadingReviews && (
+        <p className="text-xs text-gray-500">กำลังโหลดรีวิว...</p>
+      )}
+      {error && (
+        <p className="text-xs text-red-500">{error}</p>
+      )}
 
-      {lock.locked ? (
-        <div className="bg-yellow-50 text-yellow-700 text-sm p-3 rounded-lg mb-3">
-          {lock.reason ||
-            "รีวิวและประวัติรีวิวจะเปิดให้เฉพาะผู้ที่ทำงานนี้เสร็จแล้ว ภายใน 7 วันหลังปิดงาน"}
-        </div>
-      ) : (
-        <>
-          {/* ฟอร์มรีวิว */}
-          <div className="mb-4 bg-gray-50 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setRating(n)}
-                  className={n <= rating ? "text-yellow-400" : "text-gray-300"}
-                >
-                  <Star className="w-5 h-5" />
-                </button>
+      {/* รายการรีวิว */}
+      {reviews.length === 0 && !loadingReviews && !error && (
+        <p className="text-xs text-gray-400">ยังไม่มีรีวิวสำหรับงานนี้</p>
+      )}
+
+      {reviews.map((r) => (
+        <div key={r._id} className="bg-gray-50 rounded-xl p-3">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-semibold">
+              {r.user?.name || "ผู้ใช้ไม่ระบุชื่อ"}
+            </p>
+            <div className="flex items-center gap-1 text-yellow-500 text-xs">
+              {Array.from({ length: r.rating || 0 }).map((_, i) => (
+                <Star key={i} className="w-3 h-3 fill-current" />
               ))}
             </div>
-            <textarea
-              className="w-full border rounded-md px-3 py-2 text-sm mb-2"
-              placeholder="เขียนความเห็นของคุณ"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
-            <button onClick={submit} className="bg-blue-600 text-white text-sm px-4 py-2 rounded-md">
-              ส่งรีวิว
-            </button>
+          </div>
+          <p className="text-[11px] text-gray-400">
+            {r.createdAt && new Date(r.createdAt).toLocaleString()}
+          </p>
+          <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">
+            {r.comment}
+          </p>
+        </div>
+      ))}
+
+      {/* ข้อความบอกสิทธิ์ (แสดงเฉพาะฝั่งผู้สมัคร) */}
+      {!readOnly && !loadingCheck && checkReason && (
+        <p className="text-[11px] text-gray-500">
+          {checkReason}
+        </p>
+      )}
+
+      {/* ฟอร์มเขียนรีวิว – แสดงเฉพาะตอนที่ backend อนุญาต และไม่ใช่โหมด readOnly */}
+      {!readOnly && canReview && (
+        <form onSubmit={handleSubmit} className="space-y-2 mt-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600">ให้คะแนน:</span>
+            <select
+              value={rating}
+              onChange={(e) => setRating(Number(e.target.value))}
+              className="border rounded-lg text-xs px-2 py-1"
+            >
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n} ดาว
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* รายการรีวิว */}
-          <div className="space-y-3">
-            {reviews.length === 0 && (
-              <p className="text-xs text-gray-400">ยังไม่มีรีวิวสำหรับงานนี้</p>
-            )}
-            {reviews.map((rv) => (
-              <div key={rv._id} className="border rounded-lg p-3 bg-white text-sm">
-                <div className="flex justify-between items-center mb-1">
-                  <p className="font-medium">{rv.userName || "ผู้ใช้"}</p>
-                  <p className="flex gap-1">
-                    {Array.from({ length: rv.rating || 5 }).map((_, i) => (
-                      <Star key={i} className="w-4 h-4 text-yellow-400" />
-                    ))}
-                  </p>
-                </div>
-                <p className="text-gray-600">{rv.comment}</p>
-                <p className="text-[10px] text-gray-400 mt-1">
-                  {rv.createdAt ? new Date(rv.createdAt).toLocaleString() : ""}
-                </p>
-              </div>
-            ))}
-          </div>
-        </>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={3}
+            placeholder="เขียนความเห็นเกี่ยวกับงาน/บริษัท..."
+            className="w-full border rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+          >
+            {submitting ? "กำลังส่งรีวิว..." : "ส่งรีวิว"}
+          </button>
+        </form>
       )}
     </div>
   );

@@ -1,51 +1,58 @@
-// backend/models/ChatThread.js
 import mongoose from "mongoose";
 
-const { Schema } = mongoose;
-
-const chatThreadSchema = new Schema(
+const chatThreadSchema = new mongoose.Schema(
   {
     job: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "Job",
-      required: true,
+      required: function () {
+        // ✅ บังคับ job เฉพาะห้องแชทงานจริง
+        return !this.isAdminThread;
+      },
     },
 
-    // คนประกาศงาน
     employer: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
 
-    // ผู้สมัครที่คุยกับเรา
     worker: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
 
-    // ไว้เผื่อใช้ในอนาคต / query ง่าย ๆ
     participants: [
       {
-        type: Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+        required: true,
       },
     ],
 
-    lastMessage: { type: String, default: "" },
-    lastMessageAt: { type: Date, default: null },
+    lastMessage: {
+      type: String,
+      default: "",
+    },
+
+    lastMessageAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ✅ ใช้แยกว่าเป็นห้องแอดมิน
+    isAdminThread: {
+      type: Boolean,
+      default: false,
+    },
+
+    title: {
+      type: String,
+      default: "",
+    },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-// index เดียวกับที่ Mongo เคยสร้างไว้ (กันซ้ำ 1 งานต่อคู่คนคุย)
-chatThreadSchema.index(
-  { job: 1, employer: 1, worker: 1 },
-  { unique: true }
-);
-
-const ChatThread = mongoose.model("ChatThread", chatThreadSchema);
-export default ChatThread;
+export default mongoose.model("ChatThread", chatThreadSchema);

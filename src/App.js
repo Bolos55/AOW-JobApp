@@ -1,9 +1,9 @@
 // src/App.jsx
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import JobSearchHome from "./JobSearchHome";
 import ChatsPage from "./ChatsPage";
 import LoginPage from "./LoginPage";
+import JobSearchApp from "./JobSearchApp"; // ✅ ใช้ตัวนี้จริง ๆ
 
 function useAuthUser() {
   const read = () => {
@@ -41,12 +41,12 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* หน้าแรกต้องล็อกอินก่อน */}
+        {/* หน้าแรก: ต้องล็อกอินก่อน แล้วให้ JobSearchApp จัดการต่อ (ภายในแยก role เอง) */}
         <Route
           path="/"
           element={
             <RequireAuth>
-              <JobSearchHome user={user} />
+              <JobSearchApp user={user} />
             </RequireAuth>
           }
         />

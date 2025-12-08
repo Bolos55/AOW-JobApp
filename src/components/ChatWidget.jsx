@@ -1,7 +1,12 @@
 // src/components/ChatWidget.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { X, MessageCircle } from "lucide-react";
-import { listMyThreads, fetchMessages, sendMessage } from "../api/chat";
+import { X, MessageCircle, Mail } from "lucide-react";
+import {
+  listMyThreads,
+  fetchMessages,
+  sendMessage,
+  contactAdmin,
+} from "../api/chat";
 
 export default function ChatWidget({
   open,
@@ -15,65 +20,96 @@ export default function ChatWidget({
   const [messages, setMessages] = useState([]);
   const [loadingThreads, setLoadingThreads] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [loadingContactAdmin, setLoadingContactAdmin] = useState(false);
   const [text, setText] = useState("");
+
   const messagesEndRef = useRef(null);
 
-  const meId = user?.id || user?._id || user?._id?.toString?.();
+  // เลื่อนลงล่างสุดเมื่อมีข้อความใหม่
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
-  // ---------- helper หาชื่อฝั่งตรงข้าม + ชื่องาน ----------
-  const getOtherUser = (thread) => {
-    // ถ้า backend ใส่ otherUser มาให้แล้ว ใช้อันนั้นเลย
-    if (thread.otherUser) return thread.otherUser;
+  // ---------- helper หา "คู่สนทนาอีกฝั่ง" ----------
+  const getPartnerForThread = (t) => {
+    if (!user || !t) return null;
 
-    const employer = thread.employer;
-    const worker = thread.worker;
+    const meId = (user._id || user.id || user.userId || "").toString();
 
-    if (!employer && !worker) return null;
+    const employerId = t.employer
+      ? (t.employer._id || t.employer.id || t.employer).toString()
+      : "";
+    const workerId = t.worker
+      ? (t.worker._id || t.worker.id || t.worker).toString()
+      : "";
 
-    const empId =
-      employer?._id?.toString?.() || employer?.id || employer?._id || "";
-    const workerId =
-      worker?._id?.toString?.() || worker?.id || worker?._id || "";
-    const my = meId?.toString?.() || meId;
-
-    if (my && empId && empId === my) return worker || employer;
-    if (my && workerId && workerId === my) return employer || worker;
-
-    // ถ้าเดาไม่ได้ก็คืน employer ก่อน
-    return worker || employer || null;
+    // ถ้าเราเป็น employer → อีกฝั่งคือ worker
+    if (employerId && employerId === meId) {
+      return t.worker || null;
+    }
+    // ถ้าเราเป็น worker → อีกฝั่งคือ employer
+    if (workerId && workerId === meId) {
+      return t.employer || null;
+    }
+    return null;
   };
 
-  const getThreadDisplay = (thread) => {
-    const jobTitle =
-      thread?.job?.title ||
-      thread?.jobTitle ||
-      "งานไม่ระบุ";
+  // ---------- helper ตั้งชื่อห้อง ----------
+  const getThreadTitle = (t) => {
+    const partner = getPartnerForThread(t);
 
-    const other = getOtherUser(thread);
+    // ถ้ารู้ชื่อคู่สนทนา ให้ใช้ชื่อเขานำหน้าเลย
+    if (partner && partner.name) {
+      if (t.isAdminThread) {
+        // ห้องติดต่อแอดมิน → “ชื่อคน • ติดต่อแอดมิน”
+        return `${partner.name} • ติดต่อแอดมิน`;
+      }
 
-    const otherName =
-      other?.name ||
-      (other?.email ? other.email.split("@")[0] : null) ||
-      thread.otherUserName ||
-      "ไม่ทราบชื่อ";
+      if (t.job && (t.job.title || t.job.jobCode)) {
+        // ห้องคุยเรื่องงาน → “ชื่อคน • ชื่องาน • รหัสงาน”
+        return `${partner.name} • ${t.job.title || "งาน"}${
+          t.job.jobCode ? ` • ${t.job.jobCode}` : ""
+        }`;
+      }
 
-    return { jobTitle, otherName };
+      // ห้องทั่วไป → ชื่อคู่สนทนา
+      return partner.name;
+    }
+
+    // กรณีข้อมูลไม่ครบ ใช้ fallback เดิม
+    if (t.title) return t.title;
+    if (t.isAdminThread) return "ติดต่อแอดมิน";
+    if (t.job && (t.job.title || t.job.jobCode)) {
+      return `${t.job.title || "งาน"}${
+        t.job.jobCode ? ` • ${t.job.jobCode}` : ""
+      }`;
+    }
+    return "ห้องแชท";
   };
-  // --------------------------------------------------------
 
   // โหลดรายการห้องแชท
   const loadThreads = async () => {
+    if (!token) return;
     setLoadingThreads(true);
     try {
       const data = await listMyThreads({ token });
-      setThreads(Array.isArray(data) ? data : []);
-      if (typeof onUnreadChange === "function") {
-        // ยังไม่ได้ทำระบบ unread จริงจัง ให้ส่ง 0 ไปก่อน
-        onUnreadChange(0);
+      const arr = Array.isArray(data) ? data : [];
+      setThreads(arr);
+
+      // อัปเดตจำนวน unread รวมให้ parent
+      if (onUnreadChange) {
+        const totalUnread = arr.reduce(
+          (sum, t) => sum + (t.unreadCount || 0),
+          0
+        );
+        onUnreadChange(totalUnread);
       }
     } catch (e) {
-      console.error("โหลดห้องแชทไม่สำเร็จ:", e);
+      console.error("loadThreads error:", e);
       setThreads([]);
+      if (onUnreadChange) onUnreadChange(0);
     } finally {
       setLoadingThreads(false);
     }
@@ -81,121 +117,169 @@ export default function ChatWidget({
 
   // โหลดข้อความของห้องที่เลือก
   const loadMessages = async (thread) => {
-    if (!thread?._id) return;
+    if (!thread || !token) return;
     setLoadingMessages(true);
     try {
-      const data = await fetchMessages({
-        threadId: thread._id,
-        token,
-      });
+      const data = await fetchMessages({ threadId: thread._id, token });
       setMessages(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error("โหลดข้อความไม่สำเร็จ:", e);
+      console.error("loadMessages error:", e);
       setMessages([]);
     } finally {
       setLoadingMessages(false);
     }
   };
 
-  // เวลา widget เปิดให้โหลดห้องแชท
+  // เวลาเปิด widget ให้โหลด threads
   useEffect(() => {
     if (open) {
       loadThreads();
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, token]);
 
-  // เลื่อน scroll ไปล่างสุดทุกครั้งที่ข้อความเปลี่ยน
+  // เวลาเปลี่ยนห้อง ให้โหลดข้อความ
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (selectedThread) {
+      loadMessages(selectedThread);
+    } else {
+      setMessages([]);
     }
-  }, [messages, selectedThread]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedThread]);
 
-  const handleSelectThread = (t) => {
-    setSelectedThread(t);
-    loadMessages(t);
-  };
-
-  const handleSend = async (e) => {
-    e?.preventDefault?.();
-    const trimmed = text.trim();
-    if (!trimmed || !selectedThread?._id) return;
+  // ส่งข้อความ
+  const handleSend = async () => {
+    const message = text.trim();
+    if (!message || !selectedThread || !token) return;
 
     try {
-      const newMsg = await sendMessage({
+      const created = await sendMessage({
         threadId: selectedThread._id,
-        text: trimmed,
+        text: message,
         token,
       });
-      setMessages((prev) => [...prev, newMsg]);
-      setText("");
+      if (created) {
+        setMessages((prev) => [...prev, created]);
+        setText("");
+      }
     } catch (e) {
-      console.error("ส่งข้อความไม่สำเร็จ:", e);
-      alert(e.message || "ส่งข้อความไม่สำเร็จ");
+      console.error("sendMessage error:", e);
+      alert("ส่งข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    }
+  };
+
+  // ปุ่ม: ติดต่อแอดมิน → ขอห้องแชทแอดมินจาก backend แล้วเลือกห้องนั้น
+  const handleContactAdmin = async () => {
+    if (!token) {
+      alert("กรุณาเข้าสู่ระบบก่อนติดต่อแอดมิน");
+      return;
+    }
+
+    try {
+      setLoadingContactAdmin(true);
+
+      const thread = await contactAdmin({ token });
+
+      setThreads((prev) => {
+        const exists = prev.find((t) => t._id === thread._id);
+        if (exists) {
+          return prev.map((t) => (t._id === thread._id ? thread : t));
+        }
+        return [thread, ...prev];
+      });
+
+      setSelectedThread(thread);
+    } catch (e) {
+      console.error("handleContactAdmin error:", e);
+      alert(e.message || "ไม่สามารถเปิดห้องแชทแอดมินได้");
+    } finally {
+      setLoadingContactAdmin(false);
     }
   };
 
   if (!open) return null;
 
-  const headerDisplay = selectedThread
-    ? getThreadDisplay(selectedThread)
-    : null;
-
   return (
-    <div className="fixed inset-0 md:inset-auto md:right-6 md:bottom-6 md:top-auto md:w-[420px] md:h-[520px] bg-black/40 md:bg-transparent flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full h-full max-w-[900px] max-h-[600px] flex flex-col md:flex-row overflow-hidden">
-        {/* ซ้าย: รายการห้องแชท */}
-        <div className="w-full md:w-1/3 border-r border-gray-200 flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b">
+    <div className="fixed inset-0 md:inset-auto md:bottom-4 md:right-4 md:w-[900px] md:h-[520px] z-50 flex items-center justify-center md:items-end md:justify-end">
+      {/* ฉากหลังมืดบน mobile */}
+      <div
+        className="absolute inset-0 bg-black/40 md:bg-transparent"
+        onClick={onClose}
+      />
+
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[900px] h-[520px] flex overflow-hidden">
+        {/* ปุ่มปิด */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 z-10"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* ฝั่งซ้าย: รายการห้องแชท */}
+        <div className="w-1/3 border-r flex flex-col">
+          <div className="px-4 pt-4 pb-3 border-b bg-slate-50 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-blue-600" />
-              <span className="font-semibold text-sm">
-                สื่อสารกับผู้สมัคร / ผู้ประกาศงาน
-              </span>
+              <MessageCircle className="w-4 h-4 text-blue-500" />
+              <div>
+                <p className="text-sm font-semibold">
+                  สื่อสารกับผู้สมัคร / ผู้ประกาศงาน
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  เลือกห้องจากรายการด้านล่าง
+                </p>
+              </div>
             </div>
+
+            {/* ปุ่ม: ติดต่อแอดมิน */}
             <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              type="button"
+              onClick={handleContactAdmin}
+              disabled={loadingContactAdmin}
+              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-60"
             >
-              <X className="w-4 h-4" />
+              <Mail className="w-3 h-3" />
+              {loadingContactAdmin ? "กำลังเปิด..." : "ติดต่อแอดมิน"}
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto text-sm">
             {loadingThreads && (
-              <p className="text-xs text-gray-400 p-3">
-                กำลังโหลดห้องแชท...
-              </p>
+              <p className="p-3 text-xs text-gray-500">กำลังโหลดห้องแชท...</p>
             )}
 
             {!loadingThreads && threads.length === 0 && (
-              <p className="text-xs text-gray-400 p-3">
-                ยังไม่มีห้องแชท
-              </p>
+              <p className="p-3 text-xs text-gray-400">ยังไม่มีห้องแชท</p>
             )}
 
             {threads.map((t) => {
-              const { jobTitle, otherName } = getThreadDisplay(t);
-              const isActive = selectedThread?._id === t._id;
+              const isActive = selectedThread && selectedThread._id === t._id;
+              const last = t.lastMessage;
 
               return (
                 <button
                   key={t._id}
-                  onClick={() => handleSelectThread(t)}
-                  className={`w-full text-left px-3 py-2 text-sm border-b border-gray-100 flex flex-col hover:bg-slate-50 ${
-                    isActive ? "bg-blue-50" : "bg-white"
-                  }`}
+                  onClick={() => setSelectedThread(t)}
+                  className={
+                    "w-full text-left px-3 py-2 flex flex-col border-b hover:bg-slate-50 " +
+                    (isActive ? "bg-slate-100" : "")
+                  }
                 >
-                  <span className="font-semibold truncate">
-                    {otherName}
-                  </span>
-                  <span className="text-xs text-gray-500 truncate">
-                    {jobTitle}
-                  </span>
-                  {t.lastMessage && (
-                    <span className="text-[11px] text-gray-400 mt-0.5 truncate">
-                      ล่าสุด: {t.lastMessage}
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold text-gray-800">
+                      {getThreadTitle(t)}
                     </span>
+                    {t.unreadCount > 0 && (
+                      <span className="text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0.5">
+                        {t.unreadCount > 9 ? "9+" : t.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  {last && (
+                    <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+                      {typeof last === "string" ? last : String(last)}
+                    </p>
                   )}
                 </button>
               );
@@ -203,84 +287,78 @@ export default function ChatWidget({
           </div>
         </div>
 
-        {/* ขวา: กล่องข้อความ */}
+        {/* ฝั่งขวา: เนื้อหาห้องแชท */}
         <div className="flex-1 flex flex-col">
-          <div className="px-4 py-3 border-b flex items-center justify-between">
+          {/* header ขวา */}
+          <div className="px-4 pt-4 pb-3 border-b bg-white flex items-center justify-between">
             {selectedThread ? (
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold">
-                  แชทกับ{" "}
-                  {headerDisplay?.otherName || "ไม่ทราบชื่อ"}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {headerDisplay?.jobTitle || "งานไม่ระบุ"}
-                </span>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  {getThreadTitle(selectedThread)}
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  สนทนากับคู่สนทนาในห้องนี้
+                </p>
               </div>
             ) : (
-              <span className="text-sm text-gray-500">
-                เลือกห้องแชทจากด้านซ้าย
-              </span>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  เลือกห้องแชทจากด้านซ้าย
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  หรือกดปุ่ม “ติดต่อแอดมิน” เพื่อแจ้งปัญหาการใช้งาน
+                </p>
+              </div>
             )}
-
-            {/* ปุ่มปิดใน mobile */}
-            <button
-              onClick={onClose}
-              className="md:hidden text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
 
           {/* รายการข้อความ */}
           <div className="flex-1 overflow-y-auto px-4 py-3 bg-slate-50">
-            {!selectedThread && (
-              <p className="text-xs text-gray-400">
-                ยังไม่ได้เลือกห้องแชท
-              </p>
+            {loadingMessages && selectedThread && (
+              <p className="text-xs text-gray-500">กำลังโหลดข้อความ...</p>
             )}
 
-            {selectedThread && loadingMessages && (
-              <p className="text-xs text-gray-400">
-                กำลังโหลดข้อความ...
-              </p>
+            {!selectedThread && (
+              <p className="text-xs text-gray-400">ยังไม่ได้เลือกห้องแชท</p>
             )}
 
             {selectedThread &&
               !loadingMessages &&
               messages.map((m) => {
-                const mine =
-                  m.sender === meId ||
-                  m.sender?._id?.toString?.() === meId;
+                const senderId = m.senderId || m.sender?._id;
+                const senderName = m.senderName || m.sender?.name;
+                const isMe =
+                  senderId &&
+                  (senderId === user?.id ||
+                    senderId === user?._id ||
+                    senderId === user?.userId);
 
                 return (
                   <div
                     key={m._id}
-                    className={`mb-2 flex ${
-                      mine ? "justify-end" : "justify-start"
-                    }`}
+                    className={
+                      "mb-2 flex " + (isMe ? "justify-end" : "justify-start")
+                    }
                   >
                     <div
-                      className={`max-w-[70%] rounded-2xl px-3 py-2 text-xs ${
-                        mine
-                          ? "bg-blue-600 text-white rounded-br-none"
-                          : "bg-white text-gray-800 border rounded-bl-none"
-                      }`}
+                      className={
+                        "max-w-[70%] rounded-2xl px-3 py-2 text-[13px] " +
+                        (isMe
+                          ? "bg-blue-600 text-white rounded-br-sm"
+                          : "bg-white text-gray-800 rounded-bl-sm")
+                      }
                     >
-                      {!mine && (
-                        <div className="text-[10px] text-gray-400 mb-0.5">
-                          {m.sender?.name ||
-                            m.sender?.email ||
-                            "คู่สนทนา"}
-                        </div>
+                      {!isMe && (
+                        <p className="text-[10px] text-gray-500 mb-0.5">
+                          {senderName || "คู่สนทนา"}
+                        </p>
                       )}
-                      <div className="whitespace-pre-wrap break-words">
-                        {m.text}
-                      </div>
-                      <div className="text-[9px] opacity-70 mt-0.5 text-right">
-                        {m.createdAt
-                          ? new Date(m.createdAt).toLocaleTimeString()
-                          : ""}
-                      </div>
+                      <p className="whitespace-pre-line">{m.text}</p>
+                      {m.createdAt && (
+                        <p className="mt-1 text-[9px] opacity-70 text-right">
+                          {new Date(m.createdAt).toLocaleString()}
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
@@ -290,30 +368,34 @@ export default function ChatWidget({
           </div>
 
           {/* กล่องพิมพ์ข้อความ */}
-          <form
-            onSubmit={handleSend}
-            className="border-t px-3 py-2 flex items-center gap-2 bg-white"
-          >
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={
-                selectedThread
-                  ? "พิมพ์ข้อความ..."
-                  : "เลือกห้องแชทก่อน"
-              }
-              disabled={!selectedThread}
-              className="flex-1 border rounded-full px-3 py-2 text-sm outline-none disabled:bg-slate-100"
-            />
-            <button
-              type="submit"
-              disabled={!selectedThread || !text.trim()}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-            >
-              ส่ง
-            </button>
-          </form>
+          <div className="border-t px-3 py-2 bg-white">
+            {selectedThread ? (
+              <form
+                className="flex items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSend();
+                }}
+              >
+                <input
+                  className="flex-1 border rounded-full px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="พิมพ์ข้อความ..."
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-full bg-blue-600 text-white text-sm hover:bg-blue-700"
+                >
+                  ส่ง
+                </button>
+              </form>
+            ) : (
+              <p className="text-[11px] text-gray-400 text-center">
+                เลือกห้องแชทด้านซ้าย หรือกด “ติดต่อแอดมิน” ด้านบนซ้ายเพื่อเริ่มสนทนา
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

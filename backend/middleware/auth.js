@@ -14,12 +14,17 @@ const auth = (req, res, next) => {
       token,
       process.env.JWT_SECRET || "dev-secret"
     );
-    // เก็บข้อมูล user เอาไว้ใช้ใน route อื่น ๆ
-    req.user = decoded; // { id, email }
+
+    // ให้ route อื่นใช้ได้ทั้งแบบ req.user และ req.userId
+    req.user = decoded;      // { id, email, role, ... }
+    req.userId = decoded.id; // ใช้กับ getMyId(), getUserId()
+
     next();
   } catch (err) {
+    console.error("auth error:", err);
     return res.status(401).json({ message: "token ไม่ถูกต้อง" });
   }
 };
 
 export default auth;
+export const authMiddleware = auth;   // ✅ เพื่อให้ใช้ชื่อ authMiddleware ได้

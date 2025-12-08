@@ -8,36 +8,63 @@ import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
-// multer สำหรับ upload resume
+// multer สำหรับ upload resume / บัตรประชาชน
 const upload = multer({ dest: "uploads/" });
 
-// ส่งใบสมัคร
-router.post("/applications", auth, upload.single("resume"), async (req, res) => {
-  try {
-    const { jobId, message, profile } = req.body || {};
-    const job = await Job.findById(jobId);
-    if (!job) return res.status(404).json({ message: "ไม่พบงานนี้" });
+// ✅ ส่งใบสมัคร + รูปบัตรประชาชน
+router.post(
+  "/applications",
+  auth,
+  upload.fields([
+    { name: "resume", maxCount: 1 },
+    { name: "idCard", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const { jobId, message, profile } = req.body || {};
+      const job = await Job.findById(jobId);
+      if (!job) return res.status(404).json({ message: "ไม่พบงานนี้" });
 
-    const user = await User.findById(req.user.id);
+      const user = await User.findById(req.user.id);
 
-    const appData = await Application.create({
-      job: job._id,
-      jobTitle: job.title,
-      jobCode: job.jobCode,
-      applicant: req.user.id,
-      applicantName: user?.name || user?.email || "ผู้ใช้",
-      applicantEmail: user?.email,
-      message,
-      personalProfile: profile,
-      resumePath: req.file ? req.file.path : null,
-    });
+      const resumeFile = req.files?.resume?.[0] || null;
+      const idCardFile = req.files?.idCard?.[0] || null;
 
-    res.status(201).json(appData);
-  } catch (err) {
-    console.log("apply error:", err);
-    res.status(500).json({ message: "ส่งใบสมัครไม่สำเร็จ" });
+      // กันเคสส่งมาไม่ครบ
+      if (!resumeFile) {
+        return res.status(400).json({ message: "กรุณาแนบไฟล์เรซูเม่" });
+      }
+      if (!idCardFile) {
+        return res
+          .status(400)
+          .json({ message: "กรุณาอัปโหลดรูปบัตรประชาชนเพื่อยืนยันตัวตน" });
+      }
+
+      const appData = await Application.create({
+        job: job._id,
+        jobTitle: job.title,
+        jobCode: job.jobCode,
+        applicant: req.user.id,
+        applicantName: user?.name || user?.email || "ผู้ใช้",
+        applicantEmail: user?.email,
+        message,
+        personalProfile: profile,
+
+        // ✅ path ไฟล์
+        resumePath: resumeFile.path,
+        idCardPath: idCardFile.path,
+
+        // ✅ ตั้งค่าเริ่มต้นให้รอแอดมินตรวจ
+        verifyStatus: "pending",
+      });
+
+      res.status(201).json(appData);
+    } catch (err) {
+      console.log("apply error:", err);
+      res.status(500).json({ message: "ส่งใบสมัครไม่สำเร็จ" });
+    }
   }
-});
+);
 
 // ดูผู้สมัครของงานหนึ่ง
 router.get("/jobs/:id/applications", auth, async (req, res) => {
@@ -112,7 +139,7 @@ const updateStatusHandler = async (req, res) => {
 router.patch("/applications/:id/status", auth, updateStatusHandler);
 router.post("/applications/:id/status", auth, updateStatusHandler);
 
-/* ✅ เพิ่มตรงนี้: ดึงรายการ "งานที่เคยสมัครแล้ว" ของผู้ใช้ปัจจุบัน */
+/* "งานที่เคยสมัครแล้ว" ของผู้ใช้ปัจจุบัน */
 router.get("/my-applications", auth, async (req, res) => {
   try {
     const userId = req.user?.id;

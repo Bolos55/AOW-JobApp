@@ -3,10 +3,12 @@ import express from "express";
 import ChatThread from "../models/ChatThread.js";
 import ChatMessage from "../models/ChatMessage.js";
 import Job from "../models/Job.js";
+import User from "../models/User.js";
 import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
+/** ดึง userId จาก token ที่ middleware auth ใส่ไว้ */
 function getMyId(req) {
   return (
     req.userId ||
@@ -15,9 +17,36 @@ function getMyId(req) {
   );
 }
 
+/* ---------- helper ใช้ร่วมกัน: ดึงห้องแชทของ user ปัจจุบัน ---------- */
+async function listMyThreads(req, res) {
+  try {
+    const me = getMyId(req);
+    if (!me) {
+      return res
+        .status(401)
+        .json({ message: "ไม่พบข้อมูลผู้ใช้ใน token (userId)" });
+    }
+
+    const threads = await ChatThread.find({
+      $or: [{ employer: me }, { worker: me }],
+    })
+      .populate("job", "title company jobCode")
+      .populate("employer", "name email role")
+      .populate("worker", "name email role")
+      .sort({ updatedAt: -1 });
+
+    return res.json(threads);
+  } catch (err) {
+    console.error("list threads error:", err);
+    return res
+      .status(500)
+      .json({ message: "เกิดข้อผิดพลาดในการดึงห้องแชท" });
+  }
+}
+
 /**
  * POST /api/chats/start
- * body รองรับทั้ง { jobId, participantId } และ { job_id, participant_id }
+ * สำหรับห้องแชทผูกกับ “งาน”
  */
 router.post("/start", auth, async (req, res) => {
   try {
@@ -34,7 +63,7 @@ router.post("/start", auth, async (req, res) => {
 
     const job = await Job.findById(jobIdFinal);
     if (!job) {
-      return res.status(404).json({ message: "ไม่พบนงานนี้" });
+      return res.status(404).json({ message: "ไม่พบงานนี้" });
     }
     if (!job.createdBy) {
       return res
@@ -45,14 +74,12 @@ router.post("/start", auth, async (req, res) => {
     const employerId = job.createdBy.toString();
     const workerId = participantIdFinal.toString();
 
-    // หา thread เดิม: งานเดียวกัน + คนประกาศ + ผู้สมัครคนนี้
     let thread = await ChatThread.findOne({
       job: jobIdFinal,
       employer: employerId,
       worker: workerId,
     });
 
-    // ถ้ายังไม่มี → สร้างใหม่
     if (!thread) {
       thread = await ChatThread.create({
         job: jobIdFinal,
@@ -61,14 +88,16 @@ router.post("/start", auth, async (req, res) => {
         participants: [employerId, workerId],
         lastMessage: "",
         lastMessageAt: null,
+        isAdminThread: false,
+        title: job.title || "ห้องแชทงาน",
       });
     }
 
     thread = await ChatThread.populate(thread, [
-  { path: "job", select: "title company jobCode" },
-  { path: "employer", select: "name email" },
-  { path: "worker", select: "name email" },
-]);
+      { path: "job", select: "title company jobCode" },
+      { path: "employer", select: "name email role" },
+      { path: "worker", select: "name email role" },
+    ]);
 
     return res.json(thread);
   } catch (err) {
@@ -80,10 +109,9 @@ router.post("/start", auth, async (req, res) => {
 });
 
 /**
- * GET /api/chats/my
- * ดึงห้องแชททั้งหมดของ user ปัจจุบัน
+ * POST /api/chats/contact-admin
  */
-router.get("/my", auth, async (req, res) => {
+router.post("/contact-admin", auth, async (req, res) => {
   try {
     const me = getMyId(req);
     if (!me) {
@@ -92,22 +120,57 @@ router.get("/my", auth, async (req, res) => {
         .json({ message: "ไม่พบข้อมูลผู้ใช้ใน token (userId)" });
     }
 
-    const threads = await ChatThread.find({
-      $or: [{ employer: me }, { worker: me }],
-    })
-      .populate("job", "title company jobCode")
-      .populate("employer", "name email")
-      .populate("worker", "name email")
-      .sort({ updatedAt: -1 });
+    let admin = await User.findOne({ role: "admin", isActive: true });
+    if (!admin) {
+      admin = await User.findOne({ role: "admin" });
+    }
 
-    return res.json(threads);
+    if (!admin) {
+      return res
+        .status(404)
+        .json({ message: "ยังไม่มีผู้ใช้ที่เป็นแอดมินในระบบ" });
+    }
+
+    let thread = await ChatThread.findOne({
+      job: null,
+      employer: admin._id,
+      worker: me,
+    });
+
+    if (!thread) {
+      thread = await ChatThread.create({
+        job: null,
+        employer: admin._id,
+        worker: me,
+        participants: [admin._id, me],
+        lastMessage: "",
+        lastMessageAt: null,
+        isAdminThread: true,
+        title: "ติดต่อแอดมิน",
+      });
+    }
+
+    thread = await ChatThread.populate(thread, [
+      { path: "job", select: "title company jobCode" },
+      { path: "employer", select: "name email role" },
+      { path: "worker", select: "name email role" },
+    ]);
+
+    return res.json({ thread });
   } catch (err) {
-    console.error("list threads error:", err);
-    return res
-      .status(500)
-      .json({ message: "เกิดข้อผิดพลาดในการดึงห้องแชท" });
+    console.error("contact-admin error:", err);
+    return res.status(500).json({
+      message: err.message || "ไม่สามารถเปิดห้องแชทแอดมินได้",
+    });
   }
 });
+
+/**
+ * ✅ GET /api/chats/my
+ * ✅ GET /api/chats/threads   <-- เพิ่ม endpoint นี้ให้ frontend ใช้
+ */
+router.get("/my", auth, listMyThreads);
+router.get("/threads", auth, listMyThreads);
 
 /**
  * GET /api/chats/:threadId/messages
@@ -115,10 +178,31 @@ router.get("/my", auth, async (req, res) => {
 router.get("/:threadId/messages", auth, async (req, res) => {
   try {
     const { threadId } = req.params;
+    const me = getMyId(req);
+    if (!me) {
+      return res
+        .status(401)
+        .json({ message: "ไม่พบข้อมูลผู้ใช้ใน token (userId)" });
+    }
+
+    const thread = await ChatThread.findById(threadId).select("participants");
+    if (!thread) {
+      return res.status(404).json({ message: "ไม่พบห้องแชท" });
+    }
+
+    const isParticipant = thread.participants
+      .map((p) => p.toString())
+      .includes(me.toString());
+
+    if (!isParticipant) {
+      return res
+        .status(403)
+        .json({ message: "คุณไม่มีสิทธิ์ดูข้อความของห้องนี้" });
+    }
 
     const msgs = await ChatMessage.find({ thread: threadId })
       .sort({ createdAt: 1 })
-      .populate("sender", "name email");
+      .populate("sender", "name email role");
 
     return res.json(msgs);
   } catch (err) {
@@ -131,7 +215,6 @@ router.get("/:threadId/messages", auth, async (req, res) => {
 
 /**
  * POST /api/chats/:threadId/messages
- * body: { text }
  */
 router.post("/:threadId/messages", auth, async (req, res) => {
   try {
@@ -139,13 +222,38 @@ router.post("/:threadId/messages", auth, async (req, res) => {
     const { text } = req.body;
     const me = getMyId(req);
 
+    if (!me) {
+      return res
+        .status(401)
+        .json({ message: "ไม่พบข้อมูลผู้ใช้ใน token (userId)" });
+    }
+
     if (!text || !text.trim()) {
       return res.status(400).json({ message: "ข้อความว่าง" });
     }
 
+    const thread = await ChatThread.findById(threadId).select("participants");
+    if (!thread) {
+      return res.status(404).json({ message: "ไม่พบห้องแชท" });
+    }
+
+    const isParticipant = thread.participants
+      .map((p) => p.toString())
+      .includes(me.toString());
+
+    if (!isParticipant) {
+      return res
+        .status(403)
+        .json({ message: "คุณไม่มีสิทธิ์ส่งข้อความในห้องนี้" });
+    }
+
+    const senderUser = await User.findById(me).select("name");
+    const senderName = senderUser?.name || "ไม่ทราบชื่อ";
+
     const msg = await ChatMessage.create({
       thread: threadId,
       sender: me,
+      senderName,
       text,
     });
 
@@ -153,10 +261,11 @@ router.post("/:threadId/messages", auth, async (req, res) => {
       $set: {
         lastMessage: text,
         lastMessageAt: new Date(),
+        lastSenderName: senderName,
       },
     });
 
-    const populated = await msg.populate("sender", "name email");
+    const populated = await msg.populate("sender", "name email role");
     return res.status(201).json(populated);
   } catch (err) {
     console.error("send message error:", err);
