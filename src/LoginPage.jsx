@@ -24,18 +24,8 @@ export default function LoginPage() {
     }
   }, [navigate]);
 
-  // ✅ ปลุก backend ตั้งแต่เข้าหน้า login เพื่อลด cold start
-// ✅ ปลุก backend ตั้งแต่เข้าหน้า login เพื่อลด cold start (เวอร์ชันง่ายสุด)
-useEffect(() => {
-  const base = API_BASE.replace(/\/api\/?$/, "");
-  fetch(base + "/api/health")
-    .then(() => {
-      console.log("wake backend ok");
-    })
-    .catch((err) => {
-      console.log("wake backend failed (ไม่เป็นไร)", err && err.message);
-    });
-}, []);
+  // ❌ ตัด useEffect ปลุก backend ออกไปก่อน เพื่อตัดปัญหา error ทั้งหมด
+  // ถ้าอยากใส่ทีหลังค่อยมาเพิ่มใหม่ได้
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -62,7 +52,7 @@ useEffect(() => {
       const data = await res.json().catch(() => null);
       return data || null;
     } catch (err) {
-      console.log("fetchMyProfile error:", err?.message);
+      console.log("fetchMyProfile error:", err && err.message);
       return null;
     }
   };
@@ -106,7 +96,7 @@ useEffect(() => {
 
       if (!res.ok) {
         setError(
-          data?.message ||
+          (data && data.message) ||
             (res.status === 404
               ? "ไม่พบเส้นทาง API (404) กรุณาเช็ก backend"
               : `เกิดข้อผิดพลาด (${res.status})`)
