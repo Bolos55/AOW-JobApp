@@ -25,17 +25,17 @@ export default function LoginPage() {
   }, [navigate]);
 
   // ✅ ปลุก backend ตั้งแต่เข้าหน้า login เพื่อลด cold start
-  useEffect(() => {
-    const wakeBackend = async () => {
-      try {
-        const base = API_BASE.replace(/\/api\/?$/, "");
-        await fetch(`${base}/api/health`, { method: "GET" });
-      } catch (e) {
-        console.log("wake backend failed (ไม่เป็นไร)", e?.message);
-      }
-    };
-    wakeBackend();
-  }, []);
+// ✅ ปลุก backend ตั้งแต่เข้าหน้า login เพื่อลด cold start (เวอร์ชันง่ายสุด)
+useEffect(() => {
+  const base = API_BASE.replace(/\/api\/?$/, "");
+  fetch(base + "/api/health")
+    .then(() => {
+      console.log("wake backend ok");
+    })
+    .catch((err) => {
+      console.log("wake backend failed (ไม่เป็นไร)", err && err.message);
+    });
+}, []);
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
