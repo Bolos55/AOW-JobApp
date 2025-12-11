@@ -29,7 +29,7 @@ export default function LoginPage() {
     const wakeBackend = async () => {
       try {
         const base = API_BASE.replace(/\/api\/?$/, "");
-        await fetch(`${base}/api`, { method: "GET" });
+        await fetch(`${base}/api/health``, { method: "GET" });
       } catch (e) {
         console.log("wake backend failed (ไม่เป็นไร)", e?.message);
       }
