@@ -1,6 +1,6 @@
 // ✅ src/api.js (เวอร์ชันที่ถูกต้อง)
 
-export const API_BASE = "http://localhost:10000";
+export const API_BASE = "https://aow-jobapp-frontend.onrender.com/login";
 
 
 export const authHeader = () => {
