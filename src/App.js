@@ -5,7 +5,7 @@ import ChatsPage from "./ChatsPage";
 import LoginPage from "./LoginPage";
 import JobSearchApp from "./JobSearchApp"; 
 import ForgotPasswordPage from "./ForgotPasswordPage";
-import ResetPasswordPage from "./ResetPasswordPage"; 
+import ResetPassword from "./ResetPassword"; 
 
 
 function useAuthUser() {
