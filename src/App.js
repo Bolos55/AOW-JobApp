@@ -3,7 +3,10 @@ import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ChatsPage from "./ChatsPage";
 import LoginPage from "./LoginPage";
-import JobSearchApp from "./JobSearchApp"; // ✅ ใช้ตัวนี้จริง ๆ
+import JobSearchApp from "./JobSearchApp"; 
+import ForgotPasswordPage from "./ForgotPasswordPage";
+import ResetPasswordPage from "./ResetPasswordPage"; 
+
 
 function useAuthUser() {
   const read = () => {
