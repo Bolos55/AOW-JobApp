@@ -3,10 +3,9 @@ import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ChatsPage from "./ChatsPage";
 import LoginPage from "./LoginPage";
-import JobSearchApp from "./JobSearchApp"; 
-import ForgotPasswordPage from "./ForgotPasswordPage";
-import ResetPassword from "./ResetPassword"; 
-
+import JobSearchApp from "./JobSearchApp";
+import ForgotPassword from "./ForgotPassword";
+import ResetPassword from "./ResetPassword";
 
 function useAuthUser() {
   const read = () => {
@@ -44,7 +43,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* หน้าแรก: ต้องล็อกอินก่อน แล้วให้ JobSearchApp จัดการต่อ (ภายในแยก role เอง) */}
+        {/* หน้าแรก: ต้องล็อกอินก่อน */}
         <Route
           path="/"
           element={
@@ -66,6 +65,12 @@ export default function App() {
 
         {/* หน้า login */}
         <Route path="/login" element={<LoginPage />} />
+
+        {/* ✅ ลืมรหัสผ่าน (ไม่ต้องล็อกอิน) */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+        {/* ✅ ตั้งรหัสผ่านใหม่ (รับ token จาก URL) */}
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
 
         {/* กันหลงทาง */}
         <Route path="*" element={<Navigate to="/" replace />} />
