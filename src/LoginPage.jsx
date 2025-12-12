@@ -141,7 +141,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-extrabold text-gray-800 tracking-wide">
             AOW <span className="font-semibold text-gray-700">all of works</span>
           </h1>
-          <p className="text-sm text-gray-500 mt-1">งานเพื่อคุณเพื่อทุกคน</p>
+          <p className="text-sm text-gray-500 mt-1">เริ่มใช้งานกันเลย!!</p>
         </div>
 
         {/* สลับโหมด */}
