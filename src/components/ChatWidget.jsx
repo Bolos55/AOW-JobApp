@@ -1,20 +1,17 @@
 // src/components/ChatWidget.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { X, MessageCircle, Mail } from "lucide-react";
-import {
-  listMyThreads,
-  fetchMessages,
-  sendMessage,
-  contactAdmin,
-} from "../api/chat";
+import { listMyThreads, fetchMessages, sendMessage, contactAdmin } from "../api/chat";
 
-export default function ChatWidget({
-  open,
-  onClose,
-  user,
-  token,
-  onUnreadChange,
-}) {
+// helper แปลง id เป็น string แบบชัวร์
+const idStr = (v) => {
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "object") return String(v._id || v.id || v.userId || "");
+  return String(v);
+};
+
+export default function ChatWidget({ open, onClose, user, token, onUnreadChange }) {
   const [threads, setThreads] = useState([]);
   const [selectedThread, setSelectedThread] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -25,6 +22,8 @@ export default function ChatWidget({
 
   const messagesEndRef = useRef(null);
 
+  const meId = idStr(user?._id || user?.id || user?.userId);
+
   // เลื่อนลงล่างสุดเมื่อมีข้อความใหม่
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -32,59 +31,50 @@ export default function ChatWidget({
     }
   }, [messages]);
 
+  // เวลา close ให้ reset บาง state กันค้าง
+  useEffect(() => {
+    if (!open) {
+      setSelectedThread(null);
+      setMessages([]);
+      setText("");
+    }
+  }, [open]);
+
   // ---------- helper หา "คู่สนทนาอีกฝั่ง" ----------
   const getPartnerForThread = (t) => {
-    if (!user || !t) return null;
+    if (!meId || !t) return null;
 
-    const meId = (user._id || user.id || user.userId || "").toString();
+    const employerId = idStr(t.employer);
+    const workerId = idStr(t.worker);
 
-    const employerId = t.employer
-      ? (t.employer._id || t.employer.id || t.employer).toString()
-      : "";
-    const workerId = t.worker
-      ? (t.worker._id || t.worker.id || t.worker).toString()
-      : "";
+    if (employerId && employerId === meId) return t.worker || null;
+    if (workerId && workerId === meId) return t.employer || null;
 
-    // ถ้าเราเป็น employer → อีกฝั่งคือ worker
-    if (employerId && employerId === meId) {
-      return t.worker || null;
-    }
-    // ถ้าเราเป็น worker → อีกฝั่งคือ employer
-    if (workerId && workerId === meId) {
-      return t.employer || null;
+    // fallback: บางระบบใช้ participants
+    if (Array.isArray(t.participants)) {
+      const other = t.participants.find((p) => idStr(p) !== meId);
+      return other || null;
     }
     return null;
   };
 
   // ---------- helper ตั้งชื่อห้อง ----------
   const getThreadTitle = (t) => {
+    if (!t) return "ห้องแชท";
     const partner = getPartnerForThread(t);
 
-    // ถ้ารู้ชื่อคู่สนทนา ให้ใช้ชื่อเขานำหน้าเลย
     if (partner && partner.name) {
-      if (t.isAdminThread) {
-        // ห้องติดต่อแอดมิน → “ชื่อคน • ติดต่อแอดมิน”
-        return `${partner.name} • ติดต่อแอดมิน`;
-      }
-
+      if (t.isAdminThread) return `${partner.name} • ติดต่อแอดมิน`;
       if (t.job && (t.job.title || t.job.jobCode)) {
-        // ห้องคุยเรื่องงาน → “ชื่อคน • ชื่องาน • รหัสงาน”
-        return `${partner.name} • ${t.job.title || "งาน"}${
-          t.job.jobCode ? ` • ${t.job.jobCode}` : ""
-        }`;
+        return `${partner.name} • ${t.job.title || "งาน"}${t.job.jobCode ? ` • ${t.job.jobCode}` : ""}`;
       }
-
-      // ห้องทั่วไป → ชื่อคู่สนทนา
       return partner.name;
     }
 
-    // กรณีข้อมูลไม่ครบ ใช้ fallback เดิม
     if (t.title) return t.title;
     if (t.isAdminThread) return "ติดต่อแอดมิน";
     if (t.job && (t.job.title || t.job.jobCode)) {
-      return `${t.job.title || "งาน"}${
-        t.job.jobCode ? ` • ${t.job.jobCode}` : ""
-      }`;
+      return `${t.job.title || "งาน"}${t.job.jobCode ? ` • ${t.job.jobCode}` : ""}`;
     }
     return "ห้องแชท";
   };
@@ -98,12 +88,8 @@ export default function ChatWidget({
       const arr = Array.isArray(data) ? data : [];
       setThreads(arr);
 
-      // อัปเดตจำนวน unread รวมให้ parent
       if (onUnreadChange) {
-        const totalUnread = arr.reduce(
-          (sum, t) => sum + (t.unreadCount || 0),
-          0
-        );
+        const totalUnread = arr.reduce((sum, t) => sum + (Number(t.unreadCount) || 0), 0);
         onUnreadChange(totalUnread);
       }
     } catch (e) {
@@ -117,7 +103,7 @@ export default function ChatWidget({
 
   // โหลดข้อความของห้องที่เลือก
   const loadMessages = async (thread) => {
-    if (!thread || !token) return;
+    if (!thread?._id || !token) return;
     setLoadingMessages(true);
     try {
       const data = await fetchMessages({ threadId: thread._id, token });
@@ -151,7 +137,7 @@ export default function ChatWidget({
   // ส่งข้อความ
   const handleSend = async () => {
     const message = text.trim();
-    if (!message || !selectedThread || !token) return;
+    if (!message || !selectedThread?._id || !token) return;
 
     try {
       const created = await sendMessage({
@@ -162,6 +148,14 @@ export default function ChatWidget({
       if (created) {
         setMessages((prev) => [...prev, created]);
         setText("");
+        // อัปเดต thread list ให้ lastMessage ใหม่ (optional)
+        setThreads((prev) =>
+          prev.map((t) =>
+            t._id === selectedThread._id
+              ? { ...t, lastMessage: message, updatedAt: new Date().toISOString() }
+              : t
+          )
+        );
       }
     } catch (e) {
       console.error("sendMessage error:", e);
@@ -179,7 +173,12 @@ export default function ChatWidget({
     try {
       setLoadingContactAdmin(true);
 
-      const thread = await contactAdmin({ token });
+      const resp = await contactAdmin({ token });
+      const thread = resp?.thread || resp; // รองรับทั้ง {thread: {...}} หรือ {...}
+
+      if (!thread?._id) {
+        throw new Error("ไม่พบข้อมูลห้องแชทแอดมินจากเซิร์ฟเวอร์");
+      }
 
       setThreads((prev) => {
         const exists = prev.find((t) => t._id === thread._id);
@@ -190,9 +189,10 @@ export default function ChatWidget({
       });
 
       setSelectedThread(thread);
+      await loadMessages(thread);
     } catch (e) {
       console.error("handleContactAdmin error:", e);
-      alert(e.message || "ไม่สามารถเปิดห้องแชทแอดมินได้");
+      alert(e?.message || "ไม่สามารถเปิดห้องแชทแอดมินได้");
     } finally {
       setLoadingContactAdmin(false);
     }
@@ -203,10 +203,7 @@ export default function ChatWidget({
   return (
     <div className="fixed inset-0 md:inset-auto md:bottom-4 md:right-4 md:w-[900px] md:h-[520px] z-50 flex items-center justify-center md:items-end md:justify-end">
       {/* ฉากหลังมืดบน mobile */}
-      <div
-        className="absolute inset-0 bg-black/40 md:bg-transparent"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40 md:bg-transparent" onClick={onClose} />
 
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[900px] h-[520px] flex overflow-hidden">
         {/* ปุ่มปิด */}
@@ -223,12 +220,8 @@ export default function ChatWidget({
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-blue-500" />
               <div>
-                <p className="text-sm font-semibold">
-                  สื่อสารกับผู้สมัคร / ผู้ประกาศงาน
-                </p>
-                <p className="text-[11px] text-gray-500">
-                  เลือกห้องจากรายการด้านล่าง
-                </p>
+                <p className="text-sm font-semibold">สื่อสารกับผู้สมัคร / ผู้ประกาศงาน</p>
+                <p className="text-[11px] text-gray-500">เลือกห้องจากรายการด้านล่าง</p>
               </div>
             </div>
 
@@ -260,7 +253,10 @@ export default function ChatWidget({
               return (
                 <button
                   key={t._id}
-                  onClick={() => setSelectedThread(t)}
+                  onClick={async () => {
+                    setSelectedThread(t);
+                    await loadMessages(t);
+                  }}
                   className={
                     "w-full text-left px-3 py-2 flex flex-col border-b hover:bg-slate-50 " +
                     (isActive ? "bg-slate-100" : "")
@@ -270,7 +266,7 @@ export default function ChatWidget({
                     <span className="text-xs font-semibold text-gray-800">
                       {getThreadTitle(t)}
                     </span>
-                    {t.unreadCount > 0 && (
+                    {Number(t.unreadCount) > 0 && (
                       <span className="text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0.5">
                         {t.unreadCount > 9 ? "9+" : t.unreadCount}
                       </span>
@@ -296,15 +292,11 @@ export default function ChatWidget({
                 <p className="text-sm font-semibold text-gray-800">
                   {getThreadTitle(selectedThread)}
                 </p>
-                <p className="text-[11px] text-gray-500">
-                  สนทนากับคู่สนทนาในห้องนี้
-                </p>
+                <p className="text-[11px] text-gray-500">สนทนากับคู่สนทนาในห้องนี้</p>
               </div>
             ) : (
               <div>
-                <p className="text-sm font-semibold text-gray-800">
-                  เลือกห้องแชทจากด้านซ้าย
-                </p>
+                <p className="text-sm font-semibold text-gray-800">เลือกห้องแชทจากด้านซ้าย</p>
                 <p className="text-[11px] text-gray-500">
                   หรือกดปุ่ม “ติดต่อแอดมิน” เพื่อแจ้งปัญหาการใช้งาน
                 </p>
@@ -325,20 +317,15 @@ export default function ChatWidget({
             {selectedThread &&
               !loadingMessages &&
               messages.map((m) => {
-                const senderId = m.senderId || m.sender?._id;
+                const senderId = idStr(m.senderId || m.sender);
                 const senderName = m.senderName || m.sender?.name;
-                const isMe =
-                  senderId &&
-                  (senderId === user?.id ||
-                    senderId === user?._id ||
-                    senderId === user?.userId);
+
+                const isMe = senderId && meId && senderId === meId;
 
                 return (
                   <div
-                    key={m._id}
-                    className={
-                      "mb-2 flex " + (isMe ? "justify-end" : "justify-start")
-                    }
+                    key={m._id || `${senderId}-${m.createdAt || Math.random()}`}
+                    className={"mb-2 flex " + (isMe ? "justify-end" : "justify-start")}
                   >
                     <div
                       className={
