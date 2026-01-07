@@ -606,24 +606,34 @@ router.post("/complete-social-registration", async (req, res) => {
 
 // ===================== FIREBASE GOOGLE LOGIN =====================
 router.post("/firebase-google", async (req, res) => {
-  console.log("🔥 Firebase Google Login endpoint hit!");
-  console.log("📋 Request body:", req.body);
+  console.log("🔥🔥🔥 Firebase Google Login endpoint HIT! 🔥🔥🔥");
+  console.log("📋 Request method:", req.method);
+  console.log("📋 Request path:", req.path);
+  console.log("📋 Request originalUrl:", req.originalUrl);
+  console.log("📋 Request body:", JSON.stringify(req.body, null, 2));
+  console.log("📋 Request headers:", JSON.stringify(req.headers, null, 2));
+  console.log("⏰ Timestamp:", new Date().toISOString());
   
   try {
     const { uid, email, name, photoURL, emailVerified } = req.body;
+    
+    console.log("🔍 Extracted data:", { uid, email, name, photoURL, emailVerified });
     
     // ✅ Validate required fields
     if (!uid || !email) {
       console.log("❌ Missing required fields:", { uid: !!uid, email: !!email });
       return res.status(400).json({ 
-        message: "ข้อมูล Firebase ไม่ครบถ้วน - ต้องมี uid และ email" 
+        message: "ข้อมูล Firebase ไม่ครบถ้วน - ต้องมี uid และ email",
+        received: { uid: !!uid, email: !!email, name: !!name }
       });
     }
 
-    console.log("✅ Firebase data received:", { uid, email, name, emailVerified });
+    console.log("✅ Firebase data validated successfully");
 
     // ✅ ตรวจสอบว่ามีผู้ใช้นี้ในระบบแล้วหรือไม่
+    console.log("🔍 Looking up user in database:", email);
     let user = await User.findOne({ email });
+    console.log("📊 User lookup result:", user ? `Found user: ${user._id}` : "User not found");
 
     if (user) {
       // ✅ ผู้ใช้มีอยู่แล้ว - login ปกติ
@@ -635,22 +645,25 @@ router.post("/firebase-google", async (req, res) => {
         user.socialProvider = "firebase-google";
         user.socialId = uid;
         updated = true;
+        console.log("📝 Updated socialProvider to firebase-google");
       }
       
       if (photoURL && !user.avatar) {
         user.avatar = photoURL;
         updated = true;
+        console.log("📝 Updated avatar from Firebase");
       }
       
       if (emailVerified && !user.isEmailVerified) {
         user.isEmailVerified = true;
         user.isActive = true;
         updated = true;
+        console.log("📝 Updated email verification status");
       }
       
       if (updated) {
         await user.save();
-        console.log("✅ Updated existing user with Firebase data");
+        console.log("✅ User updated and saved to database");
       }
 
       // ตรวจสอบว่าบัญชีถูกระงับหรือไม่
@@ -664,10 +677,11 @@ router.post("/firebase-google", async (req, res) => {
       }
 
       // ✅ สร้าง JWT token
+      console.log("🔐 Creating JWT token for user:", user._id);
       const token = createToken(user);
-      console.log("✅ JWT token created for existing user");
+      console.log("✅ JWT token created successfully");
 
-      return res.json({
+      const responseData = {
         message: "เข้าสู่ระบบด้วย Google สำเร็จ",
         user: {
           id: user._id,
@@ -682,13 +696,23 @@ router.post("/firebase-google", async (req, res) => {
           socialProvider: user.socialProvider
         },
         token,
-      });
+      };
+
+      console.log("📤 Sending success response for existing user");
+      console.log("📊 Response data:", JSON.stringify({
+        userId: user._id,
+        email: user.email,
+        role: user.role,
+        hasToken: !!token
+      }, null, 2));
+
+      return res.json(responseData);
       
     } else {
       // ✅ ผู้ใช้ใหม่ - ต้องเลือก role ก่อน
       console.log(`👤 New user from Firebase Google: ${email} - needs role selection`);
       
-      return res.json({
+      const responseData = {
         message: "ผู้ใช้ใหม่ - ต้องเลือกประเภทการใช้งาน",
         newUser: true,
         needsRoleSelection: true,
@@ -700,15 +724,27 @@ router.post("/firebase-google", async (req, res) => {
           emailVerified
         },
         provider: "google"
-      });
+      };
+
+      console.log("📤 Sending new user response");
+      console.log("📊 Response data:", JSON.stringify(responseData, null, 2));
+
+      return res.json(responseData);
     }
 
   } catch (err) {
-    console.error("❌ Firebase Google auth error:", err);
-    res.status(500).json({ 
+    console.error("❌❌❌ Firebase Google auth ERROR:", err);
+    console.error("❌ Error message:", err.message);
+    console.error("❌ Error stack:", err.stack);
+    
+    const errorResponse = {
       message: "เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google",
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log("📤 Sending error response:", JSON.stringify(errorResponse, null, 2));
+    res.status(500).json(errorResponse);
   }
 });
 
