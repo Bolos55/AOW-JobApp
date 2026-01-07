@@ -118,6 +118,9 @@ app.use((req, res, next) => {
 
 // ✅ ผูก route ต่าง ๆ ให้ frontend เรียกได้
 console.log("🔗 Registering routes...");
+console.log("📁 Available routes will be:");
+console.log("  - POST /api/auth/firebase-google");
+console.log("  - GET /api/auth/test-firebase");
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", firebaseAuthRoutes);
 console.log("✅ Auth routes registered: /api/auth");
@@ -132,6 +135,23 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/pdpa", pdpaRoutes);
 app.use("/api/online", onlineStatusRoutes);
 console.log("✅ All routes registered successfully");
+
+// ✅ Debug route - แสดงทุก request ที่ไม่ match
+app.use("/api/*", (req, res) => {
+  console.log(`❌ Unmatched API route: ${req.method} ${req.originalUrl}`);
+  console.log("📋 Available auth routes:");
+  console.log("  - POST /api/auth/firebase-google");
+  console.log("  - GET /api/auth/test-firebase");
+  res.status(404).json({
+    error: "API endpoint not found",
+    method: req.method,
+    path: req.originalUrl,
+    availableAuthRoutes: [
+      "POST /api/auth/firebase-google",
+      "GET /api/auth/test-firebase"
+    ]
+  });
+});
 
 // ✅ Global Error Handler
 app.use((err, req, res, next) => {

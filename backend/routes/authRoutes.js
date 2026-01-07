@@ -712,4 +712,17 @@ router.post("/firebase-google", async (req, res) => {
   }
 });
 
+// ✅ Test endpoint สำหรับตรวจสอบ
+router.get("/test-firebase", (req, res) => {
+  console.log("🧪 Test Firebase endpoint hit!");
+  res.json({ 
+    message: "Firebase endpoint is working!",
+    timestamp: new Date().toISOString(),
+    routes: [
+      "POST /api/auth/firebase-google",
+      "GET /api/auth/test-firebase"
+    ]
+  });
+});
+
 export default router;
