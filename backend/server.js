@@ -143,6 +143,31 @@ app.use("/api/pdpa", pdpaRoutes);
 app.use("/api/online", onlineStatusRoutes);
 console.log("✅ All routes registered successfully");
 
+// ✅ Health check endpoint
+app.get("/", (req, res) => {
+  console.log("🏥 Health check endpoint hit");
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: "1.0.0",
+    routes: {
+      auth: "/api/auth/*",
+      firebase: "/api/auth/firebase-google",
+      test: "/api/auth/test-firebase"
+    }
+  });
+});
+
+app.get("/health", (req, res) => {
+  console.log("🏥 Health endpoint hit");
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // ✅ Debug route - แสดงทุก request ที่ไม่ match
 app.use("/api/*", (req, res) => {
   console.log(`❌ Unmatched API route: ${req.method} ${req.originalUrl}`);
@@ -210,6 +235,17 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
+  console.log("🚀🚀🚀 SERVER STARTED SUCCESSFULLY 🚀🚀🚀");
+  console.log(`📡 Server running on port ${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`⏰ Started at: ${new Date().toISOString()}`);
+  console.log("📋 Available endpoints:");
+  console.log("  - GET  / (health check)");
+  console.log("  - GET  /health");
+  console.log("  - POST /api/auth/firebase-google");
+  console.log("  - GET  /api/auth/test-firebase");
+  console.log("🚀🚀🚀 SERVER READY FOR REQUESTS 🚀🚀🚀");
+  
   logger.info(`💖 Server running on port ${PORT}`);
   logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
