@@ -108,11 +108,18 @@ app.use("/api", apiRateLimit); // General API rate limiting
 
 // ✅ Debug middleware - log all requests
 app.use((req, res, next) => {
-  console.log(`📡 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+  const timestamp = new Date().toISOString();
+  console.log(`📡 ${req.method} ${req.path} - ${timestamp}`);
+  
   if (req.path.includes('firebase-google')) {
-    console.log("🔥 Firebase Google request detected!");
-    console.log("📋 Body:", req.body);
+    console.log("🔥🔥🔥 FIREBASE GOOGLE REQUEST DETECTED! 🔥🔥🔥");
+    console.log("📋 Method:", req.method);
+    console.log("📋 Path:", req.path);
+    console.log("📋 Original URL:", req.originalUrl);
+    console.log("📋 Body:", JSON.stringify(req.body, null, 2));
+    console.log("📋 Headers:", JSON.stringify(req.headers, null, 2));
   }
+  
   next();
 });
 
