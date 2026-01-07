@@ -27,15 +27,21 @@ export default function SocialLogin({ onSuccess, onError }) {
         emailVerified: user.emailVerified
       });
       
+      // ส่งข้อมูลไป backend
+      // ✅ แก้ไข URL ให้ไม่มี /api ซ้ำ
+      const apiUrl = API_BASE.endsWith('/api') 
+        ? `${API_BASE}/auth/firebase-google`
+        : `${API_BASE}/api/auth/firebase-google`;
+      
       console.log('📡 Sending request to backend...');
       console.log('🌐 Request details:', {
-        url: `${API_BASE}/api/auth/firebase-google`,
+        API_BASE,
+        finalUrl: apiUrl,
         origin: window.location.origin,
         method: 'POST'
       });
       
-      // ส่งข้อมูลไป backend
-      const res = await fetch(`${API_BASE}/api/auth/firebase-google`, {
+      const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
