@@ -171,12 +171,19 @@ router.post("/facebook", async (req, res) => {
 
 // ===================== FIREBASE GOOGLE LOGIN =====================
 router.post("/firebase-google", async (req, res) => {
+  console.log("🔥 Firebase Google Login endpoint hit!");
+  console.log("📋 Request body:", req.body);
+  console.log("🌐 Request headers:", req.headers);
+  
   try {
     const { uid, email, name, photoURL, emailVerified } = req.body;
     
     if (!uid || !email) {
+      console.log("❌ Missing uid or email:", { uid, email });
       return res.status(400).json({ message: "ไม่พบข้อมูล Firebase UID หรือ email" });
     }
+
+    console.log("✅ Firebase data received:", { uid, email, name, emailVerified });
 
     // ✅ ตรวจสอบว่ามีผู้ใช้นี้ในระบบแล้วหรือไม่
     let user = await User.findOne({ email });
@@ -197,6 +204,7 @@ router.post("/firebase-google", async (req, res) => {
           user.isActive = true;
         }
         await user.save();
+        console.log("✅ Updated user with Firebase data");
       }
 
       // ตรวจสอบว่าบัญชีถูกระงับหรือไม่

@@ -106,9 +106,21 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRateLimit); // Stricter rate limiting for auth
 app.use("/api", apiRateLimit); // General API rate limiting
 
+// ✅ Debug middleware - log all requests
+app.use((req, res, next) => {
+  console.log(`📡 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+  if (req.path.includes('firebase-google')) {
+    console.log("🔥 Firebase Google request detected!");
+    console.log("📋 Body:", req.body);
+  }
+  next();
+});
+
 // ✅ ผูก route ต่าง ๆ ให้ frontend เรียกได้
+console.log("🔗 Registering routes...");
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", socialAuthRoutes);
+console.log("✅ Auth routes registered: /api/auth");
 app.use("/api/jobs", jobRoutes);
 app.use("/api", applicationRoutes);
 app.use("/api/reviews", reviewRoutes);
@@ -119,6 +131,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/pdpa", pdpaRoutes);
 app.use("/api/online", onlineStatusRoutes);
+console.log("✅ All routes registered successfully");
 
 // ✅ Global Error Handler
 app.use((err, req, res, next) => {
