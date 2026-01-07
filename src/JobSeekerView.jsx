@@ -1,5 +1,5 @@
 // src/JobSeekerView.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Search,
   MapPin,
@@ -98,7 +98,27 @@ export default function JobSeekerView({ user, onLogout }) {
       });
       if (!res.ok) return;
       const data = await res.json().catch(() => null);
-      if (data) setMyProfile(data);
+      if (data) {
+        setMyProfile(data);
+        
+        // ✅ อัปเดต localStorage ด้วยข้อมูลที่โหลดมาจาก backend
+        try {
+          const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+          const updatedUser = {
+            ...currentUser,
+            profile: {
+              ...currentUser.profile,
+              ...data
+            }
+          };
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+          
+          // Dispatch event เพื่อให้ component อื่นรู้ว่า profile เปลี่ยนแล้ว
+          window.dispatchEvent(new Event("auth-change"));
+        } catch (storageError) {
+          console.error("Error updating localStorage with profile:", storageError);
+        }
+      }
     } catch (e) {
       console.error("load profile error:", e);
     }
@@ -362,10 +382,13 @@ export default function JobSeekerView({ user, onLogout }) {
           <div className="flex-1 bg-white rounded-2xl shadow-md flex items-center px-4 py-3">
             <Search className="w-5 h-5 text-gray-400 mr-3" />
             <input
+              id="jobSearch"
+              type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ค้นหาตำแหน่งงาน หรือบริษัท..."
               className="flex-1 outline-none text-gray-700 text-sm"
+              autoComplete="off"
             />
           </div>
         </div>
@@ -389,7 +412,7 @@ export default function JobSeekerView({ user, onLogout }) {
 
         {/* banner ให้กำลังใจ */}
         <div className="relative overflow-hidden rounded-3xl shadow-xl p-6 bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 text-white">
-          <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/asfalt-dark.png')]"></div>
+          <div className="absolute inset-0 opacity-20 bg-gradient-to-br from-blue-900/30 to-cyan-900/30"></div>
 
           <div className="relative z-10 flex items-center gap-4">
             <div className="text-4xl animate-bounce">🤍</div>
@@ -531,11 +554,13 @@ export default function JobSeekerView({ user, onLogout }) {
             <div className="relative">
               <MapPin className="w-4 h-4 text-gray-400 absolute left-2 top-2.5" />
               <input
+                id="locationFilter"
                 type="text"
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
-                placeholder="กรองตามสถานที่ทำงาน เช่น กรุงเทพ, Remote"
+                placeholder="กรองตามสถานที่ทำงาน เช่น กรุงเทพ, ทำงานจากบ้าน"
                 className="pl-8 pr-3 py-2 border rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[220px]"
+                autoComplete="address-level1"
               />
             </div>
 

@@ -1,10 +1,10 @@
 // src/JobSearchApp.jsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import LoginPage from "./LoginPage";
 import JobSeekerView from "./JobSeekerView";
 import EmployerView from "./EmployerView";
 import AdminView from "./AdminView";
-import { API_BASE } from "./api";
+import { logout } from "./utils/auth";
 
 export default function JobSearchApp() {
   const [user, setUser] = useState(null);
@@ -33,23 +33,8 @@ export default function JobSearchApp() {
   };
 
   // ออกจากระบบ (ใช้ร่วมกันทุก role)
-  const handleLogout = () => {
-    setUser(null);
-    try {
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      localStorage.removeItem("chat:lastOpen");
-      localStorage.removeItem("chat:lastThread");
-      sessionStorage.clear();
-      document.cookie.split(";").forEach((c) => {
-        const eqPos = c.indexOf("=");
-        const name = eqPos > -1 ? c.substr(0, eqPos) : c;
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-      });
-      window.dispatchEvent(new Event("auth-change"));
-    } catch (e) {
-      console.error("logout error", e);
-    }
+  const handleLogout = async () => {
+    await logout();
   };
 
   if (loading) {

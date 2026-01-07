@@ -86,10 +86,18 @@ router.get("/my-applications-received", auth, async (req, res) => {
       return res.json([]);
     }
 
-    // Application ต้องมี field job (ref: Job) และ applicant (ref: User)
+    // ✅ เพิ่มข้อมูลการยืนยันบัตรประชาชน (idVerified, idCardPath)
     const apps = await Application.find({ job: { $in: jobIds } })
       .populate("job", "title company location salary")
-      .populate("applicant", "name email phone")
+      .populate({
+        path: "applicant", 
+        select: "name email phone profile avatar",
+        populate: {
+          path: "profile",
+          select: "fullName headline location skillsText experience photoUrl resumeUrl"
+        }
+      })
+      .select("job applicant status createdAt message resumePath idCardPath idVerified verificationResult verificationNotes verifiedAt hiredAt")
       .sort({ createdAt: -1 });
 
     res.json(apps);
@@ -131,13 +139,33 @@ router.patch("/applications/:id/status", auth, async (req, res) => {
         .json({ message: "คุณไม่ใช่เจ้าของงานนี้ จึงเปลี่ยนสถานะไม่ได้" });
     }
 
+    // ✅ เช็คว่าถ้าจะรับเข้าทำงาน ต้องมีการยืนยันบัตรประชาชนจาก admin ก่อน
+    if (status === "hired") {
+      if (!app.idVerified) {
+        return res.status(400).json({ 
+          message: "ไม่สามารถรับเข้าทำงานได้ เนื่องจากแอดมินยังไม่ได้ตรวจสอบและอนุมัติบัตรประชาชนของผู้สมัครคนนี้",
+          requiresIdVerification: true
+        });
+      }
+    }
+
     app.status = status;
+    if (status === "hired") {
+      app.hiredAt = new Date();
+    }
     await app.save();
 
     // populate ให้สวย ๆ ก่อนส่งกลับ
     const updated = await Application.findById(app._id)
       .populate("job", "title company location salary")
-      .populate("applicant", "name email phone");
+      .populate({
+        path: "applicant", 
+        select: "name email phone profile avatar",
+        populate: {
+          path: "profile",
+          select: "fullName headline location skillsText experience photoUrl resumeUrl"
+        }
+      });
 
     res.json(updated);
   } catch (err) {

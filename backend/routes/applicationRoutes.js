@@ -21,7 +21,15 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const { jobId, message, profile } = req.body || {};
+      const { 
+        jobId, 
+        message, 
+        profile, 
+        applicationMetadata,
+        useProfileResume,
+        profileResumeUrl
+      } = req.body || {};
+      
       const job = await Job.findById(jobId);
       if (!job) return res.status(404).json({ message: "ไม่พบงานนี้" });
 
@@ -30,14 +38,49 @@ router.post(
       const resumeFile = req.files?.resume?.[0] || null;
       const idCardFile = req.files?.idCard?.[0] || null;
 
-      // กันเคสส่งมาไม่ครบ
-      if (!resumeFile) {
-        return res.status(400).json({ message: "กรุณาแนบไฟล์เรซูเม่" });
+      // ✅ ตรวจสอบเรซูเม่ - ใช้จากโปรไฟล์หรืออัปโหลดใหม่
+      let resumePath = null;
+      if (useProfileResume === "true" && profileResumeUrl) {
+        // ใช้เรซูเม่จากโปรไฟล์
+        resumePath = profileResumeUrl;
+      } else if (resumeFile) {
+        // ใช้เรซูเม่ที่อัปโหลดใหม่
+        resumePath = resumeFile.path;
+      } else {
+        return res.status(400).json({ 
+          message: "กรุณาแนบไฟล์เรซูเม่ หรือเลือกใช้เรซูเม่จากโปรไฟล์" 
+        });
       }
+
       if (!idCardFile) {
         return res
           .status(400)
           .json({ message: "กรุณาอัปโหลดรูปบัตรประชาชนเพื่อยืนยันตัวตน" });
+      }
+
+      // ✅ ตรวจสอบว่าเคยสมัครงานนี้แล้วหรือยัง
+      const existingApp = await Application.findOne({
+        job: job._id,
+        applicant: req.user.id
+      });
+
+      if (existingApp) {
+        return res.status(400).json({ 
+          message: "คุณได้สมัครงานนี้ไปแล้ว ไม่สามารถสมัครซ้ำได้" 
+        });
+      }
+
+      // ✅ สร้าง Application ID ที่ไม่ซ้ำ
+      const applicationId = `APP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+      // ✅ Parse metadata ถ้ามี
+      let parsedMetadata = {};
+      try {
+        if (applicationMetadata) {
+          parsedMetadata = JSON.parse(applicationMetadata);
+        }
+      } catch (e) {
+        console.log("Invalid metadata:", e);
       }
 
       const appData = await Application.create({
@@ -50,15 +93,29 @@ router.post(
         message,
         personalProfile: profile,
 
-        // ✅ path ไฟล์
-        resumePath: resumeFile.path,
+        // ✅ path ไฟล์เรซูเม่ (จากโปรไฟล์หรืออัปโหลดใหม่)
+        resumePath,
+        resumeSource: useProfileResume === "true" ? "profile" : "upload",
         idCardPath: idCardFile.path,
 
         // ✅ ตั้งค่าเริ่มต้นให้รอแอดมินตรวจ
         verifyStatus: "pending",
+        
+        // ✅ เพิ่มข้อมูล metadata และ application ID
+        applicationId,
+        submissionMetadata: {
+          ...parsedMetadata,
+          ipAddress: req.ip || req.connection.remoteAddress,
+          submittedAt: new Date(),
+        }
       });
 
-      res.status(201).json(appData);
+      // ✅ ส่งกลับข้อมูลที่มี applicationId
+      res.status(201).json({
+        ...appData.toObject(),
+        applicationId,
+        message: "ส่งใบสมัครสำเร็จ"
+      });
     } catch (err) {
       console.log("apply error:", err);
       res.status(500).json({ message: "ส่งใบสมัครไม่สำเร็จ" });

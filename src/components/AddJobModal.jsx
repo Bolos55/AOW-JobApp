@@ -1,5 +1,5 @@
 // src/components/AddJobModal.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
 
@@ -195,31 +195,37 @@ export default function AddJobModal({ open, onClose, onCreated }) {
           {/* แถว: ชื่อตำแหน่ง / บริษัท */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 mb-1">
                 ชื่อตำแหน่งงาน *
               </label>
               <input
+                id="jobTitle"
+                type="text"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.title}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, title: e.target.value }))
                 }
-                placeholder="เช่น Frontend Developer"
+                placeholder="เช่น พนักงานขาย"
                 required
+                autoComplete="organization-title"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
                 บริษัท *
               </label>
               <input
+                id="company"
+                type="text"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.company}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, company: e.target.value }))
                 }
-                placeholder="เช่น Fastmark Co., Ltd."
+                placeholder="เช่น ร้านอาหารสมชาย"
                 required
+                autoComplete="organization"
               />
             </div>
           </div>
@@ -231,6 +237,7 @@ export default function AddJobModal({ open, onClose, onCreated }) {
             </label>
             <div className="grid grid-cols-2 gap-3">
               <input
+                id="minSalary"
                 type="number"
                 min="0"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
@@ -239,8 +246,10 @@ export default function AddJobModal({ open, onClose, onCreated }) {
                   setForm((p) => ({ ...p, minSalary: e.target.value }))
                 }
                 placeholder="ขั้นต่ำ (บาท)"
+                autoComplete="off"
               />
               <input
+                id="maxSalary"
                 type="number"
                 min="0"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
@@ -249,6 +258,7 @@ export default function AddJobModal({ open, onClose, onCreated }) {
                   setForm((p) => ({ ...p, maxSalary: e.target.value }))
                 }
                 placeholder="สูงสุด (บาท)"
+                autoComplete="off"
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
@@ -267,7 +277,7 @@ export default function AddJobModal({ open, onClose, onCreated }) {
               onChange={(e) =>
                 setForm((p) => ({ ...p, description: e.target.value }))
               }
-              placeholder="สรุปหน้าที่ ความรับผิดชอบ และคุณสมบัติ"
+              placeholder="เช่น ขายสินค้า ดูแลลูกค้า ทำงานหน้าร้าน เวลา 9-18 น."
               required
             />
             <p className="text-xs text-gray-400 mt-1">
@@ -282,6 +292,8 @@ export default function AddJobModal({ open, onClose, onCreated }) {
             </label>
             <div className="flex gap-2">
               <input
+                id="skillInput"
+                type="text"
                 className="flex-1 border rounded-xl px-3 py-2 text-sm"
                 value={skillInput}
                 onChange={(e) => setSkillInput(e.target.value)}
@@ -291,7 +303,8 @@ export default function AddJobModal({ open, onClose, onCreated }) {
                     addSkillFromInput();
                   }
                 }}
-                placeholder="เช่น React, Node.js (กด Enter เพื่อเพิ่ม)"
+                placeholder="เช่น งานขาย, ใช้คอมพื้นฐาน (กด Enter เพื่อเพิ่ม)"
+                autoComplete="off"
               />
               <button
                 type="button"
@@ -381,29 +394,35 @@ export default function AddJobModal({ open, onClose, onCreated }) {
           {/* สถานที่/ลิงก์แผนที่ */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
                 สถานที่ทำงาน
               </label>
               <input
+                id="location"
+                type="text"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.location}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, location: e.target.value }))
                 }
-                placeholder="เช่น Bangkok, Thailand"
+                placeholder="เช่น กรุงเทพ, นนทบุรี"
+                autoComplete="address-level1"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="mapLink" className="block text-sm font-medium text-gray-700 mb-1">
                 ลิงก์แผนที่ (ถ้ามี)
               </label>
               <input
+                id="mapLink"
+                type="url"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.mapLink}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, mapLink: e.target.value }))
                 }
                 placeholder="ลิงก์ Google Maps"
+                autoComplete="url"
               />
             </div>
           </div>
@@ -411,42 +430,50 @@ export default function AddJobModal({ open, onClose, onCreated }) {
           {/* เวลา/วันหยุด/สวัสดิการ */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="workingHours" className="block text-sm font-medium text-gray-700 mb-1">
                 เวลาทำงาน
               </label>
               <input
+                id="workingHours"
+                type="text"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.workingHours}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, workingHours: e.target.value }))
                 }
                 placeholder="เช่น จันทร์–ศุกร์ 9:00–18:00"
+                autoComplete="off"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="dayOff" className="block text-sm font-medium text-gray-700 mb-1">
                 วันหยุด
               </label>
               <input
+                id="dayOff"
+                type="text"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.dayOff}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, dayOff: e.target.value }))
                 }
                 placeholder="เช่น หยุดเสาร์–อาทิตย์"
+                autoComplete="off"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="deadline" className="block text-sm font-medium text-gray-700 mb-1">
                 วันปิดรับสมัคร
               </label>
               <input
+                id="deadline"
                 type="date"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.deadline}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, deadline: e.target.value }))
                 }
+                autoComplete="off"
               />
             </div>
           </div>
@@ -461,17 +488,18 @@ export default function AddJobModal({ open, onClose, onCreated }) {
               onChange={(e) =>
                 setForm((p) => ({ ...p, benefits: e.target.value }))
               }
-              placeholder="เช่น ประกันสุขภาพ/โบนัส/OT/กองทุนสำรองเลี้ยงชีพ"
+              placeholder="เช่น ประกันสุขภาพ, โบนัส, ค่าเดินทาง, ค่าอาหาร"
             />
           </div>
 
           {/* ติดต่อ */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700 mb-1">
                 อีเมลติดต่อ
               </label>
               <input
+                id="contactEmail"
                 type="email"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.contactEmail}
@@ -479,32 +507,39 @@ export default function AddJobModal({ open, onClose, onCreated }) {
                   setForm((p) => ({ ...p, contactEmail: e.target.value }))
                 }
                 placeholder="hr@example.com"
+                autoComplete="email"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="contactPhone" className="block text-sm font-medium text-gray-700 mb-1">
                 เบอร์ติดต่อ
               </label>
               <input
+                id="contactPhone"
+                type="tel"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.contactPhone}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, contactPhone: e.target.value }))
                 }
                 placeholder="080-xxx-xxxx"
+                autoComplete="tel"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="contactWebsite" className="block text-sm font-medium text-gray-700 mb-1">
                 เว็บไซต์/ลิงก์
               </label>
               <input
+                id="contactWebsite"
+                type="url"
                 className="w-full border rounded-xl px-3 py-2 text-sm"
                 value={form.contactWebsite}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, contactWebsite: e.target.value }))
                 }
                 placeholder="ลิงก์ประกาศงาน/เว็บไซต์บริษัท"
+                autoComplete="url"
               />
             </div>
           </div>

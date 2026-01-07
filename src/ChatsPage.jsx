@@ -1,5 +1,5 @@
 // src/ChatsPage.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Search,
   Filter,
@@ -84,7 +84,7 @@ export default function ChatsPage({ user }) {
   }, [token]);
 
   // หา "อีกฝ่าย" ของห้องแชทนั้น (คนที่ไม่ใช่เรา)
-  const getOtherUser = (t) => {
+  const getOtherUser = useCallback((t) => {
     const employer = t.employer;
     const worker = t.worker;
     const meStr = meId ? String(meId) : "";
@@ -96,7 +96,7 @@ export default function ChatsPage({ user }) {
       return worker;
     }
     return employer || worker || null;
-  };
+  }, [meId]);
 
   // แต่ง threads ให้มี field ที่ใช้ใน UI พร้อม unread flag
   const decoratedThreads = useMemo(() => {
@@ -115,7 +115,7 @@ export default function ChatsPage({ user }) {
         unread,
       };
     });
-  }, [threads, seenMap, meId]);
+  }, [threads, seenMap, getOtherUser]);
 
   // filter + sort
   const filteredThreads = useMemo(() => {
@@ -225,10 +225,13 @@ export default function ChatsPage({ user }) {
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-gray-400 absolute left-2 top-2.5" />
               <input
+                id="chatSearch"
+                type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="ค้นหาชื่อ / อีเมล / ชื่องาน / รหัสงาน"
                 className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoComplete="off"
               />
             </div>
           </div>

@@ -125,10 +125,13 @@ export default function ChatWindow({ open, onClose, thread, token, meId }) {
 
       <form onSubmit={send} className="p-3 flex gap-2 border-t">
         <input
+          id="messageInput"
+          type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="พิมพ์ข้อความ…"
           className="flex-1 px-3 py-2 rounded-xl border outline-none"
+          autoComplete="off"
         />
         <button
           type="submit"

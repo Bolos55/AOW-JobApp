@@ -23,6 +23,34 @@ const jobSchema = new mongoose.Schema(
     },
     completedAt: Date,
 
+    // ✅ Payment Information
+    isPaid: {
+      type: Boolean,
+      default: false,
+    },
+    paidAt: Date,
+    paymentId: String,
+    
+    // ✅ Package Information
+    packageType: {
+      type: String,
+      enum: ["standard", "premium", "featured"],
+      default: "standard"
+    },
+    
+    boostFeatures: [{
+      type: String,
+      enum: ["featured", "urgent", "highlighted", "extended"]
+    }],
+    
+    // ✅ Job Visibility
+    isActive: {
+      type: Boolean,
+      default: false, // ต้องชำระเงินก่อนถึงจะ active
+    },
+    
+    expiresAt: Date, // วันหมดอายุของงาน
+
     description: String,
     skills: [String],
     workMode: String,
