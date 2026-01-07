@@ -1,5 +1,5 @@
 // src/AdminView.jsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   User as UserIcon,
   Users,
@@ -13,16 +13,16 @@ import {
   RefreshCw,
   Filter,
   CheckCircle,
-  AlertTriangle, // ✅ เพิ่ม
+  AlertTriangle,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom"; // ✅ ใช้เปลี่ยนหน้า
+import { useNavigate } from "react-router-dom";
 import { API_BASE, authHeader } from "./api";
 import ChatWidget from "./components/ChatWidget";
 import ChatDockButton from "./components/ChatDockButton";
+import OnlineStatusWidget from "./components/OnlineStatusWidget";
 
 export default function AdminView({ user, onLogout }) {
-  const navigate = useNavigate(); // ✅ ใช้เปลี่ยนหน้าไป /chats
-
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalJobs: 0,
@@ -31,35 +31,26 @@ export default function AdminView({ user, onLogout }) {
   });
   const [users, setUsers] = useState([]);
   const [jobs, setJobs] = useState([]);
-  const [applications, setApplications] = useState([]); // ✅ ใบสมัคร
+  const [applications, setApplications] = useState([]);
   const [updatingUserId, setUpdatingUserId] = useState(null);
-  const [selectedJob, setSelectedJob] = useState(null); // ✅ modal job detail
-  const [loadingProfile, setLoadingProfile] = useState(false); // ✅ สถานะโหลดโปรไฟล์
-  const [selectedUserProfile, setSelectedUserProfile] = useState(null); // ✅ modal โปรไฟล์
-
-  const [loadingAll, setLoadingAll] = useState(false); // ✅ สถานะโหลดรวมทั้งหน้า
-  const [loadError, setLoadError] = useState(""); // ✅ ข้อความ error รวม
-
-  // ✅ ช่องค้นหางานในหน้าแอดมิน
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedUserProfile, setSelectedUserProfile] = useState(null);
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [jobSearch, setJobSearch] = useState("");
-  // ✅ ค้นหาผู้ใช้ + filter ตาม role
   const [userSearch, setUserSearch] = useState("");
-  const [userRoleFilter, setUserRoleFilter] = useState("all"); // all | jobseeker | employer | admin
-  // ✅ filter ใบสมัครตามสถานะยืนยัน
-  const [appFilter, setAppFilter] = useState("all"); // all | pending | verified
-
-  // ✅ chat state
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [appFilter, setAppFilter] = useState("all");
   const [chatOpen, setChatOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+
   const token = localStorage.getItem("token");
+  const isAdmin = user?.role === "admin";
 
-  const isAdmin = user?.role === "admin"; // ✅ ใช้กันคนที่ไม่ใช่ admin
-
-  // ===== ดึงข้อมูลทั้งหมด (ใช้ทั้งตอนโหลดครั้งแรก + กดรีเฟรช) =====
+  // ===== ดึงข้อมูลทั้งหมด =====
   const loadAllData = async () => {
-    setLoadingAll(true); // ✅ เริ่มโหลด
-    setLoadError(""); // ✅ เคลียร์ error เดิม
-
+    setLoadingAll(true);
+    setLoadError("");
     try {
       // สถิติ
       const statsRes = await fetch(`${API_BASE}/api/admin/stats`, {
@@ -97,10 +88,9 @@ export default function AdminView({ user, onLogout }) {
         setApplications(Array.isArray(data) ? data : []);
       }
     } catch (e) {
-      console.error("loadAllData error:", e);
       setLoadError("โหลดข้อมูลแอดมินไม่สำเร็จ กรุณาลองกดรีเฟรชอีกครั้ง");
     } finally {
-      setLoadingAll(false); // ✅ จบโหลด
+      setLoadingAll(false);
     }
   };
 
@@ -112,7 +102,6 @@ export default function AdminView({ user, onLogout }) {
   const filteredJobs = jobs.filter((job) => {
     const q = jobSearch.trim().toLowerCase();
     if (!q) return true;
-
     return (
       (job.title || "").toLowerCase().includes(q) ||
       (job.company || "").toLowerCase().includes(q) ||
@@ -120,7 +109,7 @@ export default function AdminView({ user, onLogout }) {
     );
   });
 
-  // ===== ผู้ใช้ที่ผ่านการกรอง (ค้นหาชื่อ/อีเมล + filter role) =====
+  // ===== ผู้ใช้ที่ผ่านการกรอง =====
   const filteredUsers = users.filter((u) => {
     const q = userSearch.trim().toLowerCase();
     const matchText =
@@ -131,7 +120,7 @@ export default function AdminView({ user, onLogout }) {
     return matchText && matchRole;
   });
 
-  // จำนวนผู้ใช้แต่ละ role (ไว้แสดงสถิติมุมบน)
+  // จำนวนผู้ใช้แต่ละ role
   const roleCounts = users.reduce(
     (acc, u) => {
       if (u.role === "admin") acc.admin += 1;
@@ -146,7 +135,8 @@ export default function AdminView({ user, onLogout }) {
   const filteredApplications = applications.filter((app) => {
     if (appFilter === "all") return true;
     if (appFilter === "verified") return !!app.idVerified;
-    if (appFilter === "pending") return !app.idVerified;
+    if (appFilter === "pending") return !app.idVerified && app.verificationStatus !== "rejected";
+    if (appFilter === "rejected") return app.verificationStatus === "rejected";
     return true;
   });
 
@@ -166,13 +156,11 @@ export default function AdminView({ user, onLogout }) {
   // ✅ เปลี่ยน role + บันทึกว่าใครเป็นคนตั้ง
   const changeUserRole = async (targetUser, role) => {
     if (!targetUser || !targetUser._id) return;
-
     const myId = user?._id || user?.id || user?.userId;
     const isMe = targetUser._id === myId;
+
     if (isMe && role !== "admin") {
-      alert(
-        "ป้องกันความปลอดภัย: ไม่อนุญาตให้ลดสิทธิ์ตัวเองออกจาก admin ผ่านหน้านี้"
-      );
+      alert("ป้องกันความปลอดภัย: ไม่อนุญาตให้ลดสิทธิ์ตัวเองออกจาก admin ผ่านหน้านี้");
       return;
     }
 
@@ -185,18 +173,14 @@ export default function AdminView({ user, onLogout }) {
 
     try {
       setUpdatingUserId(targetUser._id);
-
-      const res = await fetch(
-        `${API_BASE}/api/admin/users/${targetUser._id}/role`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            ...authHeader(),
-          },
-          body: JSON.stringify({ role }),
-        }
-      );
+      const res = await fetch(`${API_BASE}/api/admin/users/${targetUser._id}/role`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+        body: JSON.stringify({ role }),
+      });
 
       let data;
       try {
@@ -210,10 +194,8 @@ export default function AdminView({ user, onLogout }) {
       }
 
       setUsers((prev) => prev.map((u) => (u._id === data._id ? data : u)));
-
       alert("อัปเดตสิทธิ์เรียบร้อยแล้ว");
     } catch (e) {
-      console.error("changeUserRole error:", e);
       alert(e.message || "เปลี่ยนสิทธิ์ไม่สำเร็จ");
     } finally {
       setUpdatingUserId(null);
@@ -224,22 +206,16 @@ export default function AdminView({ user, onLogout }) {
   const openUserProfile = async (u) => {
     if (!u || !u._id) return;
     try {
-      setLoadingProfile(true);
       const res = await fetch(`${API_BASE}/api/profile/${u._id}`, {
         headers: authHeader(),
       });
-
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.message || "ดึงโปรไฟล์ไม่สำเร็จ");
       }
-
       setSelectedUserProfile(data);
     } catch (e) {
-      console.error("openUserProfile error:", e);
       alert(e.message || "ดึงโปรไฟล์ไม่สำเร็จ");
-    } finally {
-      setLoadingProfile(false);
     }
   };
 
@@ -254,6 +230,35 @@ export default function AdminView({ user, onLogout }) {
     window.open(url, "_blank");
   };
 
+  // ✅ ลบใบสมัครงาน (เฉพาะที่ตรวจสอบแล้ว)
+  const deleteApplication = async (app) => {
+    if (!app || !app._id) return;
+    
+    const confirmText = `ยืนยันลบใบสมัครของ "${app.applicantName}" สำหรับตำแหน่ง "${app.jobTitle || app.job?.title}" ?\n\n⚠️ การลบนี้ไม่สามารถย้อนกลับได้`;
+    
+    if (!window.confirm(confirmText)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/applications/${app._id}`, {
+        method: "DELETE",
+        headers: authHeader(),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.message || "ลบใบสมัครไม่สำเร็จ");
+      }
+
+      // อัปเดต state โดยลบรายการที่ถูกลบออก
+      setApplications((prev) => prev.filter((a) => a._id !== app._id));
+      
+      alert("ลบใบสมัครเรียบร้อยแล้ว");
+    } catch (e) {
+      alert(e.message || "ลบใบสมัครไม่สำเร็จ");
+    }
+  };
+
   // ✅ ยืนยัน / ยกเลิกยืนยันบัตร ปชช.
   const toggleIdVerify = async (app, verified) => {
     const msg = verified
@@ -263,17 +268,14 @@ export default function AdminView({ user, onLogout }) {
     if (!window.confirm(msg)) return;
 
     try {
-      const res = await fetch(
-        `${API_BASE}/api/admin/applications/${app._id}/verify`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            ...authHeader(),
-          },
-          body: JSON.stringify({ verified }),
-        }
-      );
+      const res = await fetch(`${API_BASE}/api/admin/applications/${app._id}/verify`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+        body: JSON.stringify({ verified }),
+      });
 
       const data = await res.json();
       if (!res.ok) {
@@ -284,22 +286,96 @@ export default function AdminView({ user, onLogout }) {
         prev.map((a) => (a._id === data._id ? data : a))
       );
     } catch (e) {
-      console.error("toggleIdVerify error:", e);
       alert(e.message || "อัปเดตการยืนยันไม่สำเร็จ");
+    }
+  };
+
+  // ✅ รีเซ็ตสถานะการยืนยัน
+  const resetVerificationStatus = async (app) => {
+    const confirmMsg = `รีเซ็ตสถานะการยืนยันของ "${app.applicantName}" ?\n\n` +
+      `สถานะจะกลับเป็น "รอตรวจสอบ" และผู้สมัครสามารถอัปโหลดบัตรประชาชนใหม่ได้`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/applications/${app._id}/reset-verification`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+        body: JSON.stringify({ 
+          resetBy: user?.name || "Admin"
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "รีเซ็ตสถานะไม่สำเร็จ");
+      }
+
+      setApplications((prev) =>
+        prev.map((a) => (a._id === data._id ? data : a))
+      );
+
+      alert("รีเซ็ตสถานะเรียบร้อยแล้ว");
+    } catch (e) {
+      alert(e.message || "รีเซ็ตสถานะไม่สำเร็จ");
+    }
+  };
+
+  // ✅ ปฏิเสธการยืนยันพร้อมแจ้งเตือนผู้สมัคร
+  const rejectIdVerification = async (app) => {
+    const reason = prompt(
+      `เหตุผลที่ปฏิเสธการยืนยันบัตรประชาชนของ "${app.applicantName}":\n\n` +
+      `(ข้อความนี้จะถูกส่งไปแจ้งเตือนผู้สมัคร)`,
+      "รูปบัตรประชาชนไม่ชัดเจน หรือข้อมูลไม่ตรงกัน"
+    );
+
+    if (!reason || !reason.trim()) return;
+
+    const confirmMsg = `ยืนยันปฏิเสธการยืนยันตัวตนของ "${app.applicantName}" ?\n\n` +
+      `เหตุผล: ${reason.trim()}\n\n` +
+      `⚠️ ผู้สมัครจะได้รับการแจ้งเตือนทางอีเมล`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/applications/${app._id}/reject-verification`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+        body: JSON.stringify({ 
+          reason: reason.trim(),
+          rejectedBy: user?.name || "Admin"
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "ปฏิเสธการยืนยันไม่สำเร็จ");
+      }
+
+      setApplications((prev) =>
+        prev.map((a) => (a._id === data._id ? data : a))
+      );
+
+      alert(`ปฏิเสธการยืนยันเรียบร้อยแล้ว\nผู้สมัครจะได้รับอีเมลแจ้งเตือน`);
+    } catch (e) {
+      alert(e.message || "ปฏิเสธการยืนยันไม่สำเร็จ");
     }
   };
 
   // แสดงข้อความว่าใครตั้งสิทธิ์ + เมื่อไหร่
   const renderPromoteInfo = (u) => {
     if (!u || !u.promotedAt) return null;
-
     const promotedAt = new Date(u.promotedAt).toLocaleString();
     let who = "ระบบ";
-
     if (u.promotedBy && typeof u.promotedBy === "object") {
       who = u.promotedBy.name || u.promotedBy.email || "ระบบ";
     }
-
     return (
       <p className="text-[11px] text-gray-400 mt-0.5">
         ตั้งสิทธิ์โดย {who} เมื่อ {promotedAt}
@@ -355,10 +431,9 @@ export default function AdminView({ user, onLogout }) {
                   </span>
                 )}
               </button>
-
               <button
                 onClick={loadAllData}
-                className="bg:white/10 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg flex items-center gap-2 text-sm"
+                className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg flex items-center gap-2 text-sm"
               >
                 <RefreshCw
                   className={`w-4 h-4 ${loadingAll ? "animate-spin" : ""}`}
@@ -374,7 +449,6 @@ export default function AdminView({ user, onLogout }) {
               </button>
             </div>
           </div>
-
           {/* ✅ แสดง error รวม ถ้ามีปัญหาดึงข้อมูล */}
           {loadError && (
             <div className="mt-2 bg-red-600/20 border border-red-300/70 text-sm px-4 py-2 rounded-xl flex items-center gap-2">
@@ -392,7 +466,7 @@ export default function AdminView({ user, onLogout }) {
               <p className="text-2xl font-bold">{stats.totalUsers}</p>
               <p className="text-sm text-gray-600">ผู้ใช้ทั้งหมด</p>
               <p className="text-[11px] text-gray-400 mt-1">
-                👤 Jobseeker: {roleCounts.jobseeker} | 🏢 Employer:{" "}
+                � กJobseeker: {roleCounts.jobseeker} | 🏢 Employer:{" "}
                 {roleCounts.employer} | ⚙️ Admin: {roleCounts.admin}
               </p>
             </div>
@@ -413,6 +487,9 @@ export default function AdminView({ user, onLogout }) {
             </div>
           </div>
 
+          {/* Online Status Widget */}
+          <OnlineStatusWidget isAdmin={true} />
+
           {/* ผู้ใช้ทั้งหมด */}
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -431,11 +508,13 @@ export default function AdminView({ user, onLogout }) {
                 <div className="relative">
                   <Search className="w-4 h-4 text-gray-400 absolute left-2 top-2.5" />
                   <input
+                    id="userSearch"
                     type="text"
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     placeholder="ค้นหาชื่อ / อีเมล"
                     className="text-sm pl-8 pr-3 py-2 border rounded-lg w-56 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
                   />
                 </div>
                 <div className="flex items-center gap-1 text-xs">
@@ -608,11 +687,13 @@ export default function AdminView({ user, onLogout }) {
                 <div className="relative">
                   <Search className="w-4 h-4 text-gray-400 absolute left-2 top-2.5" />
                   <input
+                    id="jobSearch"
                     type="text"
                     value={jobSearch}
                     onChange={(e) => setJobSearch(e.target.value)}
                     placeholder="ค้นหาตำแหน่ง / บริษัท / ผู้โพสต์"
                     className="text-sm pl-8 pr-3 py-2 border rounded-lg w-64 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
                   />
                 </div>
                 {jobSearch && (
@@ -673,10 +754,14 @@ export default function AdminView({ user, onLogout }) {
           {/* ใบสมัคร + ยืนยันบัตรประชาชน */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold">
-                ใบสมัครงาน & การยืนยันบัตรประชาชน
-              </h2>
-
+              <div>
+                <h2 className="text-lg font-bold">
+                  ใบสมัครงาน & การยืนยันบัตรประชาชน
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 สามารถลบใบสมัครที่ตรวจสอบแล้วได้ | ❌ ปฏิเสธพร้อมแจ้งเตือนผู้สมัครทางอีเมล | 🔄 รีเซ็ตสถานะได้
+                </p>
+              </div>
               <div className="flex items-center gap-2 text-xs">
                 <CheckCircle className="w-4 h-4 text-emerald-600" />
                 <button
@@ -700,7 +785,19 @@ export default function AdminView({ user, onLogout }) {
                   }`}
                 >
                   รอตรวจสอบ (
-                  {applications.filter((a) => !a.idVerified).length})
+                  {applications.filter((a) => !a.idVerified && a.verificationStatus !== "rejected").length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAppFilter("rejected")}
+                  className={`px-2 py-1 rounded-full border ${
+                    appFilter === "rejected"
+                      ? "bg-red-500 text-white border-red-500"
+                      : "bg-white text-gray-600 border-gray-200"
+                  }`}
+                >
+                  ปฏิเสธแล้ว (
+                  {applications.filter((a) => a.verificationStatus === "rejected").length})
                 </button>
                 <button
                   type="button"
@@ -711,8 +808,7 @@ export default function AdminView({ user, onLogout }) {
                       : "bg-white text-gray-600 border-gray-200"
                   }`}
                 >
-                  ยืนยันแล้ว (
-                  {applications.filter((a) => a.idVerified).length})
+                  ยืนยันแล้ว ({applications.filter((a) => a.idVerified).length})
                 </button>
               </div>
             </div>
@@ -732,7 +828,33 @@ export default function AdminView({ user, onLogout }) {
                 <tbody>
                   {filteredApplications.map((app) => (
                     <tr key={app._id} className="border-t hover:bg-gray-50">
-                      <td className="px-4 py-2">{app.applicantName}</td>
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
+                            {app.applicant?.profile?.photoUrl ? (
+                              <img
+                                src={`${API_BASE.replace(/\/api\/?$/, "")}/${app.applicant.profile.photoUrl}`}
+                                alt={app.applicantName}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : app.applicant?.avatar ? (
+                              <img
+                                src={app.applicant.avatar}
+                                alt={app.applicantName}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <UserIcon className="w-4 h-4 text-gray-400" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium">{app.applicantName}</p>
+                            {app.applicant?.profile?.fullName && app.applicant.profile.fullName !== app.applicantName && (
+                              <p className="text-xs text-gray-500">{app.applicant.profile.fullName}</p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
                       <td className="px-4 py-2 text-gray-600">
                         {app.applicantEmail}
                       </td>
@@ -757,25 +879,61 @@ export default function AdminView({ user, onLogout }) {
                       <td className="px-4 py-2">
                         {app.idVerified ? (
                           <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                            ยืนยันแล้ว
+                            ✅ ยืนยันแล้ว
                           </span>
+                        ) : app.verificationStatus === "rejected" ? (
+                          <div className="space-y-1">
+                            <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 block">
+                              ❌ ปฏิเสธแล้ว
+                            </span>
+                            {app.rejectionReason && (
+                              <p className="text-[10px] text-red-600 max-w-32 truncate" title={app.rejectionReason}>
+                                {app.rejectionReason}
+                              </p>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
-                            รอตรวจสอบ
+                            ⏳ รอตรวจสอบ
                           </span>
                         )}
                       </td>
                       <td className="px-4 py-2">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           {!app.idVerified ? (
-                            <button
-                              type="button"
-                              onClick={() => toggleIdVerify(app, true)}
-                              className="px-2 py-1 text-xs rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                              disabled={!app.idCardPath}
-                            >
-                              ยืนยันตัวตน
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => toggleIdVerify(app, true)}
+                                className="px-2 py-1 text-xs rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                disabled={!app.idCardPath}
+                              >
+                                ✅ ยืนยันตัวตน
+                              </button>
+                              
+                              {/* ปุ่มปฏิเสธพร้อมแจ้งเตือน - ซ่อนถ้าปฏิเสธแล้ว */}
+                              {app.verificationStatus !== "rejected" && (
+                                <button
+                                  type="button"
+                                  onClick={() => rejectIdVerification(app)}
+                                  className="px-2 py-1 text-xs rounded border border-red-200 text-red-700 hover:bg-red-50"
+                                  disabled={!app.idCardPath}
+                                >
+                                  ❌ ปฏิเสธ & แจ้งเตือน
+                                </button>
+                              )}
+                              
+                              {/* ปุ่มรีเซ็ตสถานะ - แสดงเฉพาะเมื่อปฏิเสธแล้ว */}
+                              {app.verificationStatus === "rejected" && (
+                                <button
+                                  type="button"
+                                  onClick={() => resetVerificationStatus(app)}
+                                  className="px-2 py-1 text-xs rounded border border-blue-200 text-blue-700 hover:bg-blue-50"
+                                >
+                                  🔄 รีเซ็ตสถานะ
+                                </button>
+                              )}
+                            </>
                           ) : (
                             <button
                               type="button"
@@ -783,6 +941,32 @@ export default function AdminView({ user, onLogout }) {
                               className="px-2 py-1 text-xs rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
                             >
                               ยกเลิกยืนยัน
+                            </button>
+                          )}
+                          
+                          {/* ✅ ปุ่มดูโปรไฟล์ผู้สมัคร */}
+                          {app.applicant && (
+                            <button
+                              type="button"
+                              onClick={() => openUserProfile(app.applicant)}
+                              className="px-2 py-1 text-xs rounded border border-blue-200 text-blue-700 hover:bg-blue-50 flex items-center gap-1"
+                              title="ดูโปรไฟล์ผู้สมัคร"
+                            >
+                              <Eye className="w-3 h-3" />
+                              โปรไฟล์
+                            </button>
+                          )}
+                          
+                          {/* ปุ่มลบใบสมัคร - แสดงเฉพาะเมื่อยืนยันแล้ว */}
+                          {app.idVerified && (
+                            <button
+                              type="button"
+                              onClick={() => deleteApplication(app)}
+                              className="px-2 py-1 text-xs rounded border border-red-200 text-red-700 hover:bg-red-50 flex items-center gap-1"
+                              title="ลบใบสมัครที่ตรวจสอบแล้ว"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              ลบรายการ
                             </button>
                           )}
                         </div>
@@ -806,6 +990,9 @@ export default function AdminView({ user, onLogout }) {
         </div>
       </div>
 
+      {/* ✅ Email Validation Management Section */}
+      <EmailValidationSection user={user} />
+
       {/* Modal แสดงโปรไฟล์ผู้ใช้ */}
       {selectedUserProfile && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
@@ -818,10 +1005,39 @@ export default function AdminView({ user, onLogout }) {
               ✕
             </button>
 
-            <h2 className="text-xl font-bold mb-1">โปรไฟล์ผู้ใช้</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              {selectedUserProfile.email}
-            </p>
+            {/* ✅ รูปโปรไฟล์ */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
+                {selectedUserProfile.profile?.photoUrl ? (
+                  <img
+                    src={`${API_BASE.replace(/\/api\/?$/, "")}/${selectedUserProfile.profile.photoUrl}`}
+                    alt={selectedUserProfile.name || "ผู้ใช้"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : selectedUserProfile.avatar ? (
+                  <img
+                    src={selectedUserProfile.avatar}
+                    alt={selectedUserProfile.name || "ผู้ใช้"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <UserIcon className="w-8 h-8 text-gray-400" />
+                )}
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">{selectedUserProfile.name || "ผู้ใช้"}</h2>
+                <p className="text-sm text-gray-500">{selectedUserProfile.email}</p>
+                <p className="text-xs text-gray-400">
+                  สมัครเมื่อ: {selectedUserProfile.createdAt ? new Date(selectedUserProfile.createdAt).toLocaleString('th-TH', {
+                    year: 'numeric',
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) : "-"}
+                </p>
+              </div>
+            </div>
 
             <div className="space-y-2 text-sm">
               <div>
@@ -908,9 +1124,7 @@ export default function AdminView({ user, onLogout }) {
             </button>
 
             <h2 className="text-xl font-bold mb-2">{selectedJob.title}</h2>
-            <p className="text-sm text-gray-600 mb-1">
-              {selectedJob.company}
-            </p>
+            <p className="text-sm text-gray-600 mb-1">{selectedJob.company}</p>
             <p className="text-xs text-gray-500 mb-3">
               โพสต์โดย: {selectedJob.createdBy?.name || "Unknown"} (
               {selectedJob.createdBy?.email || "-"})
@@ -991,5 +1205,451 @@ export default function AdminView({ user, onLogout }) {
         onToggle={() => setChatOpen((v) => !v)}
       />
     </>
+  );
+}
+
+// ✅ Email Validation Management Component
+function EmailValidationSection({ user }) {
+  const [suspiciousUsers, setSuspiciousUsers] = useState([]);
+  const [emailStats, setEmailStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [filter, setFilter] = useState('all'); // all, suspicious, review, suspended
+  const [testEmail, setTestEmail] = useState('');
+  const [testResult, setTestResult] = useState(null);
+
+  // ดึงข้อมูลผู้ใช้ที่น่าสงสัย
+  const loadSuspiciousUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/suspicious-users?status=${filter}`, {
+        headers: authHeader(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSuspiciousUsers(data.users || []);
+      }
+    } catch (err) {
+      console.error('Load suspicious users error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter]);
+
+  // ดึงสถิติอีเมล
+  const loadEmailStats = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/email-stats`, {
+        headers: authHeader(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEmailStats(data);
+      }
+    } catch (err) {
+      console.error('Load email stats error:', err);
+    }
+  };
+
+  // ตรวจสอบอีเมลแบบ batch
+  const validateUsersBatch = async () => {
+    if (!window.confirm('ตรวจสอบอีเมลผู้ใช้ทั้งหมด? (อาจใช้เวลาสักครู่)')) return;
+    
+    setValidating(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/validate-users-batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader(),
+        },
+        body: JSON.stringify({ limit: 100 }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        alert(`ตรวจสอบเรียบร้อย!\n\nประมวลผล: ${data.processed} คน\nน่าสงสัย: ${data.suspicious} คน\nต้องตรวจสอบ: ${data.needsReview} คน`);
+        loadSuspiciousUsers();
+        loadEmailStats();
+      } else {
+        const error = await res.json();
+        alert(`เกิดข้อผิดพลาด: ${error.message}`);
+      }
+    } catch (err) {
+      alert(`เกิดข้อผิดพลาด: ${err.message}`);
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  // ทดสอบอีเมล
+  const testEmailValidation = async () => {
+    if (!testEmail.trim()) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/validate-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader(),
+        },
+        body: JSON.stringify({ email: testEmail.trim() }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setTestResult(data.validation);
+      } else {
+        const error = await res.json();
+        alert(`เกิดข้อผิดพลาด: ${error.message}`);
+      }
+    } catch (err) {
+      alert(`เกิดข้อผิดพลาด: ${err.message}`);
+    }
+  };
+
+  // ระงับบัญชี
+  const suspendUser = async (userId, userName) => {
+    const reason = prompt(`ระบุเหตุผลในการระงับบัญชี "${userName}":`);
+    if (!reason) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}/suspend`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader(),
+        },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        alert(data.message);
+        loadSuspiciousUsers();
+      } else {
+        const error = await res.json();
+        alert(`เกิดข้อผิดพลาด: ${error.message}`);
+      }
+    } catch (err) {
+      alert(`เกิดข้อผิดพลาด: ${err.message}`);
+    }
+  };
+
+  // ยกเลิกการระงับ
+  const unsuspendUser = async (userId, userName) => {
+    const notes = prompt(`หมายเหตุการยกเลิกระงับบัญชี "${userName}" (ไม่บังคับ):`);
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}/unsuspend`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader(),
+        },
+        body: JSON.stringify({ notes: notes || '' }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        alert(data.message);
+        loadSuspiciousUsers();
+      } else {
+        const error = await res.json();
+        alert(`เกิดข้อผิดพลาด: ${error.message}`);
+      }
+    } catch (err) {
+      alert(`เกิดข้อผิดพลาด: ${err.message}`);
+    }
+  };
+
+  // ตรวจสอบและอนุมัติ/ปฏิเสธ
+  const reviewUser = async (userId, userName, approved) => {
+    const notes = prompt(`หมายเหตุการตรวจสอบ "${userName}":`);
+    if (!notes) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}/review`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader(),
+        },
+        body: JSON.stringify({ 
+          approved, 
+          notes: notes.trim() 
+        }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        alert(data.message);
+        loadSuspiciousUsers();
+      } else {
+        const error = await res.json();
+        alert(`เกิดข้อผิดพลาด: ${error.message}`);
+      }
+    } catch (err) {
+      alert(`เกิดข้อผิดพลาด: ${err.message}`);
+    }
+  };
+
+  useEffect(() => {
+    loadSuspiciousUsers();
+    loadEmailStats();
+  }, [filter, loadSuspiciousUsers]);
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Email Validation Stats */}
+      {emailStats && (
+        <div className="bg-white p-6 rounded-lg border">
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+            📧 สถิติการตรวจสอบอีเมล
+          </h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <p className="text-2xl font-bold text-blue-600">{emailStats.overview.totalUsers}</p>
+              <p className="text-xs text-gray-600">ผู้ใช้ทั้งหมด</p>
+            </div>
+            <div className="text-center p-3 bg-red-50 rounded-lg">
+              <p className="text-2xl font-bold text-red-600">{emailStats.overview.disposableEmails}</p>
+              <p className="text-xs text-gray-600">อีเมลชั่วคราว</p>
+            </div>
+            <div className="text-center p-3 bg-yellow-50 rounded-lg">
+              <p className="text-2xl font-bold text-yellow-600">{emailStats.overview.suspiciousEmails}</p>
+              <p className="text-xs text-gray-600">อีเมลน่าสงสัย</p>
+            </div>
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <p className="text-2xl font-bold text-green-600">{emailStats.overview.trustedEmails}</p>
+              <p className="text-xs text-gray-600">อีเมลน่าเชื่อถือ</p>
+            </div>
+          </div>
+
+          <div className="flex gap-2 text-xs">
+            <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded">
+              ต้องตรวจสอบ: {emailStats.overview.needsReview}
+            </span>
+            <span className="px-2 py-1 bg-red-100 text-red-700 rounded">
+              ถูกระงับ: {emailStats.overview.suspended}
+            </span>
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+              ความครอบคลุม: {emailStats.overview.validationCoverage}%
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Email Validation Tools */}
+      <div className="bg-white p-6 rounded-lg border">
+        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+          🔧 เครื่องมือตรวจสอบอีเมล
+        </h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Test Email */}
+          <div>
+            <label className="block text-sm font-medium mb-2">ทดสอบอีเมล</label>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="example@domain.com"
+                className="flex-1 px-3 py-2 border rounded-lg text-sm"
+              />
+              <button
+                onClick={testEmailValidation}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+              >
+                ทดสอบ
+              </button>
+            </div>
+            
+            {testResult && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    testResult.status === 'trusted' ? 'bg-green-100 text-green-700' :
+                    testResult.status === 'disposable' ? 'bg-red-100 text-red-700' :
+                    testResult.status === 'suspicious' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {testResult.status}
+                  </span>
+                  <span className="font-medium">คะแนน: {testResult.score}/100</span>
+                </div>
+                <div className="text-xs text-gray-600">
+                  <p>Domain: {testResult.domain}</p>
+                  <p>หมายเหตุ: {testResult.notes?.join(', ') || 'ไม่มี'}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Batch Validation */}
+          <div>
+            <label className="block text-sm font-medium mb-2">ตรวจสอบแบบ Batch</label>
+            <button
+              onClick={validateUsersBatch}
+              disabled={validating}
+              className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50"
+            >
+              {validating ? 'กำลังตรวจสอบ...' : 'ตรวจสอบอีเมลผู้ใช้ทั้งหมด'}
+            </button>
+            <p className="text-xs text-gray-500 mt-1">
+              ตรวจสอบอีเมลผู้ใช้ที่ยังไม่ได้ตรวจสอบหรือตรวจสอบนานแล้ว
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Suspicious Users Management */}
+      <div className="bg-white p-6 rounded-lg border">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            ⚠️ จัดการผู้ใช้ที่น่าสงสัย
+          </h2>
+          
+          {/* Filter */}
+          <div className="flex gap-2">
+            {[
+              { key: 'all', label: 'ทั้งหมด', color: 'blue' },
+              { key: 'suspicious', label: 'น่าสงสัย', color: 'yellow' },
+              { key: 'review', label: 'ต้องตรวจสอบ', color: 'orange' },
+              { key: 'suspended', label: 'ถูกระงับ', color: 'red' },
+            ].map(({ key, label, color }) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={`px-3 py-1 rounded-lg text-xs ${
+                  filter === key
+                    ? `bg-${color}-600 text-white`
+                    : `bg-${color}-100 text-${color}-700 hover:bg-${color}-200`
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-sm text-gray-600">กำลังโหลด...</p>
+          </div>
+        ) : suspiciousUsers.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <p>ไม่พบผู้ใช้ตามเงื่อนไขที่เลือก</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left px-3 py-2">ชื่อ</th>
+                  <th className="text-left px-3 py-2">อีเมล</th>
+                  <th className="text-left px-3 py-2">คะแนน</th>
+                  <th className="text-left px-3 py-2">สถานะ</th>
+                  <th className="text-left px-3 py-2">วันที่สมัคร</th>
+                  <th className="text-left px-3 py-2">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {suspiciousUsers.map((user) => (
+                  <tr key={user._id} className="border-b hover:bg-gray-50">
+                    <td className="px-3 py-2">{user.name}</td>
+                    <td className="px-3 py-2">
+                      <div>
+                        <p>{user.email}</p>
+                        {user.emailValidation?.domain && (
+                          <p className="text-xs text-gray-500">
+                            Domain: {user.emailValidation.domain}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        (user.emailValidation?.validationScore || 0) >= 70 ? 'bg-green-100 text-green-700' :
+                        (user.emailValidation?.validationScore || 0) >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {user.emailValidation?.validationScore || 0}/100
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col gap-1">
+                        {user.isSuspended && (
+                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+                            ระงับ
+                          </span>
+                        )}
+                        {user.requiresReview && (
+                          <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">
+                            ต้องตรวจสอบ
+                          </span>
+                        )}
+                        {user.emailValidation?.isDisposable && (
+                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+                            Disposable
+                          </span>
+                        )}
+                        {user.emailValidation?.isSuspicious && (
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
+                            น่าสงสัย
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-500">
+                      {new Date(user.createdAt).toLocaleDateString('th-TH')}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {user.requiresReview && (
+                          <>
+                            <button
+                              onClick={() => reviewUser(user._id, user.name, true)}
+                              className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                            >
+                              ✅ อนุมัติ
+                            </button>
+                            <button
+                              onClick={() => reviewUser(user._id, user.name, false)}
+                              className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+                            >
+                              ❌ ปฏิเสธ
+                            </button>
+                          </>
+                        )}
+                        
+                        {user.isSuspended ? (
+                          <button
+                            onClick={() => unsuspendUser(user._id, user.name)}
+                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                          >
+                            🔓 ยกเลิกระงับ
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => suspendUser(user._id, user.name)}
+                            className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+                          >
+                            🚫 ระงับ
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

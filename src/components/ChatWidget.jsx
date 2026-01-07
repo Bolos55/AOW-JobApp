@@ -365,10 +365,13 @@ export default function ChatWidget({ open, onClose, user, token, onUnreadChange 
                 }}
               >
                 <input
+                  id="chatWidgetInput"
+                  type="text"
                   className="flex-1 border rounded-full px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
                   placeholder="พิมพ์ข้อความ..."
                   value={text}
                   onChange={(e) => setText(e.target.value)}
+                  autoComplete="off"
                 />
                 <button
                   type="submit"

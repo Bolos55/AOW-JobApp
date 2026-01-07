@@ -1,5 +1,5 @@
 // src/EmployerView.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   User as UserIcon,
   Plus,
@@ -19,6 +19,8 @@ import { API_BASE, authHeader } from "./api";
 import AddJobModal from "./components/AddJobModal";
 import ReviewSection from "./components/ReviewSection";
 import ChatWidget from "./components/ChatWidget"; // ✅ เพิ่มอันนี้
+import ServiceFeeModal from "./components/ServiceFeeModal"; // ✅ เปลี่ยนเป็น Service Fee Modal
+import PaymentHistory from "./components/PaymentHistory"; // ✅ เพิ่ม Payment History
 
 export default function EmployerView({ user, onLogout }) {
   const [myJobs, setMyJobs] = useState([]);
@@ -46,6 +48,11 @@ export default function EmployerView({ user, onLogout }) {
   // ✅ แชทติดต่อแอดมิน (ใช้ ChatWidget เหมือน JobSeeker)
   const [adminChatOpen, setAdminChatOpen] = useState(false);
   const [adminUnread, setAdminUnread] = useState(0);
+
+  // ✅ Service Fee Modal state
+  const [serviceFeeModalOpen, setServiceFeeModalOpen] = useState(false);
+  const [selectedJobForServiceFee, setSelectedJobForServiceFee] = useState(null);
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
 
   const token = localStorage.getItem("token") || "";
 
@@ -115,19 +122,17 @@ export default function EmployerView({ user, onLogout }) {
   };
 
   // คำนวณสถิติจาก applications
-  const { totalPending, totalHired, totalRejected } = useMemo(() => {
+  const { totalPending, totalHired } = useMemo(() => {
     let pending = 0;
     let hired = 0;
-    let rejected = 0;
 
     applications.forEach((a) => {
       const status = a.status || "pending";
       if (status === "pending") pending++;
       else if (status === "hired") hired++;
-      else if (status === "rejected") rejected++;
     });
 
-    return { totalPending: pending, totalHired: hired, totalRejected: rejected };
+    return { totalPending: pending, totalHired: hired };
   }, [applications]);
 
   // filter รายการผู้สมัคร
@@ -153,6 +158,12 @@ export default function EmployerView({ user, onLogout }) {
     if (!app?._id) return;
     if (app.status === newStatus) return;
 
+    // ✅ เช็คว่าถ้าจะรับเข้าทำงาน ต้องมีการยืนยันบัตรประชาชนก่อน
+    if (newStatus === "hired" && !app.idVerified) {
+      alert("⚠️ ไม่สามารถรับเข้าทำงานได้\n\nเหตุผล: แอดมินยังไม่ได้ตรวจสอบและอนุมัติบัตรประชาชนของผู้สมัครคนนี้\n\nกรุณารอให้แอดมินตรวจสอบบัตรประชาชนก่อน หรือติดต่อแอดมินเพื่อขอให้เร่งตรวจสอบ");
+      return;
+    }
+
     const confirmText =
       newStatus === "hired"
         ? "ยืนยันการรับผู้สมัครคนนี้เข้าทำงานหรือไม่?"
@@ -176,8 +187,14 @@ export default function EmployerView({ user, onLogout }) {
       );
 
       if (!res.ok) {
-        console.error("อัปเดตสถานะใบสมัครไม่สำเร็จ:", res.status);
-        alert("อัปเดตสถานะไม่สำเร็จ กรุณาลองใหม่");
+        const errorData = await res.json().catch(() => ({}));
+        
+        // ✅ จัดการ error message พิเศษสำหรับกรณีบัตรประชาชนยังไม่ได้รับการอนุมัติ
+        if (errorData.requiresIdVerification) {
+          alert("⚠️ " + errorData.message + "\n\nกรุณาติดต่อแอดมินเพื่อขอให้ตรวจสอบบัตรประชาชนของผู้สมัครคนนี้");
+        } else {
+          alert(errorData.message || "อัปเดตสถานะไม่สำเร็จ กรุณาลองใหม่");
+        }
         return;
       }
 
@@ -196,6 +213,14 @@ export default function EmployerView({ user, onLogout }) {
           ? { ...prev, ...(updated || {}), status: newStatus }
           : prev
       );
+
+      // แสดงข้อความสำเร็จ
+      if (newStatus === "hired") {
+        alert("✅ รับเข้าทำงานเรียบร้อยแล้ว!");
+      } else if (newStatus === "rejected") {
+        alert("✅ ปฏิเสธผู้สมัครเรียบร้อยแล้ว");
+      }
+
     } catch (err) {
       console.error("error updateApplicationStatus:", err);
       alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
@@ -251,6 +276,14 @@ export default function EmployerView({ user, onLogout }) {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* ✅ ปุ่มประวัติการชำระเงิน */}
+            <button
+              onClick={() => setPaymentHistoryOpen(true)}
+              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+            >
+              💳 ประวัติการชำระเงิน
+            </button>
+
             {/* ✅ ปุ่มติดต่อแอดมิน */}
             <button
               onClick={() => setAdminChatOpen(true)}
@@ -402,6 +435,17 @@ export default function EmployerView({ user, onLogout }) {
                               ปิดรับสมัครแล้ว
                             </span>
                           )}
+                          {/* ✅ Payment Status */}
+                          {!job.isPaid && !isClosed && (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-200">
+                              💰 รอชำระเงิน
+                            </span>
+                          )}
+                          {job.isPaid && (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
+                              ✅ ชำระแล้ว
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-gray-600">{job.company || "บริษัทของคุณ"}</p>
                         {job.location && (
@@ -412,6 +456,12 @@ export default function EmployerView({ user, onLogout }) {
                         <p className="text-xs text-gray-400 mt-1">
                           ผู้สมัคร: {job.applicantCount || 0} คน
                         </p>
+                        {/* ✅ Package Info */}
+                        {job.packageType && (
+                          <p className="text-xs text-purple-600 mt-1">
+                            แพ็กเกจ: {job.packageType} {job.boostFeatures?.length > 0 && `+ ${job.boostFeatures.length} boost`}
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex flex-col items-end gap-2">
@@ -421,6 +471,19 @@ export default function EmployerView({ user, onLogout }) {
                         >
                           ดูรายละเอียด
                         </button>
+
+                        {/* ✅ Payment Button */}
+                        {!job.isPaid && !isClosed && (
+                          <button
+                            onClick={() => {
+                              setSelectedJobForServiceFee(job);
+                              setServiceFeeModalOpen(true);
+                            }}
+                            className="text-xs px-3 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
+                          >
+                            💰 ชำระเงิน
+                          </button>
+                        )}
 
                         <button
                           className={`text-xs px-3 py-1 rounded-full border ${
@@ -492,6 +555,22 @@ export default function EmployerView({ user, onLogout }) {
             </div>
           </div>
 
+          {/* ✅ ข้อความแจ้งเตือนเรื่องการยืนยันบัตรประชาชน */}
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="font-semibold text-blue-800 mb-1">📋 หมายเหตุสำคัญ</p>
+                <p className="text-blue-700">
+                  คุณสามารถรับผู้สมัครเข้าทำงานได้เฉพาะผู้ที่ <strong>แอดมินได้ตรวจสอบและอนุมัติบัตรประชาชนแล้วเท่านั้น</strong>
+                </p>
+                <p className="text-blue-600 text-xs mt-1">
+                  💡 หากต้องการให้แอดมินเร่งตรวจสอบ สามารถกดปุ่ม "ติดต่อแอดมิน" ด้านบนได้
+                </p>
+              </div>
+            </div>
+          </div>
+
           {applications.length === 0 ? (
             <p className="text-sm text-gray-400">
               ยังไม่มีผู้สมัคร (ลองโพสต์งานใหม่ดูสิ 🎉)
@@ -504,11 +583,9 @@ export default function EmployerView({ user, onLogout }) {
                 const status = app.status || "pending";
                 const isUpdating = updatingAppId === app._id;
 
-                const applicantPhoto =
-                  app.applicant?.photoUrl ||
-                  app.applicant?.profilePhotoUrl ||
-                  app.applicant?.avatarUrl ||
-                  "";
+                const applicantPhoto = app.applicant?.profile?.photoUrl 
+                  ? `${API_BASE.replace(/\/api\/?$/, "")}/${app.applicant.profile.photoUrl}`
+                  : app.applicant?.avatar || "";
 
                 return (
                   <div
@@ -533,9 +610,34 @@ export default function EmployerView({ user, onLogout }) {
                         <p className="text-sm text-gray-600">
                           สมัคร: {app.job?.title || "-"}
                         </p>
+                        
+                        {/* ✅ แสดงสถานะการยืนยันบัตรประชาชน */}
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-500">บัตรประชาชน:</span>
+                          {app.idVerified ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                              ✅ ยืนยันแล้ว
+                            </span>
+                          ) : app.idCardPath ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                              ⏳ รอแอดมินตรวจสอบ
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                              ❌ ยังไม่อัปโหลด
+                            </span>
+                          )}
+                        </div>
+                        
                         <p className="text-xs text-gray-400 mt-1">
                           ส่งเมื่อ:{" "}
-                          {app.createdAt ? new Date(app.createdAt).toLocaleString() : "-"}
+                          {app.createdAt ? new Date(app.createdAt).toLocaleString('th-TH', {
+                            year: 'numeric',
+                            month: 'short', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : "-"}
                         </p>
 
                         <button
@@ -574,11 +676,23 @@ export default function EmployerView({ user, onLogout }) {
                       <div className="flex gap-2">
                         {status !== "hired" && (
                           <button
-                            disabled={isUpdating}
+                            disabled={isUpdating || !app.idVerified}
                             onClick={() => updateApplicationStatus(app, "hired")}
-                            className="text-xs px-3 py-1 rounded-lg bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
+                            className={`text-xs px-3 py-1 rounded-lg text-white hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed ${
+                              app.idVerified ? "bg-green-500" : "bg-gray-400"
+                            }`}
+                            title={
+                              !app.idVerified 
+                                ? "ต้องรอแอดมินตรวจสอบบัตรประชาชนก่อน" 
+                                : "รับเข้าทำงาน"
+                            }
                           >
-                            {isUpdating && status !== "hired" ? "กำลังบันทึก..." : "รับเข้าทำงาน"}
+                            {isUpdating && status !== "hired" 
+                              ? "กำลังบันทึก..." 
+                              : app.idVerified 
+                                ? "รับเข้าทำงาน" 
+                                : "รอตรวจสอบบัตร"
+                            }
                           </button>
                         )}
                         {status !== "rejected" && (
@@ -607,6 +721,31 @@ export default function EmployerView({ user, onLogout }) {
         user={user}
         token={token}
         onUnreadChange={setAdminUnread}
+      />
+
+      {/* ✅ Service Fee Modal */}
+      <ServiceFeeModal
+        open={serviceFeeModalOpen}
+        onClose={() => {
+          setServiceFeeModalOpen(false);
+          setSelectedJobForServiceFee(null);
+        }}
+        job={selectedJobForServiceFee}
+        onServiceFeeSuccess={(serviceFeeData) => {
+          // Refresh jobs list after successful service fee payment
+          loadDashboard();
+          setServiceFeeModalOpen(false);
+          setSelectedJobForServiceFee(null);
+          
+          // Show success message
+          alert(`🎉 ชำระค่าบริการสำเร็จ!\n\nงาน "${selectedJobForServiceFee?.title}" ได้รับการเผยแพร่แล้ว\n\nรหัสการชำระ: ${serviceFeeData.paymentId}`);
+        }}
+      />
+
+      {/* ✅ Payment History Modal */}
+      <PaymentHistory
+        open={paymentHistoryOpen}
+        onClose={() => setPaymentHistoryOpen(false)}
       />
     </div>
   );
@@ -671,8 +810,9 @@ function ApplicationDetailModal({ open, app, onClose, onUpdateStatus, updatingAp
   const status = app.status || "pending";
   const isUpdating = updatingAppId === app._id;
 
-  const applicantPhoto =
-    app.applicant?.photoUrl || app.applicant?.profilePhotoUrl || app.applicant?.avatarUrl || "";
+  const applicantPhoto = app.applicant?.profile?.photoUrl 
+    ? `${API_BASE.replace(/\/api\/?$/, "")}/${app.applicant.profile.photoUrl}`
+    : app.applicant?.avatar || "";
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
@@ -703,7 +843,13 @@ function ApplicationDetailModal({ open, app, onClose, onUpdateStatus, updatingAp
         </div>
 
         <p className="text-xs text-gray-400 mb-3">
-          ส่งเมื่อ: {app.createdAt ? new Date(app.createdAt).toLocaleString() : "-"}
+          ส่งเมื่อ: {app.createdAt ? new Date(app.createdAt).toLocaleString('th-TH', {
+            year: 'numeric',
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }) : "-"}
         </p>
 
         <span
@@ -718,7 +864,76 @@ function ApplicationDetailModal({ open, app, onClose, onUpdateStatus, updatingAp
           สถานะ: {status}
         </span>
 
+        {/* ✅ แสดงสถานะการยืนยันบัตรประชาชน */}
+        <div className="mb-3">
+          <span className="text-xs text-gray-600 mr-2">การยืนยันบัตรประชาชน:</span>
+          {app.idVerified ? (
+            <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+              ✅ ยืนยันแล้วโดยแอดมิน
+            </span>
+          ) : app.idCardPath ? (
+            <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+              ⏳ รอแอดมินตรวจสอบ
+            </span>
+          ) : (
+            <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+              ❌ ยังไม่อัปโหลดบัตร
+            </span>
+          )}
+        </div>
+
+        {/* ✅ คำเตือนถ้าบัตรยังไม่ได้รับการอนุมัติ */}
+        {!app.idVerified && (
+          <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-xs text-yellow-800">
+              ⚠️ <strong>หมายเหตุ:</strong> ไม่สามารถรับเข้าทำงานได้จนกว่าแอดมินจะตรวจสอบและอนุมัติบัตรประชาชน
+            </p>
+          </div>
+        )}
+
         <div className="space-y-3 text-sm text-gray-700">
+          {/* ✅ ข้อมูลโปรไฟล์ผู้สมัคร */}
+          {app.applicant?.profile && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+              <p className="font-semibold text-blue-800 mb-2">📋 ข้อมูลโปรไฟล์</p>
+              
+              {app.applicant.profile.fullName && (
+                <div className="mb-2">
+                  <span className="text-xs text-blue-600 font-medium">ชื่อ-นามสกุล:</span>
+                  <p className="text-sm text-blue-800">{app.applicant.profile.fullName}</p>
+                </div>
+              )}
+              
+              {app.applicant.profile.headline && (
+                <div className="mb-2">
+                  <span className="text-xs text-blue-600 font-medium">ตำแหน่งที่ต้องการ:</span>
+                  <p className="text-sm text-blue-800">{app.applicant.profile.headline}</p>
+                </div>
+              )}
+              
+              {app.applicant.profile.location && (
+                <div className="mb-2">
+                  <span className="text-xs text-blue-600 font-medium">ที่อยู่/พื้นที่ทำงาน:</span>
+                  <p className="text-sm text-blue-800">{app.applicant.profile.location}</p>
+                </div>
+              )}
+              
+              {app.applicant.profile.skillsText && (
+                <div className="mb-2">
+                  <span className="text-xs text-blue-600 font-medium">ทักษะ:</span>
+                  <p className="text-sm text-blue-800 whitespace-pre-line">{app.applicant.profile.skillsText}</p>
+                </div>
+              )}
+              
+              {app.applicant.profile.experience && (
+                <div className="mb-2">
+                  <span className="text-xs text-blue-600 font-medium">ประสบการณ์:</span>
+                  <p className="text-sm text-blue-800 whitespace-pre-line max-h-32 overflow-y-auto">{app.applicant.profile.experience}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {app.coverLetter && (
             <div>
               <p className="font-semibold mb-1">Cover Letter</p>
@@ -744,11 +959,23 @@ function ApplicationDetailModal({ open, app, onClose, onUpdateStatus, updatingAp
         <div className="mt-5 flex justify-end gap-2">
           {status !== "hired" && (
             <button
-              disabled={isUpdating}
+              disabled={isUpdating || !app.idVerified}
               onClick={() => onUpdateStatus(app, "hired")}
-              className="text-xs px-3 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
+              className={`text-xs px-3 py-2 rounded-lg text-white hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed ${
+                app.idVerified ? "bg-green-500" : "bg-gray-400"
+              }`}
+              title={
+                !app.idVerified 
+                  ? "ต้องรอแอดมินตรวจสอบบัตรประชาชนก่อน" 
+                  : "รับเข้าทำงาน"
+              }
             >
-              {isUpdating && status !== "hired" ? "กำลังบันทึก..." : "รับเข้าทำงาน"}
+              {isUpdating && status !== "hired" 
+                ? "กำลังบันทึก..." 
+                : app.idVerified 
+                  ? "รับเข้าทำงาน" 
+                  : "รอตรวจสอบบัตร"
+              }
             </button>
           )}
           {status !== "rejected" && (

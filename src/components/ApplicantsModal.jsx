@@ -9,9 +9,11 @@ import {
   Download,
   FileText,
   MessageCircle,
+  Eye,
 } from "lucide-react";
 import { API_BASE } from "../api";
 import { ensureThread } from "../api/chat";
+import JobSeekerProfileView from "./JobSeekerProfileView";
 
 export default function ApplicantsModal({
   open,
@@ -30,6 +32,10 @@ export default function ApplicantsModal({
   const [intLoading, setIntLoading] = useState(false);
   const [intError, setIntError] = useState("");
   const [intApplicants, setIntApplicants] = useState([]);
+
+  // ⭐ เพิ่ม state สำหรับดูโปรไฟล์
+  const [profileViewOpen, setProfileViewOpen] = useState(false);
+  const [selectedApplicant, setSelectedApplicant] = useState(null);
 
   // --- helper หา id ผู้สมัครให้ชัดเจนที่เดียว ---
   const getParticipantId = (app) => {
@@ -297,13 +303,25 @@ export default function ApplicantsModal({
 
                   {/* ปุ่มต่าง ๆ */}
                   <div className="flex flex-wrap gap-2 mt-3 justify-end">
+                    {/* ⭐ ปุ่มดูโปรไฟล์ */}
+                    <button
+                      onClick={() => {
+                        setSelectedApplicant(a);
+                        setProfileViewOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1 text-purple-700 bg-purple-100 hover:bg-purple-200 px-2 py-1 rounded"
+                    >
+                      <Eye className="w-4 h-4" />
+                      ดูข้อมูล
+                    </button>
+
                     {/* ปุ่มเริ่มแชท */}
                     <button
                       onClick={() => handleStartChat(a)}
                       className="inline-flex items-center gap-1 text-blue-700 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded"
                     >
                       <MessageCircle className="w-4 h-4" />
-                      เริ่มแชท
+                      ส่งข้อความ
                     </button>
 
                     <button
@@ -334,6 +352,17 @@ export default function ApplicantsModal({
           ))}
         </div>
       </div>
+
+      {/* ⭐ Modal ดูโปรไฟล์ผู้สมัคร */}
+      <JobSeekerProfileView
+        open={profileViewOpen}
+        onClose={() => {
+          setProfileViewOpen(false);
+          setSelectedApplicant(null);
+        }}
+        userId={getParticipantId(selectedApplicant)}
+        userName={selectedApplicant?.applicant?.name || selectedApplicant?.name || "ผู้สมัคร"}
+      />
     </div>
   );
 }

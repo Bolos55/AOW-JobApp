@@ -1,6 +1,7 @@
 // src/ResetPassword.jsx
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { API_BASE } from "./api";
 
 export default function ResetPassword() {
   const { token } = useParams(); // token ที่มากับลิงก์
@@ -19,8 +20,8 @@ export default function ResetPassword() {
     setMessage("");
 
     try {
-      // ✅ ชื่อ endpoint ต้องตรงกับ server.js
-      const res = await fetch("http://localhost:5000/api/auth/reset-password", {
+      // ✅ ใช้ API_BASE แทน hardcoded URL
+      const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),

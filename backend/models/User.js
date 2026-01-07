@@ -5,6 +5,7 @@ const { Schema } = mongoose;
 
 const profileSchema = new Schema(
   {
+    // JobSeeker fields
     fullName: { type: String, trim: true },
     headline: { type: String, trim: true },
     location: { type: String, trim: true },
@@ -12,7 +13,16 @@ const profileSchema = new Schema(
     skillsText: { type: String, trim: true },
     experience: { type: String, trim: true },
     resumeUrl: { type: String, trim: true },
-    photoUrl: { type: String, trim: true },   // ⭐ เพิ่ม field สำหรับเก็บรูปโปรไฟล์
+    photoUrl: { type: String, trim: true },
+    
+    // Employer fields
+    companyName: { type: String, trim: true },
+    businessType: { type: String, trim: true },
+    description: { type: String, trim: true },
+    address: { type: String, trim: true },
+    website: { type: String, trim: true },
+    employeeCount: { type: String, trim: true },
+    logoUrl: { type: String, trim: true },
   },
   { _id: false }
 );
@@ -61,6 +71,21 @@ const userSchema = new Schema(
       default: {},
     },
 
+    // ✅ Social Login Fields
+    socialProvider: {
+      type: String,
+      enum: ["google", "facebook", "firebase-google", "github", null],
+      default: null,
+    },
+    socialId: {
+      type: String,
+      default: null,
+    },
+    avatar: {
+      type: String, // URL ของรูปโปรไฟล์จาก social provider
+      default: null,
+    },
+
     promotedBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -73,6 +98,48 @@ const userSchema = new Schema(
 
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+
+    // ✅ Email verification fields
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: String,
+    emailVerificationExpire: Date,
+
+    // ✅ Security and tracking fields
+    registrationMetadata: {
+      type: Object,
+      default: {},
+    },
+    registrationIP: String,
+    lastLoginAt: Date,
+    loginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: Date,
+
+    // ✅ Email validation and security fields
+    emailValidation: {
+      isDisposable: { type: Boolean, default: false },
+      isSuspicious: { type: Boolean, default: false },
+      domain: { type: String, trim: true },
+      validationScore: { type: Number, default: 0 }, // 0-100
+      validationNotes: [String],
+    },
+    
+    // ✅ Account status for suspicious activity
+    isSuspended: { type: Boolean, default: false },
+    suspensionReason: String,
+    suspendedAt: Date,
+    suspendedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    
+    // ✅ Admin review flags
+    requiresReview: { type: Boolean, default: false },
+    reviewNotes: [String],
+    reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    reviewedAt: Date,
   },
   {
     timestamps: true,

@@ -1,7 +1,8 @@
 // src/components/JobSeekerProfileModal.jsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Upload, FileText, User as UserIcon } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
+import { updateProfileInStorage } from "../utils/authUtils";
 
 /* ========= helper แปลง path จาก backend -> URL เต็ม ========= */
 const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
@@ -142,6 +143,9 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
         phone: profile.phone || "",
         skillsText: profile.skillsText || "",
         experience: profile.experience || "",
+        // ⭐ สำคัญ: ส่ง resumeUrl และ photoUrl ไปด้วย
+        resumeUrl: profile.resumeUrl || "",
+        photoUrl: profile.photoUrl || "",
       };
 
       console.log("📤 PUT /api/profile/me payload:", payload);
@@ -167,19 +171,49 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
       alert("บันทึกโปรไฟล์เรียบร้อยแล้ว");
 
+      // ✅ อัปเดต localStorage ด้วยข้อมูลใหม่ (เก็บ resumeUrl และ photoUrl เดิมไว้)
+      const updatedProfile = {
+        fullName: payload.fullName,
+        headline: payload.headline,
+        location: payload.location,
+        phone: payload.phone,
+        skillsText: payload.skillsText,
+        experience: payload.experience,
+        resumeUrl: profile.resumeUrl, // เก็บ resumeUrl ที่มีอยู่
+        photoUrl: profile.photoUrl,   // เก็บ photoUrl ที่มีอยู่
+      };
+      
+      // อัปเดต localStorage
+      updateProfileInStorage(updatedProfile);
+
       // ถ้า backend ส่ง profile กลับมา ก็อัปเดต state ตามนั้นอีกที
       const p = data.profile || data;
-      if (p && (p.fullName || p.headline || p.location)) {
+      if (p && typeof p === 'object') {
         setProfile((prev) => ({
           ...prev,
-          fullName: p.fullName ?? prev.fullName,
-          headline: p.headline ?? prev.headline,
-          location: p.location ?? prev.location,
-          phone: p.phone ?? prev.phone,
-          skillsText: p.skillsText ?? prev.skillsText,
-          experience: p.experience ?? prev.experience,
+          fullName: p.fullName ?? payload.fullName,
+          headline: p.headline ?? payload.headline,
+          location: p.location ?? payload.location,
+          phone: p.phone ?? payload.phone,
+          skillsText: p.skillsText ?? payload.skillsText,
+          experience: p.experience ?? payload.experience,
+          // ⭐ สำคัญ: ใช้ค่าจาก backend หรือค่าเดิม
           resumeUrl: p.resumeUrl ?? prev.resumeUrl,
           photoUrl: p.photoUrl ?? prev.photoUrl,
+        }));
+      } else {
+        // ถ้าไม่มีข้อมูลจาก backend ให้ใช้ payload ที่ส่งไป + เก็บไฟล์เดิม
+        setProfile((prev) => ({
+          ...prev,
+          fullName: payload.fullName,
+          headline: payload.headline,
+          location: payload.location,
+          phone: payload.phone,
+          skillsText: payload.skillsText,
+          experience: payload.experience,
+          // ⭐ สำคัญ: เก็บ resumeUrl และ photoUrl เดิมไว้
+          resumeUrl: prev.resumeUrl,
+          photoUrl: prev.photoUrl,
         }));
       }
 
@@ -225,6 +259,9 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
           ...prev,
           photoUrl: url,
         }));
+        
+        // ✅ อัปเดต localStorage ด้วย photoUrl ใหม่
+        updateProfileInStorage({ photoUrl: url });
       }
 
       alert("อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว");
@@ -266,6 +303,9 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
         resumeUrl: data.resumeUrl || prev.resumeUrl,
       }));
 
+      // ✅ อัปเดต localStorage ด้วย resumeUrl ใหม่
+      updateProfileInStorage({ resumeUrl: data.resumeUrl || "" });
+
       // อัปโหลดแล้วเคลียร์ error เรซูเม่
       setErrors((prev) => ({
         ...prev,
@@ -305,34 +345,64 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
         {/* ⭐ ส่วนหัว + รูปโปรไฟล์ + ปุ่มอัปโหลดรูป */}
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+          {/* รูปโปรไฟล์ที่คลิกได้ */}
+          <label className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center cursor-pointer hover:shadow-lg transition-all group border-2 border-dashed border-blue-300 hover:border-blue-500">
             {profilePhoto ? (
-              <img
-                src={profilePhoto}
-                alt="โปรไฟล์ผู้สมัคร"
-                className="w-full h-full object-cover"
-              />
+              <>
+                <img
+                  src={profilePhoto}
+                  alt="โปรไฟล์ผู้สมัคร"
+                  className="w-full h-full object-cover"
+                />
+                {/* Overlay เมื่อ hover - แสดงเฉพาะเมื่อมีรูปแล้ว */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <Upload className="w-4 h-4 mx-auto mb-1" />
+                    <span className="text-xs font-medium">
+                      {uploadingPhoto ? "กำลังอัปโหลด..." : "เปลี่ยนรูป"}
+                    </span>
+                  </div>
+                </div>
+              </>
             ) : (
-              <UserIcon className="w-8 h-8 text-gray-400" />
+              <>
+                <div className="text-center">
+                  <UserIcon className="w-8 h-8 text-blue-400 mx-auto mb-1" />
+                  <span className="text-xs text-blue-600 font-medium">ใส่รูป</span>
+                </div>
+                {/* Overlay เมื่อ hover - แสดงเฉพาะเมื่อยังไม่มีรูป */}
+                <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="text-center text-blue-600">
+                    <Upload className="w-5 h-5 mx-auto mb-1" />
+                    <span className="text-xs font-medium">
+                      {uploadingPhoto ? "กำลังอัปโหลด..." : "ใส่รูป"}
+                    </span>
+                  </div>
+                </div>
+              </>
             )}
-          </div>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold mb-1">โปรไฟล์ผู้สมัครงาน</h2>
-            <p className="text-sm text-gray-500">
-              แก้ไขข้อมูลส่วนตัวและจัดการเรซูเม่ของคุณให้พร้อมสำหรับการสมัครงาน
-            </p>
+            
+            <input
+              id="profile-photo-upload"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleUploadProfilePhoto}
+              disabled={uploadingPhoto}
+              autoComplete="photo"
+            />
+          </label>
 
-            <label className="mt-2 inline-flex items-center gap-1 text-xs px-3 py-1 rounded-lg border border-dashed border-purple-400 text-purple-700 cursor-pointer hover:bg-purple-50 w-fit">
-              <Upload className="w-4 h-4" />
-              {uploadingPhoto ? "กำลังอัปโหลดรูป..." : "อัปโหลดรูปโปรไฟล์"}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleUploadProfilePhoto}
-                disabled={uploadingPhoto}
-              />
-            </label>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold mb-1">แก้ไขข้อมูลส่วนตัว</h2>
+            <p className="text-sm text-gray-500 mb-2">
+              กรอกข้อมูลของคุณให้ครบถ้วน เพื่อให้นายจ้างสามารถติดต่อคุณได้
+            </p>
+            
+            {/* คำแนะนำการอัปโหลดรูป */}
+            <p className="text-xs text-blue-600">
+              💡 {profilePhoto ? "กดที่รูปเพื่อเปลี่ยนรูปใหม่" : "กดที่รูปเพื่อใส่รูปของคุณ"}
+            </p>
           </div>
         </div>
 
@@ -343,16 +413,18 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
             {/* ข้อมูลส่วนตัว */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                <label htmlFor="fullName" className="block text-xs font-semibold text-gray-600 mb-1">
                   ชื่อ–นามสกุล <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="fullName"
                   type="text"
                   name="fullName"
                   value={profile.fullName}
                   onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="เช่น ภูริวัฒน์ โภคสวัสดิ์"
+                  placeholder="เช่น นาย ชัยวัฒน์ สมบูรณ์"
+                  autoComplete="name"
                 />
                 {errors.fullName && (
                   <p className="text-[11px] text-red-500 mt-1">
@@ -361,16 +433,18 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                <label htmlFor="phone" className="block text-xs font-semibold text-gray-600 mb-1">
                   เบอร์โทรติดต่อ <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="text"
+                  id="phone"
+                  type="tel"
                   name="phone"
                   value={profile.phone}
                   onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="เช่น 08x-xxx-xxxx"
+                  autoComplete="tel"
                 />
                 {errors.phone && (
                   <p className="text-[11px] text-red-500 mt-1">
@@ -379,16 +453,18 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                <label htmlFor="location" className="block text-xs font-semibold text-gray-600 mb-1">
                   พื้นที่ที่สนใจทำงาน <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="location"
                   type="text"
                   name="location"
                   value={profile.location}
                   onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="เช่น กรุงเทพ, ทำงานรีโมต"
+                  placeholder="เช่น กรุงเทพ, นนทบุรี, ทำงานจากบ้าน"
+                  autoComplete="address-level1"
                 />
                 {errors.location && (
                   <p className="text-[11px] text-red-500 mt-1">
@@ -397,37 +473,44 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                <label htmlFor="headline" className="block text-xs font-semibold text-gray-600 mb-1">
                   หัวข้อแนะนำตัวสั้น ๆ (Headline)
                 </label>
                 <input
+                  id="headline"
                   type="text"
                   name="headline"
                   value={profile.headline}
                   onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="เช่น Full-Stack Developer สนใจงาน React / Node.js"
+                  placeholder="เช่น พนักงานออฟฟิศ ประสบการณ์ 3 ปี กำลังหางาน"
+                  autoComplete="organization-title"
                 />
               </div>
             </div>
 
-            {/* ลิงก์รูปโปรไฟล์ (สำรอง) */}
+            {/* ลิงก์รูปโปรไฟล์ (ซ่อนไว้ - ใช้อัปโหลดไฟล์แทน) 
+            {false && (
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
+              <label htmlFor="photoUrl" className="block text-xs font-semibold text-gray-600 mb-1">
                 ลิงก์รูปโปรไฟล์ (ไม่บังคับ)
               </label>
               <input
-                type="text"
+                id="photoUrl"
+                type="url"
                 name="photoUrl"
                 value={profile.photoUrl}
                 onChange={handleChange}
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="เช่น https://... (ลิงก์รูปที่เปิดสาธารณะได้)"
+                autoComplete="url"
               />
               <p className="text-[11px] text-gray-400 mt-1">
                 วางลิงก์รูปจาก Google Drive, Cloud, หรือโฮสต์อื่นที่ตั้งค่าให้แชร์สาธารณะ
               </p>
             </div>
+            )}
+            */}
 
             {/* ทักษะ & ประสบการณ์ */}
             <div>
@@ -440,7 +523,7 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
                 onChange={handleChange}
                 rows={3}
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="เช่น HTML, CSS, JavaScript, React, Node.js, MongoDB, Laravel ฯลฯ"
+                placeholder="เช่น งานขาย, ใช้คอมพื้นฐาน, ดูแลลูกค้า, ขับรถ, ทำอาหาร, ภาษาอังกฤษ"
               />
               {errors.skillsText && (
                 <p className="text-[11px] text-red-500 mt-1">
@@ -460,7 +543,7 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
                 onChange={handleChange}
                 rows={4}
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="เล่าประสบการณ์ทำงาน โปรเจกต์ หรือผลงานที่เคยทำ เช่น Fastmark, JobApp ฯลฯ"
+                placeholder="เช่น เคยทำงานขายของในห้าง 2 ปี ดูแลลูกค้า จัดการสต๊อกสินค้า หรือ เคยช่วยงานร้านอาหารครอบครัว รับออเดอร์ เสิร์ฟอาหาร"
               />
               {errors.experience && (
                 <p className="text-[11px] text-red-500 mt-1">
@@ -471,48 +554,64 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
             {/* เรซูเม่ */}
             <div className="border-t pt-4">
-              <h3 className="text-sm font-semibold mb-2">
-                เรซูเม่ของฉัน <span className="text-red-500">*</span>
+              <h3 className="text-sm font-semibold mb-3">
+                ไฟล์เรซูเม่ของคุณ <span className="text-red-500">*</span>
               </h3>
 
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <label className="inline-flex items-center px-3 py-2 rounded-lg border border-dashed border-blue-300 text-xs text-blue-700 cursor-pointer hover:bg-blue-50">
-                    <Upload className="w-4 h-4 mr-1" />
-                    อัปโหลดเรซูเม่ (PDF / DOC)
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      className="hidden"
-                      onChange={handleUploadResume}
-                      disabled={uploadingResume}
-                    />
-                  </label>
+              {/* กล่องอัปโหลดเรซูเม่แบบ drag & drop */}
+              <label className="block w-full p-6 border-2 border-dashed border-blue-300 rounded-xl cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all group">
+                <div className="text-center">
+                  {profile.resumeUrl ? (
+                    <div className="space-y-2">
+                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                        <FileText className="w-6 h-6 text-green-600" />
+                      </div>
+                      <p className="text-sm font-medium text-green-700">มีเรซูเม่แล้ว!</p>
+                      <p className="text-xs text-gray-500">กดเพื่อเปลี่ยนไฟล์ใหม่</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto group-hover:bg-blue-200 transition-colors">
+                        <Upload className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <p className="text-sm font-medium text-gray-700">ใส่ไฟล์เรซูเม่</p>
+                      <p className="text-xs text-gray-500">กดหรือลากไฟล์ PDF, DOC มาวางที่นี่</p>
+                    </div>
+                  )}
+                  
                   {uploadingResume && (
-                    <span className="text-[11px] text-gray-500">
-                      กำลังอัปโหลด...
-                    </span>
+                    <p className="text-xs text-blue-600 mt-2 font-medium">กำลังอัปโหลด...</p>
                   )}
                 </div>
+                
+                <input
+                  id="resume-upload"
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  className="hidden"
+                  onChange={handleUploadResume}
+                  disabled={uploadingResume}
+                  autoComplete="off"
+                />
+              </label>
 
-                {profile.resumeUrl ? (
+              {/* ปุ่มดูเรซูเม่ */}
+              {profile.resumeUrl && (
+                <div className="mt-3 text-center">
                   <a
                     href={resolveFileUrl(profile.resumeUrl)}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200"
+                    className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
                   >
-                    <FileText className="w-4 h-4 mr-1" />
-                    เปิดเรซูเม่ที่บันทึกไว้
+                    <FileText className="w-4 h-4" />
+                    เปิดดูเรซูเม่ที่อัปโหลดไว้
                   </a>
-                ) : (
-                  <span className="text-[11px] text-gray-400">
-                    ยังไม่ได้อัปโหลดเรซูเม่
-                  </span>
-                )}
-              </div>
+                </div>
+              )}
+
               {errors.resumeUrl && (
-                <p className="text-[11px] text-red-500 mt-1">
+                <p className="text-[11px] text-red-500 mt-2 text-center">
                   {errors.resumeUrl}
                 </p>
               )}
