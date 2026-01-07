@@ -151,23 +151,35 @@ export default function SocialLogin({ onSuccess, onError }) {
       
       // แสดง error message ที่ชัดเจน
       const missingVars = [];
-      if (!process.env.REACT_APP_FIREBASE_API_KEY || process.env.REACT_APP_FIREBASE_API_KEY === 'your_firebase_api_key_here') {
-        missingVars.push('REACT_APP_FIREBASE_API_KEY');
-      }
-      if (!process.env.REACT_APP_FIREBASE_PROJECT_ID || process.env.REACT_APP_FIREBASE_PROJECT_ID === 'your-project-id') {
-        missingVars.push('REACT_APP_FIREBASE_PROJECT_ID');
-      }
-      if (!process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || process.env.REACT_APP_FIREBASE_AUTH_DOMAIN === 'your-project-id.firebaseapp.com') {
-        missingVars.push('REACT_APP_FIREBASE_AUTH_DOMAIN');
-      }
+      const envCheck = {
+        REACT_APP_FIREBASE_API_KEY: process.env.REACT_APP_FIREBASE_API_KEY,
+        REACT_APP_FIREBASE_PROJECT_ID: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+        REACT_APP_FIREBASE_AUTH_DOMAIN: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+        REACT_APP_FIREBASE_STORAGE_BUCKET: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+        REACT_APP_FIREBASE_MESSAGING_SENDER_ID: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+        REACT_APP_FIREBASE_APP_ID: process.env.REACT_APP_FIREBASE_APP_ID
+      };
+      
+      // ตรวจสอบแต่ละตัวแปร
+      Object.entries(envCheck).forEach(([key, value]) => {
+        if (!value || value === 'your_firebase_api_key_here' || value === 'your-project-id' || value === 'your-project-id.firebaseapp.com' || value === 'your_messaging_sender_id' || value === 'your_firebase_app_id') {
+          missingVars.push(key);
+        }
+      });
+      
+      console.log('🔍 Environment Variables Check:', envCheck);
+      console.log('❌ Missing Variables:', missingVars);
       
       onError(`🔧 Firebase ยังไม่ได้ตั้งค่า
 
 ❌ Environment Variables ที่ขาดหายไป:
-${missingVars.map(v => `• ${v}`).join('\n')}
+${missingVars.length > 0 ? missingVars.map(v => `• ${v}`).join('\n') : '• ตรวจสอบไม่พบตัวแปรที่ขาดหายไป (อาจเป็นปัญหา Firebase initialization)'}
+
+🔍 ตรวจสอบปัจจุบัน:
+${Object.entries(envCheck).map(([key, value]) => `• ${key}: ${value ? 'มี' : 'ไม่มี'}`).join('\n')}
 
 📋 วิธีแก้ไข:
-1. เพิ่ม Firebase environment variables ใน hosting platform
+1. เพิ่ม Firebase environment variables ใน hosting platform (Render)
 2. ตั้งค่า Authorized Domains ใน Firebase Console
 3. Redeploy application
 
