@@ -143,6 +143,15 @@ app.use("/api/pdpa", pdpaRoutes);
 app.use("/api/online", onlineStatusRoutes);
 console.log("✅ All routes registered successfully");
 
+// ✅ Simple test endpoints (no dependencies)
+app.get("/ping", (req, res) => {
+  res.send("pong");
+});
+
+app.get("/test", (req, res) => {
+  res.json({ message: "Backend is working!", timestamp: new Date().toISOString() });
+});
+
 // ✅ Health check endpoint
 app.get("/", (req, res) => {
   console.log("🏥 Health check endpoint hit");
@@ -232,6 +241,14 @@ app.use('*', (req, res) => {
 });
 
 /* START */
+// ✅ Startup validation
+console.log("🔍 Starting server validation...");
+console.log("📋 Environment variables:");
+console.log("  - NODE_ENV:", process.env.NODE_ENV || 'not set');
+console.log("  - PORT:", process.env.PORT || '5000 (default)');
+console.log("  - MONGODB_URI:", process.env.MONGODB_URI ? 'Present' : 'Missing');
+console.log("  - JWT_SECRET:", process.env.JWT_SECRET ? 'Present' : 'Missing');
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
@@ -240,6 +257,8 @@ app.listen(PORT, () => {
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`⏰ Started at: ${new Date().toISOString()}`);
   console.log("📋 Available endpoints:");
+  console.log("  - GET  /ping");
+  console.log("  - GET  /test");
   console.log("  - GET  / (health check)");
   console.log("  - GET  /health");
   console.log("  - POST /api/auth/firebase-google");
@@ -249,3 +268,16 @@ app.listen(PORT, () => {
   logger.info(`💖 Server running on port ${PORT}`);
   logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
+// ✅ Process error handlers
+process.on('uncaughtException', (err) => {
+  console.error('🚨 Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('🚨 Unhandled Rejection:', err);
+  process.exit(1);
+});
+
+console.log("✅ Server setup complete - waiting for requests...");
