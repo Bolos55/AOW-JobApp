@@ -5,11 +5,11 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 // ✅ ตรวจสอบว่ามี Firebase config จริงหรือไม่
 const hasValidFirebaseConfig = 
   process.env.REACT_APP_FIREBASE_API_KEY && 
-  process.env.REACT_APP_FIREBASE_API_KEY !== 'AIzaSyCpq_OYRG43zPRQlwAa85iWZBLOTntiGfc' &&
+  process.env.REACT_APP_FIREBASE_API_KEY !== 'your_firebase_api_key_here' &&
   process.env.REACT_APP_FIREBASE_PROJECT_ID && 
-  process.env.REACT_APP_FIREBASE_PROJECT_ID !== 'jobapp-93cfa' &&
+  process.env.REACT_APP_FIREBASE_PROJECT_ID !== 'your-project-id' &&
   process.env.REACT_APP_FIREBASE_AUTH_DOMAIN &&
-  process.env.REACT_APP_FIREBASE_AUTH_DOMAIN !== 'jobapp-93cfa.firebaseapp.com';
+  process.env.REACT_APP_FIREBASE_AUTH_DOMAIN !== 'your-project-id.firebaseapp.com';
 
 // Firebase configuration - ใช้ environment variables เท่านั้น
 const firebaseConfig = {
