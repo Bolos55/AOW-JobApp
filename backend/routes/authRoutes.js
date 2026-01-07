@@ -605,8 +605,31 @@ router.post("/complete-social-registration", async (req, res) => {
 });
 
 // ===================== FIREBASE GOOGLE LOGIN =====================
+// 🚨🚨🚨 SECURITY WARNING: DEV-ONLY IMPLEMENTATION 🚨🚨🚨
+// ❌ CRITICAL: This endpoint does NOT verify Firebase ID tokens
+// ❌ INSECURE: Trusts frontend data directly - can be bypassed
+// ❌ PRODUCTION: DO NOT USE in production without Firebase Admin SDK
+// ✅ DEV-ONLY: Suitable for development, demo, testing only
+// 
+// For production, implement:
+// 1. Firebase Admin SDK
+// 2. verifyIdToken() verification
+// 3. Send idToken from frontend, not user data
+// 
+// See: FIREBASE_SECURITY_ASSESSMENT.md for details
+// 🚨🚨🚨 SECURITY WARNING: DEV-ONLY IMPLEMENTATION 🚨🚨🚨
+
 router.post("/firebase-google", async (req, res) => {
+  // 🚨 SECURITY CHECK: Warn if used in production
+  if (process.env.NODE_ENV === 'production') {
+    console.error("🚨🚨🚨 SECURITY ALERT: Insecure Firebase endpoint used in production!");
+    console.error("🚨 This endpoint does not verify Firebase ID tokens");
+    console.error("🚨 Authentication can be bypassed - CRITICAL VULNERABILITY");
+    console.error("🚨 Implement Firebase Admin SDK before production deployment");
+  }
+  
   console.log("🔥🔥🔥 Firebase Google Login endpoint HIT! 🔥🔥🔥");
+  console.log("⚠️ WARNING: DEV-ONLY implementation - no token verification");
   console.log("📋 Request method:", req.method);
   console.log("📋 Request path:", req.path);
   console.log("📋 Request originalUrl:", req.originalUrl);
@@ -629,6 +652,11 @@ router.post("/firebase-google", async (req, res) => {
     }
 
     console.log("✅ Firebase data validated successfully");
+
+    // 🚨 SECURITY WARNING for production
+    if (process.env.NODE_ENV === 'production') {
+      console.warn("🚨 PRODUCTION SECURITY RISK: Using unverified Firebase data");
+    }
 
     // ✅ ตรวจสอบว่ามีผู้ใช้นี้ในระบบแล้วหรือไม่
     console.log("🔍 Looking up user in database:", email);
