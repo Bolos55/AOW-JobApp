@@ -7,16 +7,18 @@ const hasValidFirebaseConfig =
   process.env.REACT_APP_FIREBASE_API_KEY && 
   process.env.REACT_APP_FIREBASE_API_KEY !== 'your_firebase_api_key_here' &&
   process.env.REACT_APP_FIREBASE_PROJECT_ID && 
-  process.env.REACT_APP_FIREBASE_PROJECT_ID !== 'your-project-id';
+  process.env.REACT_APP_FIREBASE_PROJECT_ID !== 'your-project-id' &&
+  process.env.REACT_APP_FIREBASE_AUTH_DOMAIN &&
+  process.env.REACT_APP_FIREBASE_AUTH_DOMAIN !== 'your-project-id.firebaseapp.com';
 
-// Firebase configuration - ใส่ config ที่ได้จาก Firebase Console
+// Firebase configuration - ใช้ environment variables เท่านั้น
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyCpq_OYRG43zPRQlwAa85iWZBLOTntiGfc",
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "jobapp-93cfa.firebaseapp.com",
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "jobapp-93cfa",
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "jobapp-93cfa.firebasestorage.app",
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "935454716852",
-  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:935454716852:web:0e2bf94092c9b17d1938e1"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
 // ✅ Initialize Firebase เฉพาะเมื่อมี config จริง
@@ -39,7 +41,9 @@ if (hasValidFirebaseConfig) {
     console.log('🔧 Firebase config check:', {
       hasApiKey: !!process.env.REACT_APP_FIREBASE_API_KEY,
       hasProjectId: !!process.env.REACT_APP_FIREBASE_PROJECT_ID,
-      projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID
+      hasAuthDomain: !!process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+      authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN
     });
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error);
@@ -48,7 +52,8 @@ if (hasValidFirebaseConfig) {
   console.log('⚠️ Firebase not configured - missing environment variables');
   console.log('🔧 Environment check:', {
     REACT_APP_FIREBASE_API_KEY: process.env.REACT_APP_FIREBASE_API_KEY ? 'Present' : 'Missing',
-    REACT_APP_FIREBASE_PROJECT_ID: process.env.REACT_APP_FIREBASE_PROJECT_ID ? 'Present' : 'Missing'
+    REACT_APP_FIREBASE_PROJECT_ID: process.env.REACT_APP_FIREBASE_PROJECT_ID ? 'Present' : 'Missing',
+    REACT_APP_FIREBASE_AUTH_DOMAIN: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN ? 'Present' : 'Missing'
   });
 }
 
