@@ -18,7 +18,6 @@ import { logger } from "./utils/logger.js";
 
 // ✅ import routes
 import authRoutes from "./routes/authRoutes.js";
-import socialAuthRoutes from "./routes/socialAuthRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 import applicationRoutes from "./routes/applicationRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
@@ -119,7 +118,6 @@ app.use((req, res, next) => {
 // ✅ ผูก route ต่าง ๆ ให้ frontend เรียกได้
 console.log("🔗 Registering routes...");
 app.use("/api/auth", authRoutes);
-app.use("/api/auth", socialAuthRoutes);
 console.log("✅ Auth routes registered: /api/auth");
 app.use("/api/jobs", jobRoutes);
 app.use("/api", applicationRoutes);

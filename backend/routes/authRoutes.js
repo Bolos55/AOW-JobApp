@@ -604,4 +604,112 @@ router.post("/complete-social-registration", async (req, res) => {
   }
 });
 
+// ===================== FIREBASE GOOGLE LOGIN =====================
+router.post("/firebase-google", async (req, res) => {
+  console.log("🔥 Firebase Google Login endpoint hit!");
+  console.log("📋 Request body:", req.body);
+  
+  try {
+    const { uid, email, name, photoURL, emailVerified } = req.body;
+    
+    // ✅ Validate required fields
+    if (!uid || !email) {
+      console.log("❌ Missing required fields:", { uid: !!uid, email: !!email });
+      return res.status(400).json({ 
+        message: "ข้อมูล Firebase ไม่ครบถ้วน - ต้องมี uid และ email" 
+      });
+    }
+
+    console.log("✅ Firebase data received:", { uid, email, name, emailVerified });
+
+    // ✅ ตรวจสอบว่ามีผู้ใช้นี้ในระบบแล้วหรือไม่
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // ✅ ผู้ใช้มีอยู่แล้ว - login ปกติ
+      console.log(`🔄 Existing user Firebase login: ${email}`);
+      
+      // อัปเดตข้อมูล Firebase ถ้ายังไม่มี
+      let updated = false;
+      if (!user.socialProvider || user.socialProvider !== "firebase-google") {
+        user.socialProvider = "firebase-google";
+        user.socialId = uid;
+        updated = true;
+      }
+      
+      if (photoURL && !user.avatar) {
+        user.avatar = photoURL;
+        updated = true;
+      }
+      
+      if (emailVerified && !user.isEmailVerified) {
+        user.isEmailVerified = true;
+        user.isActive = true;
+        updated = true;
+      }
+      
+      if (updated) {
+        await user.save();
+        console.log("✅ Updated existing user with Firebase data");
+      }
+
+      // ตรวจสอบว่าบัญชีถูกระงับหรือไม่
+      if (user.isSuspended) {
+        console.log(`🚫 User suspended: ${email}`);
+        return res.status(403).json({ 
+          message: `🚫 บัญชีถูกระงับการใช้งาน\n\nเหตุผล: ${user.suspensionReason}\n\nกรุณาติดต่อแอดมินเพื่อขอความช่วยเหลือ`,
+          suspended: true,
+          suspensionReason: user.suspensionReason
+        });
+      }
+
+      // ✅ สร้าง JWT token
+      const token = createToken(user);
+      console.log("✅ JWT token created for existing user");
+
+      return res.json({
+        message: "เข้าสู่ระบบด้วย Google สำเร็จ",
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          avatar: user.avatar,
+          isEmailVerified: user.isEmailVerified,
+          requiresReview: user.requiresReview,
+          isSuspended: user.isSuspended,
+          socialProvider: user.socialProvider
+        },
+        token,
+      });
+      
+    } else {
+      // ✅ ผู้ใช้ใหม่ - ต้องเลือก role ก่อน
+      console.log(`👤 New user from Firebase Google: ${email} - needs role selection`);
+      
+      return res.json({
+        message: "ผู้ใช้ใหม่ - ต้องเลือกประเภทการใช้งาน",
+        newUser: true,
+        needsRoleSelection: true,
+        socialData: {
+          uid,
+          email,
+          name,
+          photoURL,
+          emailVerified
+        },
+        provider: "google"
+      });
+    }
+
+  } catch (err) {
+    console.error("❌ Firebase Google auth error:", err);
+    res.status(500).json({ 
+      message: "เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google",
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+});
+
 export default router;
