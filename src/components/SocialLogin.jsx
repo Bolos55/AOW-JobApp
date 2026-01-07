@@ -148,9 +148,18 @@ export default function SocialLogin({ onSuccess, onError }) {
     // ✅ ตรวจสอบ Firebase config ก่อนทำงาน
     if (!hasFirebaseConfig || !auth || !googleProvider) {
       console.log('❌ Firebase not configured properly');
+      console.log('🔍 Debug info:', {
+        hasFirebaseConfig,
+        hasAuth: !!auth,
+        hasGoogleProvider: !!googleProvider,
+        envVarsPresent: {
+          API_KEY: !!process.env.REACT_APP_FIREBASE_API_KEY,
+          PROJECT_ID: !!process.env.REACT_APP_FIREBASE_PROJECT_ID,
+          AUTH_DOMAIN: !!process.env.REACT_APP_FIREBASE_AUTH_DOMAIN
+        }
+      });
       
       // แสดง error message ที่ชัดเจน
-      const missingVars = [];
       const envCheck = {
         REACT_APP_FIREBASE_API_KEY: process.env.REACT_APP_FIREBASE_API_KEY,
         REACT_APP_FIREBASE_PROJECT_ID: process.env.REACT_APP_FIREBASE_PROJECT_ID,
@@ -160,6 +169,7 @@ export default function SocialLogin({ onSuccess, onError }) {
         REACT_APP_FIREBASE_APP_ID: process.env.REACT_APP_FIREBASE_APP_ID
       };
       
+      const missingVars = [];
       // ตรวจสอบแต่ละตัวแปร
       Object.entries(envCheck).forEach(([key, value]) => {
         if (!value || value === 'your_firebase_api_key_here' || value === 'your-project-id' || value === 'your-project-id.firebaseapp.com' || value === 'your_messaging_sender_id' || value === 'your_firebase_app_id') {
@@ -170,18 +180,38 @@ export default function SocialLogin({ onSuccess, onError }) {
       console.log('🔍 Environment Variables Check:', envCheck);
       console.log('❌ Missing Variables:', missingVars);
       
+      // ตรวจสอบสาเหตุที่แท้จริง
+      let rootCause = '';
+      if (missingVars.length > 0) {
+        rootCause = 'Environment Variables ขาดหายไป';
+      } else if (!auth || !googleProvider) {
+        rootCause = 'Firebase initialization ล้มเหลว - ตรวจสอบ browser console สำหรับ Firebase errors';
+      } else {
+        rootCause = 'Firebase validation logic ผิดพลาด';
+      }
+      
       onError(`🔧 Firebase ยังไม่ได้ตั้งค่า
 
+🔍 สาเหตุ: ${rootCause}
+
 ❌ Environment Variables ที่ขาดหายไป:
-${missingVars.length > 0 ? missingVars.map(v => `• ${v}`).join('\n') : '• ตรวจสอบไม่พบตัวแปรที่ขาดหายไป (อาจเป็นปัญหา Firebase initialization)'}
+${missingVars.length > 0 ? missingVars.map(v => `• ${v}`).join('\n') : '• ไม่มีตัวแปรที่ขาดหายไป'}
 
 🔍 ตรวจสอบปัจจุบัน:
 ${Object.entries(envCheck).map(([key, value]) => `• ${key}: ${value ? 'มี' : 'ไม่มี'}`).join('\n')}
 
+🔧 สถานะ Firebase Objects:
+• Firebase Auth: ${auth ? 'พร้อมใช้งาน' : 'ไม่พร้อม'}
+• Google Provider: ${googleProvider ? 'พร้อมใช้งาน' : 'ไม่พร้อม'}
+
 📋 วิธีแก้ไข:
-1. เพิ่ม Firebase environment variables ใน hosting platform (Render)
+${missingVars.length > 0 ? 
+  '1. เพิ่ม Firebase environment variables ใน hosting platform (Render)' : 
+  '1. ตรวจสอบ Firebase Console logs และ browser console'
+}
 2. ตั้งค่า Authorized Domains ใน Firebase Console
-3. Redeploy application
+3. เพิ่ม domain "${window.location.hostname}" ใน Firebase Authorized domains
+4. Redeploy application
 
 🔗 ดูคู่มือเพิ่มเติม: FIREBASE_PRODUCTION_SETUP.md`);
       return;
