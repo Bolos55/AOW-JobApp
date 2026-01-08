@@ -4,21 +4,21 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 // ✅ ตรวจสอบว่ามี Firebase config จริงหรือไม่
 const hasValidFirebaseConfig = 
-  process.env.REACT_APP_FIREBASE_API_KEY && 
-  process.env.REACT_APP_FIREBASE_API_KEY !== 'your_firebase_api_key_here' &&
-  process.env.REACT_APP_FIREBASE_PROJECT_ID && 
-  process.env.REACT_APP_FIREBASE_PROJECT_ID !== 'your-project-id' &&
-  process.env.REACT_APP_FIREBASE_AUTH_DOMAIN &&
-  process.env.REACT_APP_FIREBASE_AUTH_DOMAIN !== 'your-project-id.firebaseapp.com';
+  import.meta.env.VITE_FIREBASE_API_KEY && 
+  import.meta.env.VITE_FIREBASE_API_KEY !== 'your_firebase_api_key_here' &&
+  import.meta.env.VITE_FIREBASE_PROJECT_ID && 
+  import.meta.env.VITE_FIREBASE_PROJECT_ID !== 'your-project-id' &&
+  import.meta.env.VITE_FIREBASE_AUTH_DOMAIN &&
+  import.meta.env.VITE_FIREBASE_AUTH_DOMAIN !== 'your-project-id.firebaseapp.com';
 
 // Firebase configuration - ใช้ environment variables เท่านั้น
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // ✅ Initialize Firebase เฉพาะเมื่อมี config จริง
@@ -39,29 +39,29 @@ if (hasValidFirebaseConfig) {
     
     console.log('✅ Firebase initialized successfully');
     // console.log('🔧 Firebase config check:', { // ลบ detailed config log
-    //   hasApiKey: !!process.env.REACT_APP_FIREBASE_API_KEY,
-    //   hasProjectId: !!process.env.REACT_APP_FIREBASE_PROJECT_ID,
-    //   hasAuthDomain: !!process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-    //   projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-    //   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN
+    //   hasApiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
+    //   hasProjectId: !!import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    //   hasAuthDomain: !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    //   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    //   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN
     // });
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error);
     console.error('🔧 Firebase config used:', {
-      apiKey: process.env.REACT_APP_FIREBASE_API_KEY ? `${process.env.REACT_APP_FIREBASE_API_KEY.substring(0, 10)}...` : 'Missing',
-      authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.REACT_APP_FIREBASE_APP_ID ? `${process.env.REACT_APP_FIREBASE_APP_ID.substring(0, 10)}...` : 'Missing'
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? `${import.meta.env.VITE_FIREBASE_API_KEY.substring(0, 10)}...` : 'Missing',
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID ? `${import.meta.env.VITE_FIREBASE_APP_ID.substring(0, 10)}...` : 'Missing'
     });
   }
 } else {
   console.log('⚠️ Firebase not configured - missing environment variables');
   console.log('🔧 Environment check:', {
-    REACT_APP_FIREBASE_API_KEY: process.env.REACT_APP_FIREBASE_API_KEY ? 'Present' : 'Missing',
-    REACT_APP_FIREBASE_PROJECT_ID: process.env.REACT_APP_FIREBASE_PROJECT_ID ? 'Present' : 'Missing',
-    REACT_APP_FIREBASE_AUTH_DOMAIN: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN ? 'Present' : 'Missing'
+    VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY ? 'Present' : 'Missing',
+    VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID ? 'Present' : 'Missing',
+    VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ? 'Present' : 'Missing'
   });
 }
 

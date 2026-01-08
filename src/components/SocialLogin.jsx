@@ -7,12 +7,12 @@ import { API_BASE } from '../api';
 export default function SocialLogin({ onSuccess, onError }) {
   
   // ตรวจสอบว่ามี Firebase config จริงหรือไม่ และ Firebase objects พร้อมใช้งาน
-  const hasFirebaseConfig = process.env.REACT_APP_FIREBASE_API_KEY && 
-    process.env.REACT_APP_FIREBASE_API_KEY !== 'your_firebase_api_key_here' &&
-    process.env.REACT_APP_FIREBASE_PROJECT_ID && 
-    process.env.REACT_APP_FIREBASE_PROJECT_ID !== 'your-project-id' &&
-    process.env.REACT_APP_FIREBASE_AUTH_DOMAIN &&
-    process.env.REACT_APP_FIREBASE_AUTH_DOMAIN !== 'your-project-id.firebaseapp.com' &&
+  const hasFirebaseConfig = import.meta.env.VITE_FIREBASE_API_KEY && 
+    import.meta.env.VITE_FIREBASE_API_KEY !== 'your_firebase_api_key_here' &&
+    import.meta.env.VITE_FIREBASE_PROJECT_ID && 
+    import.meta.env.VITE_FIREBASE_PROJECT_ID !== 'your-project-id' &&
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN &&
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN !== 'your-project-id.firebaseapp.com' &&
     auth && googleProvider;
 
   // Helper function สำหรับจัดการ Firebase user
@@ -166,20 +166,20 @@ export default function SocialLogin({ onSuccess, onError }) {
         hasAuth: !!auth,
         hasGoogleProvider: !!googleProvider,
         envVarsPresent: {
-          API_KEY: !!process.env.REACT_APP_FIREBASE_API_KEY,
-          PROJECT_ID: !!process.env.REACT_APP_FIREBASE_PROJECT_ID,
-          AUTH_DOMAIN: !!process.env.REACT_APP_FIREBASE_AUTH_DOMAIN
+          API_KEY: !!import.meta.env.VITE_FIREBASE_API_KEY,
+          PROJECT_ID: !!import.meta.env.VITE_FIREBASE_PROJECT_ID,
+          AUTH_DOMAIN: !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN
         }
       });
       
       // แสดง error message ที่ชัดเจน
       const envCheck = {
-        REACT_APP_FIREBASE_API_KEY: process.env.REACT_APP_FIREBASE_API_KEY,
-        REACT_APP_FIREBASE_PROJECT_ID: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-        REACT_APP_FIREBASE_AUTH_DOMAIN: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-        REACT_APP_FIREBASE_STORAGE_BUCKET: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-        REACT_APP_FIREBASE_MESSAGING_SENDER_ID: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-        REACT_APP_FIREBASE_APP_ID: process.env.REACT_APP_FIREBASE_APP_ID
+        VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
+        VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        VITE_FIREBASE_STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        VITE_FIREBASE_MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID
       };
       
       const missingVars = [];
@@ -275,9 +275,8 @@ ${missingVars.length > 0 ?
   const handleGitHubLogin = () => {
     console.log('🚀 Starting GitHub Login...');
     
-    // Redirect ไปที่ backend GitHub OAuth endpoint
-    const apiBase = process.env.REACT_APP_API_BASE || API_BASE;
-    const githubAuthUrl = `${apiBase}${apiBase.endsWith('/api') ? '' : '/api'}/auth/github`;
+    // ใช้ API_BASE โดยตรง
+    const githubAuthUrl = `${API_BASE}/api/auth/github`;
     
     console.log('🔗 Redirecting to:', githubAuthUrl);
     window.location.href = githubAuthUrl;
