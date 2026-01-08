@@ -47,6 +47,7 @@ export const corsOptions = {
     const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [
       'http://localhost:3000',
       'http://127.0.0.1:3000',
+      'https://aow-jobapp.onrender.com',
       'https://aow-jobapp-frontend.onrender.com'
     ];
     

@@ -12,7 +12,6 @@ import PaymentStatusDemo from "./components/PaymentStatusDemo";
 import CookieConsent from "./components/CookieConsent";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
-import "./test-env.js"; // ⭐ เพิ่มบรรทัดนี้เพื่อทดสอบ env vars
 
 function useAuthUser() {
   const read = () => {

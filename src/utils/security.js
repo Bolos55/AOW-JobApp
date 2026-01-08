@@ -1,19 +1,52 @@
 // src/utils/security.js
+import DOMPurify from 'dompurify';
 
-// Input sanitization
+// Security configuration - frozen to prevent runtime modification
+const SECURITY_CONFIG = Object.freeze({
+  PASSWORD: {
+    MIN_LENGTH: 8,
+    REQUIRE_UPPERCASE: true,
+    REQUIRE_LOWERCASE: true,
+    REQUIRE_NUMBERS: true,
+    REQUIRE_SPECIAL_CHARS: true
+  },
+  FILE: {
+    MAX_SIZE: 5 * 1024 * 1024, // 5MB
+    ALLOWED_EXTENSIONS: ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.doc', '.docx'],
+    ALLOWED_MIME_TYPES: [
+      'image/jpeg',
+      'image/png', 
+      'image/gif',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ]
+  },
+  SESSION: {
+    DEFAULT_TIMEOUT: 3600000, // 1 hour
+    CSRF_HEADER: 'X-CSRF-Token'
+  }
+});
+
+// Input sanitization with DOMPurify
 export const sanitizeInput = (input) => {
   if (typeof input !== 'string') return input;
   
-  return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
+  // Use DOMPurify for robust HTML sanitization
+  const sanitized = DOMPurify.sanitize(input, {
+    ALLOWED_TAGS: [], // No HTML tags allowed
+    ALLOWED_ATTR: [], // No attributes allowed
+    KEEP_CONTENT: true // Keep text content
+  });
+  
+  return sanitized
     .replace(/javascript:/gi, '') // Remove javascript: protocol
-    .replace(/on\w+\s*=/gi, '') // Remove event handlers
     .trim();
 };
 
 // Password strength validation
 export const validatePasswordStrength = (password) => {
-  const minLength = 8;
+  const { PASSWORD } = SECURITY_CONFIG;
   const hasUpperCase = /[A-Z]/.test(password);
   const hasLowerCase = /[a-z]/.test(password);
   const hasNumbers = /\d/.test(password);
@@ -21,19 +54,19 @@ export const validatePasswordStrength = (password) => {
 
   const errors = [];
   
-  if (password.length < minLength) {
-    errors.push(`รหัสผ่านต้องมีอย่างน้อย ${minLength} ตัวอักษร`);
+  if (password.length < PASSWORD.MIN_LENGTH) {
+    errors.push(`รหัสผ่านต้องมีอย่างน้อย ${PASSWORD.MIN_LENGTH} ตัวอักษร`);
   }
-  if (!hasUpperCase) {
+  if (PASSWORD.REQUIRE_UPPERCASE && !hasUpperCase) {
     errors.push('รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่อย่างน้อย 1 ตัว');
   }
-  if (!hasLowerCase) {
+  if (PASSWORD.REQUIRE_LOWERCASE && !hasLowerCase) {
     errors.push('รหัสผ่านต้องมีตัวอักษรพิมพ์เล็กอย่างน้อย 1 ตัว');
   }
-  if (!hasNumbers) {
+  if (PASSWORD.REQUIRE_NUMBERS && !hasNumbers) {
     errors.push('รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว');
   }
-  if (!hasSpecialChar) {
+  if (PASSWORD.REQUIRE_SPECIAL_CHARS && !hasSpecialChar) {
     errors.push('รหัสผ่านต้องมีอักขระพิเศษอย่างน้อย 1 ตัว (!@#$%^&*...)');
   }
 
@@ -46,9 +79,10 @@ export const validatePasswordStrength = (password) => {
 
 // Calculate password strength score
 const calculatePasswordStrength = (password) => {
+  const { PASSWORD } = SECURITY_CONFIG;
   let score = 0;
   
-  if (password.length >= 8) score += 1;
+  if (password.length >= PASSWORD.MIN_LENGTH) score += 1;
   if (password.length >= 12) score += 1;
   if (/[A-Z]/.test(password)) score += 1;
   if (/[a-z]/.test(password)) score += 1;
@@ -61,26 +95,53 @@ const calculatePasswordStrength = (password) => {
   return 'strong';
 };
 
-// File validation
+// JWT token validation
+export const isJWTExpired = (token) => {
+  if (!token) return true;
+  
+  try {
+    // Decode JWT payload (base64)
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Math.floor(Date.now() / 1000);
+    
+    // Check if token has exp field and if it's expired
+    return payload.exp && payload.exp < currentTime;
+  } catch (error) {
+    console.warn('Invalid JWT token format:', error);
+    return true; // Treat invalid tokens as expired
+  }
+};
+
+// Enhanced file validation with extension and MIME type checks
 export const validateFile = (file) => {
-  const maxSize = parseInt(process.env.REACT_APP_MAX_FILE_SIZE) || 5 * 1024 * 1024; // 5MB
-  const allowedTypes = process.env.REACT_APP_ALLOWED_FILE_TYPES?.split(',') || [
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  ];
-
+  const { FILE } = SECURITY_CONFIG;
+  const maxSize = parseInt(process.env.REACT_APP_MAX_FILE_SIZE) || FILE.MAX_SIZE;
+  const allowedTypes = process.env.REACT_APP_ALLOWED_FILE_TYPES?.split(',') || FILE.ALLOWED_MIME_TYPES;
+  
   const errors = [];
-
+  
+  // Check file size
   if (file.size > maxSize) {
     errors.push(`ไฟล์ใหญ่เกินไป (สูงสุด ${maxSize / 1024 / 1024}MB)`);
   }
-
+  
+  // Check MIME type
   if (!allowedTypes.includes(file.type)) {
-    errors.push('ประเภทไฟล์ไม่ได้รับอนุญาต');
+    errors.push('ประเภทไฟล์ไม่ได้รับอนุญาต (MIME type)');
+  }
+  
+  // Check file extension
+  const fileName = file.name.toLowerCase();
+  const hasValidExtension = FILE.ALLOWED_EXTENSIONS.some(ext => fileName.endsWith(ext));
+  
+  if (!hasValidExtension) {
+    errors.push(`นามสกุลไฟล์ไม่ได้รับอนุญาต (อนุญาต: ${FILE.ALLOWED_EXTENSIONS.join(', ')})`);
+  }
+  
+  // Additional security: Check for double extensions
+  const extensionCount = (fileName.match(/\./g) || []).length;
+  if (extensionCount > 1) {
+    errors.push('ไฟล์ไม่สามารถมีนามสกุลซ้อนได้');
   }
 
   return {
@@ -101,9 +162,10 @@ export const validatePhone = (phone) => {
   return phoneRegex.test(phone.replace(/[-\s]/g, ''));
 };
 
-// Session timeout management
+// Session timeout management with CSRF protection
 export const setupSessionTimeout = () => {
-  const timeout = parseInt(process.env.REACT_APP_SESSION_TIMEOUT) || 3600000; // 1 hour
+  const { SESSION } = SECURITY_CONFIG;
+  const timeout = parseInt(process.env.REACT_APP_SESSION_TIMEOUT) || SESSION.DEFAULT_TIMEOUT;
   let timeoutId;
 
   const resetTimeout = () => {
@@ -112,6 +174,7 @@ export const setupSessionTimeout = () => {
       // Auto logout on timeout
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('csrfToken');
       window.location.href = '/login';
       alert('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
     }, timeout);
@@ -126,12 +189,36 @@ export const setupSessionTimeout = () => {
   resetTimeout(); // Initial setup
 };
 
-// Secure local storage
+// CSRF Token management
+export const generateCSRFToken = () => {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+};
+
+export const getCSRFToken = () => {
+  let token = localStorage.getItem('csrfToken');
+  if (!token) {
+    token = generateCSRFToken();
+    localStorage.setItem('csrfToken', token);
+  }
+  return token;
+};
+
+export const getCSRFHeaders = () => {
+  return {
+    [SECURITY_CONFIG.SESSION.CSRF_HEADER]: getCSRFToken()
+  };
+};
+
+// Secure local storage (Base64 encoding - NOT encryption)
 export const secureStorage = {
   setItem: (key, value) => {
     try {
-      const encrypted = btoa(JSON.stringify(value)); // Simple base64 encoding
-      localStorage.setItem(key, encrypted);
+      // Note: This is Base64 encoding for obfuscation, NOT encryption
+      // For true security, implement proper encryption with a secret key
+      const encoded = btoa(JSON.stringify(value));
+      localStorage.setItem(key, encoded);
     } catch (error) {
       console.warn('Failed to store item securely:', error);
     }
@@ -139,9 +226,9 @@ export const secureStorage = {
 
   getItem: (key) => {
     try {
-      const encrypted = localStorage.getItem(key);
-      if (!encrypted) return null;
-      return JSON.parse(atob(encrypted));
+      const encoded = localStorage.getItem(key);
+      if (!encoded) return null;
+      return JSON.parse(atob(encoded));
     } catch (error) {
       console.warn('Failed to retrieve item securely:', error);
       return null;
@@ -153,13 +240,41 @@ export const secureStorage = {
   }
 };
 
-// Content Security Policy helper
+// Content Security Policy helper - production-ready
 export const setupCSP = () => {
   // Add meta tag for CSP if not already present
   if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
     const meta = document.createElement('meta');
     meta.httpEquiv = 'Content-Security-Policy';
-    meta.content = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.github.com https://github.com;";
+    
+    // Production CSP - no unsafe-inline
+    if (process.env.NODE_ENV === 'production') {
+      meta.content = [
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: https:",
+        "connect-src 'self' https://api.github.com https://github.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
+        "frame-src 'none'",
+        "object-src 'none'",
+        "base-uri 'self'"
+      ].join('; ');
+    } else {
+      // Development CSP - allow unsafe-inline for hot reload
+      meta.content = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: https:",
+        "connect-src 'self' https://api.github.com https://github.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com ws: wss:",
+        "frame-src 'none'",
+        "object-src 'none'",
+        "base-uri 'self'"
+      ].join('; ');
+    }
+    
     document.head.appendChild(meta);
   }
 };

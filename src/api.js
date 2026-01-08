@@ -1,5 +1,5 @@
 // src/api.js
-import { isTokenExpired, forceLogout } from './utils/tokenUtils';
+import { isJWTExpired, getCSRFHeaders } from './utils/security';
 import { logger } from './utils/logger';
 
 const isLocal =
@@ -22,7 +22,7 @@ export const authHeader = () => {
   const token = localStorage.getItem("token");
   
   // ตรวจสอบว่า token หมดอายุหรือไม่
-  if (token && isTokenExpired(token)) {
+  if (token && isJWTExpired(token)) {
     forceLogout('Token หมดอายุ กรุณาเข้าสู่ระบบใหม่');
     return {};
   }
@@ -30,12 +30,21 @@ export const authHeader = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// Enhanced fetch with automatic token validation
+// Force logout helper
+const forceLogout = (message) => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('csrfToken');
+  alert(message);
+  window.location.href = '/login';
+};
+
+// Enhanced fetch with automatic token validation and CSRF protection
 export const apiCall = async (url, options = {}) => {
   const token = localStorage.getItem("token");
   
   // ตรวจสอบ token ก่อนเรียก API
-  if (token && isTokenExpired(token)) {
+  if (token && isJWTExpired(token)) {
     forceLogout('Token หมดอายุ กรุณาเข้าสู่ระบบใหม่');
     throw new Error('Token expired');
   }
@@ -45,6 +54,7 @@ export const apiCall = async (url, options = {}) => {
     headers: {
       'Content-Type': 'application/json',
       ...authHeader(),
+      ...getCSRFHeaders(), // Add CSRF protection
       ...options.headers,
     },
   });
