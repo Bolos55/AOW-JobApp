@@ -4,7 +4,7 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node --max_old_space_size=256 server.js",
+    "start": "node --max_old_space_size=512 server.js",
     "dev": "nodemon server.js",
     "security-audit": "npm audit --audit-level moderate"
   },

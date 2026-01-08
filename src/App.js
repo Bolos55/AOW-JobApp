@@ -17,7 +17,7 @@ function useAuthUser() {
   const read = () => {
     try {
       const userData = JSON.parse(localStorage.getItem("user") || "null");
-      console.log('👤 useAuthUser read:', userData ? `${userData.name} (${userData.email})` : 'No user');
+      // console.log('👤 useAuthUser read:', userData ? `${userData.name} (${userData.email})` : 'No user');
       return userData;
     } catch (e) {
       console.log('❌ useAuthUser read error:', e.message);
@@ -39,24 +39,24 @@ function useAuthUser() {
     window.addEventListener("storage", onChange);
     window.addEventListener("auth-change", onChange);
     
-    // ⭐ เพิ่ม manual check ทุก 1 วินาที (สำหรับ debug)
-    const interval = setInterval(() => {
-      const currentUser = read();
-      if (currentUser && !user) {
-        console.log('🔄 Manual check found user, updating state...');
-        setUser(currentUser);
-      }
-    }, 1000);
+    // ⭐ ลบ manual check ที่ทำให้ช้า - ใช้ event listeners แทน
+    // const interval = setInterval(() => {
+    //   const currentUser = read();
+    //   if (currentUser && !user) {
+    //     console.log('🔄 Manual check found user, updating state...');
+    //     setUser(currentUser);
+    //   }
+    // }, 1000);
     
     return () => {
       window.removeEventListener("storage", onChange);
       window.removeEventListener("auth-change", onChange);
-      clearInterval(interval);
+      // clearInterval(interval); // ลบแล้ว
     };
   }, [user]);
 
   // ⭐ Log current state
-  console.log('🎯 useAuthUser current state:', user ? `${user.name}` : 'null');
+  // console.log('🎯 useAuthUser current state:', user ? `${user.name}` : 'null');
   
   return user;
 }
@@ -65,16 +65,16 @@ function RequireAuth({ children }) {
   const token = localStorage.getItem("token");
   const user = localStorage.getItem("user");
   
-  console.log('🔐 RequireAuth check:', {
-    hasToken: !!token,
-    hasUser: !!user,
-    tokenLength: token ? token.length : 0,
-    userEmail: user ? JSON.parse(user)?.email : 'No email'
-  });
+  // console.log('🔐 RequireAuth check:', {
+  //   hasToken: !!token,
+  //   hasUser: !!user,
+  //   tokenLength: token ? token.length : 0,
+  //   userEmail: user ? JSON.parse(user)?.email : 'No email'
+  // });
   
   // ⭐ ถ้ามี token แต่ไม่มี user ให้รอสักครู่
   if (token && !user) {
-    console.log('⏳ Has token but no user, waiting...');
+    // console.log('⏳ Has token but no user, waiting...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -86,11 +86,11 @@ function RequireAuth({ children }) {
   }
   
   if (!token) {
-    console.log('❌ No token, redirecting to login');
+    // console.log('❌ No token, redirecting to login');
     return <Navigate to="/login" replace />;
   }
   
-  console.log('✅ Auth check passed, rendering children');
+  // console.log('✅ Auth check passed, rendering children');
   return children;
 }
 
