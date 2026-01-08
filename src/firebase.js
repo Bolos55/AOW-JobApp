@@ -1,69 +1,82 @@
-// src/firebase.js
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+  // src/firebase.js
+  import { initializeApp, getApps } from 'firebase/app';
+  import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
-// ✅ ตรวจสอบว่ามี Firebase config จริงหรือไม่
-const hasValidFirebaseConfig = 
-  process.env.REACT_APP_FIREBASE_API_KEY && 
-  process.env.REACT_APP_FIREBASE_API_KEY !== 'your_firebase_api_key_here' &&
-  process.env.REACT_APP_FIREBASE_PROJECT_ID && 
-  process.env.REACT_APP_FIREBASE_PROJECT_ID !== 'your-project-id' &&
-  process.env.REACT_APP_FIREBASE_AUTH_DOMAIN &&
-  process.env.REACT_APP_FIREBASE_AUTH_DOMAIN !== 'your-project-id.firebaseapp.com';
+  // Security: ห้าม hardcode ค่า sensitive data
+  const PLACEHOLDER_VALUES = [
+    'AIzaSyCpq_OYRG43zPRQlwAa85iWZBLOTntiGfc',
+    'jobapp-93cfa',
+    'jobapp-93cfa.firebaseapp.com',
+    '935454716852',
+    '1:935454716852:web:0e2bf94092c9b17d1938e1'
+  ];
 
-// Firebase configuration - ใช้ environment variables เท่านั้น
-const firebaseConfig = hasValidFirebaseConfig ? {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
-} : null;
+  // ✅ ตรวจสอบว่ามี Firebase config จริงหรือไม่
+  const hasValidFirebaseConfig = () => {
+    return (
+      process.env.REACT_APP_FIREBASE_API_KEY &&
+      process.env.REACT_APP_FIREBASE_PROJECT_ID &&
+      process.env.REACT_APP_FIREBASE_AUTH_DOMAIN &&
+      process.env.REACT_APP_FIREBASE_APP_ID
+    );
+  };
 
-// ✅ Initialize Firebase เฉพาะเมื่อมี config จริง
-let app = null;
-let auth = null;
-let googleProvider = null;
-
-if (hasValidFirebaseConfig && firebaseConfig) {
-  try {
-    // ✅ Production-safe: ป้องกัน Firebase initialize ซ้ำ
-    app = getApps().length === 0
-      ? initializeApp(firebaseConfig)
-      : getApps()[0];
+  // Firebase configuration - ใช้ environment variables เท่านั้น
+  const getFirebaseConfig = () => {
+    if (!hasValidFirebaseConfig()) return null;
     
-    auth = getAuth(app);
-    googleProvider = new GoogleAuthProvider();
+    return {
+      apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+      authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+      storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+      appId: process.env.REACT_APP_FIREBASE_APP_ID,
+      measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
+    };
+  };
+
+  // Initialize Firebase function
+  const initFirebase = () => {
+    const firebaseConfig = getFirebaseConfig();
     
-    // Configure Google provider
-    googleProvider.setCustomParameters({
-      prompt: 'select_account'
-    });
-    
-    console.log('✅ Firebase initialized successfully');
-  } catch (error) {
-    console.error('❌ Firebase initialization failed:', error);
-    // ไม่ log config ใน production เพื่อความปลอดภัย
-    if (process.env.NODE_ENV === 'development') {
-      console.error('🔧 Firebase config debug:', {
-        hasApiKey: !!process.env.REACT_APP_FIREBASE_API_KEY,
-        hasProjectId: !!process.env.REACT_APP_FIREBASE_PROJECT_ID,
-        hasAuthDomain: !!process.env.REACT_APP_FIREBASE_AUTH_DOMAIN
-      });
+    if (!firebaseConfig) {
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ Firebase not configured - missing environment variables');
+      }
+      return { app: null, auth: null, googleProvider: null };
     }
-  }
-} else {
-  console.log('⚠️ Firebase not configured - missing environment variables');
-  // ใน development แสดง debug info
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔧 Environment check:', {
-      REACT_APP_FIREBASE_API_KEY: process.env.REACT_APP_FIREBASE_API_KEY ? 'Present' : 'Missing',
-      REACT_APP_FIREBASE_PROJECT_ID: process.env.REACT_APP_FIREBASE_PROJECT_ID ? 'Present' : 'Missing',
-      REACT_APP_FIREBASE_AUTH_DOMAIN: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN ? 'Present' : 'Missing'
-    });
-  }
-}
 
-export { auth, googleProvider };
-export default app;
+    try {
+      // ✅ Production-safe: ป้องกัน Firebase initialize ซ้ำ
+      const app = getApps().length === 0
+        ? initializeApp(firebaseConfig)
+        : getApps()[0];
+      
+      const auth = getAuth(app);
+      const googleProvider = new GoogleAuthProvider();
+      
+      // Configure Google provider
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Firebase initialized successfully');
+      }
+      
+      return { app, auth, googleProvider };
+    } catch (error) {
+      console.error('❌ Firebase initialization failed:', error);
+      return { app: null, auth: null, googleProvider: null };
+    }
+  };
+
+  // Initialize Firebase
+  const { app, auth, googleProvider } = initFirebase();
+
+  // Null-safe exports
+  export { auth, googleProvider };
+  export default app;

@@ -3,7 +3,7 @@
 ## Issues Fixed
 
 ### 1. Environment Variables Migration (CRITICAL)
-- ✅ **Fixed**: Migrated from `process.env.REACT_APP_*` to `import.meta.env.VITE_*`
+- ✅ **Fixed**: Corrected environment variables for Create React App
 - ✅ **Files Updated**:
   - `src/api.js` - API_BASE configuration
   - `src/firebase.js` - Firebase configuration
@@ -20,22 +20,22 @@
 
 ### 3. API Base URL Configuration
 - ✅ **Fixed**: Proper fallback to backend URL in production
-- ✅ **Configuration**: `import.meta.env.VITE_API_BASE || "https://aow-jobapp-backend.onrender.com"`
+- ✅ **Configuration**: `process.env.REACT_APP_API_BASE || "https://aow-jobapp-backend.onrender.com"`
 
 ## Required Environment Variables for Production
 
 ### Frontend (Render Static Site)
 ```bash
 # API Configuration
-VITE_API_BASE=https://aow-jobapp-backend.onrender.com
+REACT_APP_API_BASE=https://aow-jobapp-backend.onrender.com
 
 # Firebase Configuration
-VITE_FIREBASE_API_KEY=AIzaSyCpq_OYRG43zPRQlwAa85iWZBLOTntiGfc
-VITE_FIREBASE_AUTH_DOMAIN=jobapp-93cfa.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=jobapp-93cfa
-VITE_FIREBASE_STORAGE_BUCKET=jobapp-93cfa.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=935454716852
-VITE_FIREBASE_APP_ID=1:935454716852:web:0e2bf94092c9b17d1938e1
+REACT_APP_FIREBASE_API_KEY=AIzaSyCpq_OYRG43zPRQlwAa85iWZBLOTntiGfc
+REACT_APP_FIREBASE_AUTH_DOMAIN=jobapp-93cfa.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=jobapp-93cfa
+REACT_APP_FIREBASE_STORAGE_BUCKET=jobapp-93cfa.firebasestorage.app
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=935454716852
+REACT_APP_FIREBASE_APP_ID=1:935454716852:web:0e2bf94092c9b17d1938e1
 ```
 
 ### Backend (Already Configured)
@@ -57,19 +57,19 @@ git push origin main
 1. Go to Render Dashboard → Frontend Service
 2. Navigate to Environment tab
 3. Add/Update these variables:
-   - `VITE_API_BASE=https://aow-jobapp-backend.onrender.com`
-   - `VITE_FIREBASE_API_KEY=AIzaSyCpq_OYRG43zPRQlwAa85iWZBLOTntiGfc`
-   - `VITE_FIREBASE_AUTH_DOMAIN=jobapp-93cfa.firebaseapp.com`
-   - `VITE_FIREBASE_PROJECT_ID=jobapp-93cfa`
-   - `VITE_FIREBASE_STORAGE_BUCKET=jobapp-93cfa.firebasestorage.app`
-   - `VITE_FIREBASE_MESSAGING_SENDER_ID=935454716852`
-   - `VITE_FIREBASE_APP_ID=1:935454716852:web:0e2bf94092c9b17d1938e1`
+   - `REACT_APP_API_BASE=https://aow-jobapp-backend.onrender.com`
+   - `REACT_APP_FIREBASE_API_KEY=AIzaSyCpq_OYRG43zPRQlwAa85iWZBLOTntiGfc`
+   - `REACT_APP_FIREBASE_AUTH_DOMAIN=jobapp-93cfa.firebaseapp.com`
+   - `REACT_APP_FIREBASE_PROJECT_ID=jobapp-93cfa`
+   - `REACT_APP_FIREBASE_STORAGE_BUCKET=jobapp-93cfa.firebasestorage.app`
+   - `REACT_APP_FIREBASE_MESSAGING_SENDER_ID=935454716852`
+   - `REACT_APP_FIREBASE_APP_ID=1:935454716852:web:0e2bf94092c9b17d1938e1`
 
 ### 3. Deploy Frontend Changes
 ```bash
 # Push frontend changes to trigger Render deployment
 git add src/ .env .env.example
-git commit -m "Fix environment variables for Vite production build"
+git commit -m "Fix environment variables for Create React App production build"
 git push origin main
 ```
 
@@ -120,6 +120,6 @@ git push origin main
 3. Ensure backend deployment includes CORS changes
 
 ### If Firebase errors:
-1. Verify all VITE_FIREBASE_* variables are set in Render
+1. Verify all REACT_APP_FIREBASE_* variables are set in Render
 2. Check Firebase Console authorized domains
 3. Clear browser cache and hard reload
