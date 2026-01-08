@@ -9,7 +9,7 @@ const isLocal =
 
 export const API_BASE = isLocal
   ? "http://localhost:5000"
-  : import.meta.env.VITE_API_BASE || "https://aow-jobapp-backend.onrender.com";
+  : "https://aow-jobapp-backend.onrender.com";
 
 // ✅ Only log in development
 logger.debug('🌐 API Configuration:', {
