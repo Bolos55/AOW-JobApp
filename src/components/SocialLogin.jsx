@@ -18,26 +18,26 @@ export default function SocialLogin({ onSuccess, onError }) {
   // Helper function สำหรับจัดการ Firebase user
   const handleFirebaseUser = useCallback(async (user) => {
     try {
-      console.log('🔄 Processing Firebase user:', user.email);
-      console.log('📋 Firebase user data:', {
-        uid: user.uid,
-        email: user.email,
-        name: user.displayName,
-        photoURL: user.photoURL,
-        emailVerified: user.emailVerified
-      });
+      // console.log('🔄 Processing Firebase user:', user.email); // ลบ log
+      // console.log('📋 Firebase user data:', { // ลบ log block
+      //   uid: user.uid,
+      //   email: user.email,
+      //   name: user.displayName,
+      //   photoURL: user.photoURL,
+      //   emailVerified: user.emailVerified
+      // });
       
       // ส่งข้อมูลไป backend
       // ✅ สร้าง URL ที่ถูกต้องเสมอ
       const apiUrl = `${API_BASE}/api/auth/firebase-google`.replace(/\/api\/api\//, '/api/');
       
-      console.log('📡 Sending request to backend...');
-      console.log('🌐 Request details:', {
-        API_BASE,
-        finalUrl: apiUrl,
-        origin: window.location.origin,
-        method: 'POST'
-      });
+      // console.log('📡 Sending request to backend...'); // ลบ log
+      // console.log('🌐 Request details:', { // ลบ log block
+      //   API_BASE,
+      //   finalUrl: apiUrl,
+      //   origin: window.location.origin,
+      //   method: 'POST'
+      // });
       
       const res = await fetch(apiUrl, {
         method: 'POST',
@@ -55,8 +55,8 @@ export default function SocialLogin({ onSuccess, onError }) {
         })
       });
       
-      console.log('📥 Backend response status:', res.status);
-      console.log('📥 Backend response headers:', Object.fromEntries(res.headers.entries()));
+      // console.log('📥 Backend response status:', res.status); // ลบ log
+      // console.log('📥 Backend response headers:', Object.fromEntries(res.headers.entries())); // ลบ log
       
       if (!res.ok) {
         const errorText = await res.text();
@@ -72,11 +72,11 @@ export default function SocialLogin({ onSuccess, onError }) {
       }
       
       const data = await res.json();
-      console.log('📥 Backend response data:', data);
+      // console.log('📥 Backend response data:', data); // ลบ log
       
       // ✅ ตรวจสอบว่าเป็นผู้ใช้ใหม่ที่ต้องเลือก role หรือไม่
       if (data.newUser && data.needsRoleSelection) {
-        console.log('👤 New user needs role selection, redirecting...');
+        // console.log('👤 New user needs role selection, redirecting...'); // ลบ log
         
         // ✅ Redirect ไปหน้าเลือก role พร้อมข้อมูล social
         const redirectData = {
@@ -95,10 +95,10 @@ export default function SocialLogin({ onSuccess, onError }) {
         return;
       }
       
-      console.log('✅ Firebase login successful, calling onSuccess with:', {
-        user: data.user,
-        token: data.token ? 'Present' : 'Missing'
-      });
+      // console.log('✅ Firebase login successful, calling onSuccess with:', { // ลบ log block
+      //   user: data.user,
+      //   token: data.token ? 'Present' : 'Missing'
+      // });
       
       onSuccess(data);
       
@@ -119,16 +119,22 @@ export default function SocialLogin({ onSuccess, onError }) {
     // ถ้า Firebase ไม่ได้ตั้งค่า ไม่ต้องทำอะไร
     if (!hasFirebaseConfig) return;
     
+    // เพิ่ม flag เพื่อป้องกัน multiple calls
+    let isChecking = false;
+    
     const checkRedirectResult = async () => {
+      if (isChecking) return;
+      isChecking = true;
+      
       try {
-        console.log('🔍 Checking Firebase redirect result...');
+        // console.log('🔍 Checking Firebase redirect result...'); // ลบ log นี้
         const result = await getRedirectResult(auth);
         if (result) {
           console.log('✅ Firebase redirect result found:', result.user.email);
           const user = result.user;
           await handleFirebaseUser(user);
         } else {
-          console.log('ℹ️ No Firebase redirect result');
+          // console.log('ℹ️ No Firebase redirect result'); // ลบ log นี้
         }
       } catch (error) {
         console.log('⚠️ Firebase redirect result error:', error.message);
@@ -139,11 +145,14 @@ export default function SocialLogin({ onSuccess, onError }) {
         } else if (error.code && !error.code.includes('auth/no-auth-event')) {
           onError('เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google');
         }
+      } finally {
+        isChecking = false;
       }
     };
 
+    // เรียกแค่ครั้งเดียวเมื่อ component mount
     checkRedirectResult();
-  }, [hasFirebaseConfig, handleFirebaseUser, onError]);
+  }, []); // ลบ dependencies ออกเพื่อให้รันแค่ครั้งเดียว
 
   // Firebase Google Login
   const handleFirebaseGoogleLogin = async () => {

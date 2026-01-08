@@ -38,13 +38,13 @@ if (hasValidFirebaseConfig) {
     });
     
     console.log('✅ Firebase initialized successfully');
-    console.log('🔧 Firebase config check:', {
-      hasApiKey: !!process.env.REACT_APP_FIREBASE_API_KEY,
-      hasProjectId: !!process.env.REACT_APP_FIREBASE_PROJECT_ID,
-      hasAuthDomain: !!process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-      authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN
-    });
+    // console.log('🔧 Firebase config check:', { // ลบ detailed config log
+    //   hasApiKey: !!process.env.REACT_APP_FIREBASE_API_KEY,
+    //   hasProjectId: !!process.env.REACT_APP_FIREBASE_PROJECT_ID,
+    //   hasAuthDomain: !!process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+    //   projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+    //   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN
+    // });
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error);
     console.error('🔧 Firebase config used:', {

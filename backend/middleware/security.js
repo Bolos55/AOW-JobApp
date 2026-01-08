@@ -46,22 +46,26 @@ export const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [
       'http://localhost:3000',
+      'http://127.0.0.1:3000',
       'https://aow-jobapp-frontend.onrender.com'
     ];
     
-    // Allow requests with no origin (mobile apps, etc.)
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin (mobile apps, etc.) และ development
+    if (!origin || process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      logger.warn(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin'],
 };
 
 // Input sanitization
