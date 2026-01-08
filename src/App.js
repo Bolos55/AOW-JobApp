@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.js
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ChatsPage from "./ChatsPage";
@@ -12,6 +12,7 @@ import PaymentStatusDemo from "./components/PaymentStatusDemo";
 import CookieConsent from "./components/CookieConsent";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
+import "./test-env.js"; // ⭐ เพิ่มบรรทัดนี้เพื่อทดสอบ env vars
 
 function useAuthUser() {
   const read = () => {
