@@ -7,11 +7,11 @@ const hasValidFirebaseConfig =
   typeof import.meta !== 'undefined' &&
   import.meta.env &&
   import.meta.env.VITE_FIREBASE_API_KEY && 
-  import.meta.env.VITE_FIREBASE_API_KEY !== 'your_firebase_api_key_here' &&
+  import.meta.env.VITE_FIREBASE_API_KEY !== 'AIzaSyCpq_OYRG43zPRQlwAa85iWZBLOTntiGfc' &&
   import.meta.env.VITE_FIREBASE_PROJECT_ID && 
-  import.meta.env.VITE_FIREBASE_PROJECT_ID !== 'your-project-id' &&
+  import.meta.env.VITE_FIREBASE_PROJECT_ID !== 'jobapp-93cfa' &&
   import.meta.env.VITE_FIREBASE_AUTH_DOMAIN &&
-  import.meta.env.VITE_FIREBASE_AUTH_DOMAIN !== 'your-project-id.firebaseapp.com';
+  import.meta.env.VITE_FIREBASE_AUTH_DOMAIN !== 'jobapp-93cfa.firebaseapp.com';
 
 // Firebase configuration - ใช้ environment variables เท่านั้น (Safe access)
 const firebaseConfig = hasValidFirebaseConfig ? {
