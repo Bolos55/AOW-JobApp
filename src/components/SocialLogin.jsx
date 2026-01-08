@@ -28,10 +28,8 @@ export default function SocialLogin({ onSuccess, onError }) {
       });
       
       // ส่งข้อมูลไป backend
-      // ✅ แก้ไข URL ให้ไม่มี /api ซ้ำ
-      const apiUrl = API_BASE.endsWith('/api') 
-        ? `${API_BASE}/auth/firebase-google`
-        : `${API_BASE}/api/auth/firebase-google`;
+      // ✅ สร้าง URL ที่ถูกต้องเสมอ
+      const apiUrl = `${API_BASE}/api/auth/firebase-google`.replace(/\/api\/api\//, '/api/');
       
       console.log('📡 Sending request to backend...');
       console.log('🌐 Request details:', {

@@ -45,7 +45,7 @@ export function useOnlineStatus(user = null) {
         });
 
         if (response.ok && isMountedRef.current) {
-          console.log('📡 Heartbeat sent:', currentPage);
+          // console.log('📡 Heartbeat sent:', currentPage); // ลด console logs
         }
       } catch (err) {
         if (isMountedRef.current) {
@@ -57,12 +57,12 @@ export function useOnlineStatus(user = null) {
     // ส่ง heartbeat ทันทีเมื่อเริ่ม
     sendHeartbeat();
 
-    // ตั้ง interval ส่งทุก 30 วินาที
+    // ตั้ง interval ส่งทุก 60 วินาที (ลดจาก 30 วินาที)
     intervalRef.current = setInterval(() => {
       if (isMountedRef.current && user) {
         sendHeartbeat();
       }
-    }, 30000);
+    }, 60000); // เปลี่ยนจาก 30000 เป็น 60000
 
     // ฟังก์ชันตั้งสถานะออฟไลน์
     const setOfflineInternal = async () => {
