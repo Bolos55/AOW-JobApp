@@ -1,10 +1,16 @@
 // backend/routes/paymentRoutes.js
 import express from "express";
+import crypto from "crypto";
 import Payment from "../models/Payment.js";
 import Job from "../models/Job.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { auditLogMiddleware } from "../middleware/auditLog.js";
-import { generateQRCode, verifyServiceFeePayment } from "../utils/paymentUtils.js";
+import { 
+  generateQRCode, 
+  verifyServiceFeePayment,
+  verifyWebhookSignature,
+  generateWebhookSignature
+} from "../utils/paymentUtils.js";
 import { calculateJobPricing, getCurrentTaxConfig, validateServiceFee } from "../utils/pricingUtils.js";
 
 const router = express.Router();
@@ -221,10 +227,24 @@ router.get("/:paymentId/status",
 router.post("/webhook", async (req, res) => {
   try {
     const signature = req.headers['x-webhook-signature'];
+    const rawBody = req.rawBody || JSON.stringify(req.body);
     const payload = req.body;
 
-    // ตรวจสอบ webhook signature
-    if (!verifyWebhookSignature(signature, payload)) {
+    // ✅ ตรวจสอบ webhook signature อย่างปลอดภัย
+    const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      console.error('❌ PAYMENT_WEBHOOK_SECRET not configured');
+      return res.status(500).json({ message: "Webhook secret not configured" });
+    }
+
+    if (!signature) {
+      console.warn('❌ Missing webhook signature');
+      return res.status(401).json({ message: "Missing webhook signature" });
+    }
+
+    // ✅ ใช้ secure verification function
+    if (!verifyWebhookSignature(signature, rawBody, webhookSecret)) {
+      console.warn('❌ Invalid webhook signature:', { signature, payloadLength: rawBody.length });
       return res.status(401).json({ message: "Invalid webhook signature" });
     }
 
@@ -399,21 +419,7 @@ router.get("/my-payments", authMiddleware, async (req, res) => {
   }
 });
 
-// Helper functions
-function verifyWebhookSignature(signature, payload) {
-  // Implement webhook signature verification
-  // This depends on your payment gateway
-  const expectedSignature = generateWebhookSignature(payload);
-  return signature === expectedSignature;
-}
-
-function generateWebhookSignature(payload) {
-  const crypto = require('crypto');
-  const secret = process.env.PAYMENT_WEBHOOK_SECRET;
-  return crypto
-    .createHmac('sha256', secret)
-    .update(JSON.stringify(payload))
-    .digest('hex');
-}
+// ✅ REMOVED INSECURE HELPER FUNCTIONS
+// Use secure implementations from paymentUtils.js instead
 
 export default router;

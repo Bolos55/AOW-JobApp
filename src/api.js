@@ -9,7 +9,7 @@ const isLocal =
 
 export const API_BASE = isLocal
   ? "http://localhost:5000"
-  : process.env.REACT_APP_API_BASE || "https://aow-jobapp-frontend.onrender.com";
+  : process.env.REACT_APP_API_BASE || "https://aow-jobapp.onrender.com";
 
 // ✅ Only log in development
 logger.debug('🌐 API Configuration:', {

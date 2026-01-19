@@ -211,12 +211,17 @@ export const getCSRFHeaders = () => {
   };
 };
 
-// Secure local storage (Base64 encoding - NOT encryption)
+// ⚠️ WARNING: This is NOT secure storage - tokens should be in httpOnly cookies
+// This is a temporary solution for development only
 export const secureStorage = {
   setItem: (key, value) => {
     try {
-      // Note: This is Base64 encoding for obfuscation, NOT encryption
-      // For true security, implement proper encryption with a secret key
+      // ⚠️ Base64 is NOT encryption - easily decoded
+      // TODO: Move sensitive tokens to httpOnly cookies
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`⚠️ Storing ${key} in localStorage - NOT secure for production`);
+      }
+      
       const encoded = btoa(JSON.stringify(value));
       localStorage.setItem(key, encoded);
     } catch (error) {
@@ -237,6 +242,28 @@ export const secureStorage = {
 
   removeItem: (key) => {
     localStorage.removeItem(key);
+  }
+};
+
+// ✅ Secure token storage recommendation
+export const secureTokenStorage = {
+  // For production: Use httpOnly cookies instead of localStorage
+  setToken: (token) => {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('⚠️ Production should use httpOnly cookies for tokens');
+    }
+    // Temporary localStorage solution
+    localStorage.setItem('token', token);
+  },
+  
+  getToken: () => {
+    return localStorage.getItem('token');
+  },
+  
+  removeToken: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('csrfToken');
   }
 };
 

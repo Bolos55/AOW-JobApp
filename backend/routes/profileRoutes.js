@@ -2,54 +2,81 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
+import crypto from "crypto";
 import { authMiddleware } from "../middleware/auth.js";
 import User from "../models/User.js";
 
+// Import rate limiting
+import { uploadRateLimit } from "../middleware/security.js";
+
 const router = express.Router();
 
-/* ========= MULTER สำหรับอัปโหลดเรซูเม่ ========= */
+/* ========= SECURE FILE UPLOAD CONFIGURATION ========= */
 
-const resumeStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads"); // ใช้โฟลเดอร์เดียวกับที่ server.js ตั้ง static ไว้
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname || "");
-    const safeExt = ext || ".pdf";
-    cb(null, `resume_${req.user.id}_${Date.now()}${safeExt}`);
-  },
-});
+// ✅ Secure file storage with random filenames
+const createSecureStorage = (subfolder = '') => {
+  return multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadPath = subfolder ? `uploads/${subfolder}` : "uploads";
+      cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+      // ✅ Generate cryptographically secure random filename
+      const randomName = crypto.randomBytes(16).toString('hex');
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `${randomName}${ext}`);
+    },
+  });
+};
+
+// ✅ Secure file filter for resumes
+const resumeFileFilter = (req, file, cb) => {
+  const allowedExtensions = ['.pdf', '.doc', '.docx'];
+  const allowedMimeTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ];
+  
+  const ext = path.extname(file.originalname).toLowerCase();
+  
+  if (allowedExtensions.includes(ext) && allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("ไฟล์ต้องเป็น PDF, DOC หรือ DOCX เท่านั้น"));
+  }
+};
+
+// ✅ Secure file filter for photos
+const photoFileFilter = (req, file, cb) => {
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  
+  const ext = path.extname(file.originalname).toLowerCase();
+  
+  if (allowedExtensions.includes(ext) && allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("ไฟล์ต้องเป็น JPG, PNG หรือ GIF เท่านั้น"));
+  }
+};
 
 const uploadResume = multer({
-  storage: resumeStorage,
+  storage: createSecureStorage('resumes'),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: 5 * 1024 * 1024, // ✅ Reduced to 5MB
+    files: 1
   },
+  fileFilter: resumeFileFilter
 });
 
-/* ========= MULTER สำหรับอัปโหลดรูปโปรไฟล์ ========= */
-// แนะนำให้สร้างโฟลเดอร์ uploads/profile ไว้ล่วงหน้า
-const photoStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads");           // ✅ ใช้ uploads เหมือนเดิม
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname || "");
-    const safeExt = ext || ".jpg";
-    cb(null, `photo_${req.user.id}_${Date.now()}${safeExt}`);
-  },
-});
 const uploadPhoto = multer({
-  storage: photoStorage,
+  storage: createSecureStorage('photos'),
   limits: {
-    fileSize: 10 * 1024 * 1024, // เพิ่มเป็น 10MB
+    fileSize: 2 * 1024 * 1024, // ✅ Reduced to 2MB for photos
+    files: 1
   },
-  fileFilter: (req, file, cb) => {
-    if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("ไฟล์ต้องเป็นรูปภาพเท่านั้น"));
-    }
-    cb(null, true);
-  },
+  fileFilter: photoFileFilter
 });
 
 /* ========= GET /api/profile/me ========= */
@@ -57,18 +84,24 @@ const uploadPhoto = multer({
 
 router.get("/me", authMiddleware, async (req, res) => {
   try {
-    console.log("📥 GET /api/profile/me - User ID:", req.user.id, "Role:", req.user.role);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("📥 GET /api/profile/me - User ID:", req.user.id, "Role:", req.user.role);
+    }
     
     const user = await User.findById(req.user.id).select(
       "name email role profile"
     );
     if (!user) {
-      console.log("❌ User not found:", req.user.id);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("❌ User not found:", req.user.id);
+      }
       return res.status(404).json({ message: "ไม่พบผู้ใช้" });
     }
 
     const p = user.profile || {};
-    console.log("📥 Profile from database:", p);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("📥 Profile from database:", p);
+    }
 
     // ส่งข้อมูลตาม role
     if (user.role === "employer") {
@@ -84,7 +117,9 @@ router.get("/me", authMiddleware, async (req, res) => {
         logoUrl: p.logoUrl || "",
       };
       
-      console.log("📥 Employer response to frontend:", response);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("📥 Employer response to frontend:", response);
+      }
       return res.json(response);
     } else {
       // JobSeeker profile (เดิม)
@@ -99,7 +134,9 @@ router.get("/me", authMiddleware, async (req, res) => {
         photoUrl: p.photoUrl || "",
       };
       
-      console.log("📥 JobSeeker response to frontend:", response);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("📥 JobSeeker response to frontend:", response);
+      }
       return res.json(response);
     }
   } catch (e) {
@@ -113,15 +150,19 @@ router.get("/me", authMiddleware, async (req, res) => {
 
 router.put("/me", authMiddleware, async (req, res) => {
   try {
-    console.log("📤 PUT /api/profile/me - User ID:", req.user.id, "Role:", req.user.role);
-    console.log("📤 PUT /api/profile/me - Payload:", req.body);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("📤 PUT /api/profile/me - User ID:", req.user.id, "Role:", req.user.role);
+      console.log("📤 PUT /api/profile/me - Payload:", req.body);
+    }
 
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: "ไม่พบผู้ใช้" });
     }
 
-    console.log("📤 Current profile before update:", user.profile);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("📤 Current profile before update:", user.profile);
+    }
 
     const current = user.profile || {};
 
@@ -177,15 +218,21 @@ router.put("/me", authMiddleware, async (req, res) => {
       user.profile = newProfile;
     }
 
-    console.log("📤 New profile to save:", user.profile);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("📤 New profile to save:", user.profile);
+    }
 
         try {
           await user.save();
-          console.log("✅ Profile saved successfully");
+          if (process.env.NODE_ENV === 'development') {
+            console.log("✅ Profile saved successfully");
+          }
           
           // ตรวจสอบว่าบันทึกจริงหรือไม่
-          const savedUser = await User.findById(req.user.id);
-          console.log("📤 Profile after save:", savedUser.profile);
+          if (process.env.NODE_ENV === 'development') {
+            const savedUser = await User.findById(req.user.id);
+            console.log("📤 Profile after save:", savedUser.profile);
+          }
           
         } catch (saveError) {
           console.error("❌ Error saving user profile:", saveError);
@@ -212,35 +259,48 @@ router.put("/me", authMiddleware, async (req, res) => {
 
 router.post(
   "/me/resume",
+  uploadRateLimit, // ✅ Add rate limiting for uploads
   authMiddleware,
   uploadResume.single("resume"),
   async (req, res) => {
     try {
-      console.log("📄 POST /api/profile/me/resume - User ID:", req.user.id);
-      console.log("📄 Uploaded file:", req.file);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("📄 POST /api/profile/me/resume - User ID:", req.user.id);
+        console.log("📄 Uploaded file:", req.file);
+      }
       
       if (!req.file) {
-        console.log("❌ No resume file found in request");
+        if (process.env.NODE_ENV === 'development') {
+          console.log("❌ No resume file found in request");
+        }
         return res.status(400).json({ message: "ไม่พบไฟล์เรซูเม่" });
       }
 
       const user = await User.findById(req.user.id);
       if (!user) {
-        console.log("❌ User not found:", req.user.id);
+        if (process.env.NODE_ENV === 'development') {
+          console.log("❌ User not found:", req.user.id);
+        }
         return res.status(404).json({ message: "ไม่พบผู้ใช้" });
       }
 
       const resumePath = (req.file.path || "").replace(/\\/g, "/");
-      console.log("📄 Resume path to save:", resumePath);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("📄 Resume path to save:", resumePath);
+      }
 
       user.profile = {
         ...(user.profile || {}),
         resumeUrl: resumePath,
       };
 
-      console.log("📄 Profile before save:", user.profile);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("📄 Profile before save:", user.profile);
+      }
       await user.save();
-      console.log("✅ Resume profile saved successfully");
+      if (process.env.NODE_ENV === 'development') {
+        console.log("✅ Resume profile saved successfully");
+      }
 
       return res.json({
         message: "อัปโหลดเรซูเม่เรียบร้อยแล้ว",
@@ -260,11 +320,14 @@ router.post(
 
 router.post(
   "/me/photo",
+  uploadRateLimit, // ✅ Add rate limiting for uploads
   authMiddleware,
   (req, res, next) => {
     uploadPhoto.single("photo")(req, res, (err) => {
       if (err) {
-        console.log("❌ Multer error:", err);
+        if (process.env.NODE_ENV === 'development') {
+          console.log("❌ Multer error:", err);
+        }
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({ message: "ไฟล์รูปใหญ่เกินไป (สูงสุด 10MB)" });
         }
@@ -275,32 +338,44 @@ router.post(
   },
   async (req, res) => {
     try {
-      console.log("📸 POST /api/profile/me/photo - User ID:", req.user.id);
-      console.log("📸 Uploaded file:", req.file);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("📸 POST /api/profile/me/photo - User ID:", req.user.id);
+        console.log("📸 Uploaded file:", req.file);
+      }
       
       if (!req.file) {
-        console.log("❌ No file found in request");
+        if (process.env.NODE_ENV === 'development') {
+          console.log("❌ No file found in request");
+        }
         return res.status(400).json({ message: "ไม่พบไฟล์รูปโปรไฟล์" });
       }
 
       const user = await User.findById(req.user.id);
       if (!user) {
-        console.log("❌ User not found:", req.user.id);
+        if (process.env.NODE_ENV === 'development') {
+          console.log("❌ User not found:", req.user.id);
+        }
         return res.status(404).json({ message: "ไม่พบผู้ใช้" });
       }
 
       // path ที่จะให้ frontend ใช้โหลด (server.js ต้องมี app.use("/uploads", express.static("uploads")))
       const photoPath = (req.file.path || "").replace(/\\/g, "/");
-      console.log("📸 Photo path to save:", photoPath);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("📸 Photo path to save:", photoPath);
+      }
 
       user.profile = {
         ...(user.profile || {}),
         photoUrl: photoPath,
       };
 
-      console.log("📸 Profile before save:", user.profile);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("📸 Profile before save:", user.profile);
+      }
       await user.save();
-      console.log("✅ Photo profile saved successfully");
+      if (process.env.NODE_ENV === 'development') {
+        console.log("✅ Photo profile saved successfully");
+      }
 
       return res.json({
         message: "อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว",
@@ -320,10 +395,14 @@ router.post(
 
 router.get("/:userId", authMiddleware, async (req, res) => {
   try {
-    console.log("👁️ GET /api/profile/:userId - Viewer:", req.user.id, "Target:", req.params.userId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("👁️ GET /api/profile/:userId - Viewer:", req.user.id, "Target:", req.params.userId);
+    }
     
     if (!["admin", "employer"].includes(req.user.role)) {
-      console.log("❌ Access denied - Role:", req.user.role);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("❌ Access denied - Role:", req.user.role);
+      }
       return res.status(403).json({ message: "ไม่มีสิทธิ์ดูโปรไฟล์นี้" });
     }
 
@@ -331,16 +410,20 @@ router.get("/:userId", authMiddleware, async (req, res) => {
       "name email role profile"
     );
     if (!user) {
-      console.log("❌ User not found:", req.params.userId);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("❌ User not found:", req.params.userId);
+      }
       return res.status(404).json({ message: "ไม่พบผู้ใช้" });
     }
 
-    console.log("👁️ Profile data:", {
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      profile: user.profile
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log("👁️ Profile data:", {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profile: user.profile
+      });
+    }
 
     return res.json({
       name: user.name,

@@ -6,17 +6,26 @@ import { validateEmail } from "../utils/emailValidator.js";
 
 const router = express.Router();
 
+// ✅ Validate JWT_SECRET on startup
 // ✅ สร้าง token: เก็บ id + email + role
-const createToken = (user) =>
-  jwt.sign(
+const createToken = (user) => {
+  const JWT_SECRET = process.env.JWT_SECRET;
+  const JWT_EXPIRE = process.env.JWT_EXPIRE || "7d";
+  
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
+  
+  return jwt.sign(
     {
       id: user._id,
       email: user.email,
       role: user.role || "jobseeker",
     },
-    process.env.JWT_SECRET || "dev-secret",
-    { expiresIn: process.env.JWT_EXPIRE || "7d" }
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRE }
   );
+};
 
 // ===================== GOOGLE LOGIN =====================
 router.post("/google", async (req, res) => {
@@ -259,6 +268,118 @@ router.post("/firebase-google", async (req, res) => {
 });
 
 // ===================== GITHUB LOGIN =====================
+// GET endpoint สำหรับ redirect ไป GitHub OAuth
+router.get("/github", (req, res) => {
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/github/callback`;
+  
+  if (!clientId) {
+    return res.status(500).json({ message: "GitHub OAuth ไม่ได้ตั้งค่า" });
+  }
+  
+  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`;
+  
+  res.redirect(githubAuthUrl);
+});
+
+// Callback endpoint สำหรับรับ authorization code จาก GitHub
+router.get("/github/callback", async (req, res) => {
+  try {
+    const { code } = req.query;
+    
+    if (!code) {
+      return res.status(400).json({ message: "ไม่พบ authorization code" });
+    }
+
+    // ✅ แลก authorization code กับ access token
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: process.env.GITHUB_CLIENT_ID,
+        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        code: code,
+      }),
+    });
+
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      return res.status(400).json({ message: "ไม่สามารถดึง access token จาก GitHub ได้" });
+    }
+
+    // ✅ ใช้ access token ดึงข้อมูลผู้ใช้
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        'Authorization': `token ${tokenData.access_token}`,
+        'User-Agent': 'AOW-JobApp'
+      },
+    });
+
+    const githubUser = await userResponse.json();
+
+    // ✅ ดึงอีเมลจาก GitHub (อีเมลอาจจะเป็น private)
+    const emailResponse = await fetch('https://api.github.com/user/emails', {
+      headers: {
+        'Authorization': `token ${tokenData.access_token}`,
+        'User-Agent': 'AOW-JobApp'
+      },
+    });
+
+    const emails = await emailResponse.json();
+    const primaryEmail = emails.find(email => email.primary)?.email || githubUser.email;
+
+    if (!primaryEmail) {
+      return res.status(400).json({ 
+        message: "ไม่สามารถดึงข้อมูลอีเมลจาก GitHub ได้ กรุณาตั้งค่าอีเมลให้เป็น public" 
+      });
+    }
+
+    // ✅ ตรวจสอบว่ามีผู้ใช้อยู่แล้วหรือไม่
+    let user = await User.findOne({ email: primaryEmail });
+
+    if (!user) {
+      // ✅ สร้างผู้ใช้ใหม่
+      user = await User.create({
+        name: githubUser.name || githubUser.login || primaryEmail.split('@')[0],
+        email: primaryEmail,
+        password: "github-oauth", // placeholder password
+        role: "jobseeker", // default role
+        isActive: true,
+        socialProvider: "github",
+        socialId: githubUser.id.toString(),
+        avatar: githubUser.avatar_url
+      });
+    } else {
+      // ✅ อัพเดตข้อมูล social provider ถ้ายังไม่มี
+      if (!user.socialProvider) {
+        user.socialProvider = "github";
+        user.socialId = githubUser.id.toString();
+        if (githubUser.avatar_url && !user.avatar) {
+          user.avatar = githubUser.avatar_url;
+        }
+        await user.save();
+      }
+    }
+
+    // ✅ สร้าง JWT token
+    const token = createToken(user);
+
+    // Redirect กลับไปที่ frontend พร้อม token
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    res.redirect(`${frontendUrl}/login?token=${token}&success=github`);
+
+  } catch (err) {
+    console.log("GitHub callback error:", err);
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    res.redirect(`${frontendUrl}/login?error=github_auth_failed`);
+  }
+});
+
+// POST endpoint (เก็บไว้สำหรับ API calls)
 router.post("/github", async (req, res) => {
   try {
     const { code } = req.body;

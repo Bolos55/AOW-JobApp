@@ -2,23 +2,34 @@
 import jwt from "jsonwebtoken";
 
 const auth = (req, res, next) => {
-  console.log("🔐 Auth middleware - URL:", req.method, req.url);
+  // ✅ Validate JWT_SECRET when middleware is used
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    console.error('❌ JWT_SECRET environment variable is required');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
+  // ✅ Only log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log("🔐 Auth middleware - URL:", req.method, req.url);
+  }
   
   const header = req.headers.authorization || "";
   const token = header.split(" ")[1];
 
   if (!token) {
-    console.log("❌ No token found");
+    if (process.env.NODE_ENV === 'development') {
+      console.log("❌ No token found");
+    }
     return res.status(401).json({ message: "ไม่พบ token" });
   }
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "dev-secret"
-    );
+    const decoded = jwt.verify(token, JWT_SECRET);
 
-    console.log("✅ Token decoded - User ID:", decoded.id);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("✅ Token decoded - User ID:", decoded.id);
+    }
 
     // ให้ route อื่นใช้ได้ทั้งแบบ req.user และ req.userId
     req.user = decoded;      // { id, email, role, ... }
@@ -26,7 +37,9 @@ const auth = (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error("❌ auth error:", err);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("❌ auth error:", err);
+    }
     return res.status(401).json({ message: "token ไม่ถูกต้อง" });
   }
 };

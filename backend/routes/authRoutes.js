@@ -6,21 +6,31 @@ import crypto from "crypto";
 import User from "../models/User.js";
 import auth from "../middleware/auth.js";
 import { validateEmail } from "../utils/emailValidator.js";
-import { sendVerificationEmail, sendWelcomeEmail } from "../utils/emailService.js";
+import { sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } from "../utils/emailService.js";
+import { validatePasswordStrength } from "../middleware/security.js";
 
 const router = express.Router();
 
+// ✅ Validate JWT_SECRET on startup
 // ✅ สร้าง token: เก็บ id + email + role (เผื่ออยากใช้ต่อ)
-const createToken = (user) =>
-  jwt.sign(
+const createToken = (user) => {
+  const JWT_SECRET = process.env.JWT_SECRET;
+  const JWT_EXPIRE = process.env.JWT_EXPIRE || "7d";
+  
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
+  
+  return jwt.sign(
     {
       id: user._id,               // ให้ตรงกับ req.user.id ที่ใช้ใน /me
       email: user.email,
       role: user.role || "jobseeker",
     },
-    process.env.JWT_SECRET || "dev-secret",
-    { expiresIn: process.env.JWT_EXPIRE || "7d" }
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRE }
   );
+};
 
 // ===================== REGISTER =====================
 router.post("/register", async (req, res) => {
@@ -36,8 +46,8 @@ router.post("/register", async (req, res) => {
     }
 
     const passwordRequirements = {
-      hasUppercase: /[A-Z]/.test(password),
-      hasLowercase: /[a-z]/.test(password),
+      hasUpper: /[A-Z]/.test(password),
+      hasLower: /[a-z]/.test(password),
       hasNumber: /\d/.test(password),
       hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password),
     };
@@ -306,22 +316,53 @@ router.post("/forgot-password", async (req, res) => {
       });
     }
 
-    const resetToken = crypto.randomBytes(20).toString("hex");
+    // ✅ Generate cryptographically secure token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const JWT_SECRET = process.env.JWT_SECRET;
     const resetTokenHashed = crypto
       .createHash("sha256")
-      .update(resetToken)
+      .update(resetToken + JWT_SECRET) // ✅ Add salt
       .digest("hex");
 
     user.resetPasswordToken = resetTokenHashed;
-    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
     await user.save();
 
-    const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
-    console.log("📩 reset link:", resetLink);
-
-    res.json({ message: "สร้างลิงก์รีเซ็ตแล้ว", resetLink });
+    // ✅ Use environment variable for frontend URL
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
+    
+    // ✅ Send password reset email
+    try {
+      const emailResult = await sendPasswordResetEmail(user.email, user.name, resetToken);
+      
+      if (emailResult.success) {
+        console.log("✅ Password reset email sent successfully");
+        res.json({ 
+          message: "ถ้ามีอีเมลนี้ในระบบ เราได้ส่งลิงก์รีเซ็ตรหัสผ่านไปแล้ว กรุณาตรวจสอบอีเมลของคุณ" 
+        });
+      } else {
+        console.error("❌ Failed to send password reset email:", emailResult.error);
+        // ✅ ไม่เปิดเผยข้อมูลว่าอีเมลมีอยู่หรือไม่
+        res.json({ 
+          message: "ถ้ามีอีเมลนี้ในระบบ เราได้ส่งลิงก์รีเซ็ตรหัสผ่านไปแล้ว กรุณาตรวจสอบอีเมลของคุณ" 
+        });
+      }
+    } catch (emailError) {
+      console.error("❌ Email service error:", emailError);
+      // ✅ ไม่เปิดเผยข้อมูลว่าอีเมลมีอยู่หรือไม่
+      res.json({ 
+        message: "ถ้ามีอีเมลนี้ในระบบ เราได้ส่งลิงก์รีเซ็ตรหัสผ่านไปแล้ว กรุณาตรวจสอบอีเมลของคุณ" 
+      });
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log("📩 reset link:", resetLink);
+    }
   } catch (err) {
-    console.log("forgot-password error:", err);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("forgot-password error:", err);
+    }
     res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
   }
 });
@@ -334,9 +375,20 @@ router.post("/reset-password", async (req, res) => {
       return res.status(400).json({ message: "ข้อมูลไม่ครบ" });
     }
 
+    // ✅ Validate password strength
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        message: "รหัสผ่านไม่ปลอดภัย",
+        errors: passwordValidation.errors
+      });
+    }
+
+    // ✅ Hash token with same salt as forgot-password
+    const JWT_SECRET = process.env.JWT_SECRET;
     const resetTokenHashed = crypto
       .createHash("sha256")
-      .update(token)
+      .update(token + JWT_SECRET) // ✅ Use same salt
       .digest("hex");
 
     const user = await User.findOne({
@@ -350,7 +402,8 @@ router.post("/reset-password", async (req, res) => {
         .json({ message: "โทเคนไม่ถูกต้อง หรือหมดอายุแล้ว" });
     }
 
-    user.password = await bcrypt.hash(password, 10);
+    // ✅ Use consistent bcrypt rounds (12)
+    user.password = await bcrypt.hash(password, 12);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
     await user.save();
@@ -454,339 +507,8 @@ router.post("/resend-verification", auth, async (req, res) => {
   }
 });
 
-// ===================== COMPLETE SOCIAL REGISTRATION =====================
-router.post("/complete-social-registration", async (req, res) => {
-  try {
-    const { uid, email, name, photoURL, emailVerified, role, provider } = req.body;
-    
-    if (!uid || !email || !role) {
-      return res.status(400).json({ message: "ข้อมูลไม่ครบถ้วน" });
-    }
-
-    // ✅ ตรวจสอบว่า role ถูกต้อง
-    const validRoles = ["jobseeker", "employer"];
-    if (!validRoles.includes(role)) {
-      return res.status(400).json({ message: "ประเภทการใช้งานไม่ถูกต้อง" });
-    }
-
-    // ✅ ตรวจสอบความปลอดภัยของอีเมลสำหรับ social login
-    console.log(`🔍 Validating social login email: ${email}`);
-    const emailValidation = await validateEmail(email.toLowerCase().trim());
-    console.log(`📊 Social email validation result:`, {
-      email: emailValidation.email,
-      status: emailValidation.status,
-      score: emailValidation.score,
-      isDisposable: emailValidation.isDisposable,
-      isSuspicious: emailValidation.isSuspicious
-    });
-
-    // ✅ บล็อกอีเมล disposable แม้ใน social login
-    if (emailValidation.isDisposable) {
-      console.log(`🚫 Blocked disposable email in social login: ${email}`);
-      return res.status(400).json({ 
-        message: `🚫 ไม่สามารถใช้อีเมลชั่วคราวได้\n\nDomain: ${emailValidation.domain}\n\nกรุณาใช้อีเมลจริงจาก ${provider} Account หลักของคุณ`,
-        emailValidation: {
-          status: emailValidation.status,
-          domain: emailValidation.domain,
-          reason: 'disposable_email_social_login'
-        }
-      });
-    }
-
-    // ✅ ตรวจสอบว่ามีผู้ใช้นี้ในระบบแล้วหรือไม่
-    let user = await User.findOne({ email });
-
-    if (user) {
-      // ✅ ผู้ใช้มีอยู่แล้ว - อัปเดต role และ social provider info
-      user.role = role;
-      user.socialProvider = provider === 'google' ? 'firebase-google' : provider;
-      user.socialId = uid;
-      if (photoURL && !user.avatar) {
-        user.avatar = photoURL;
-      }
-      if (emailVerified && !user.isEmailVerified) {
-        user.isEmailVerified = true;
-        user.isActive = true;
-      }
-      await user.save();
-      
-      console.log(`🔄 Updated existing user: ${email} (${role})`);
-    } else {
-      // ✅ สร้างผู้ใช้ใหม่
-      user = await User.create({
-        name: name || email.split('@')[0],
-        email: email.toLowerCase().trim(),
-        password: "social-oauth", // placeholder password
-        role: role,
-        isActive: true,
-        socialProvider: provider === 'google' ? 'firebase-google' : provider,
-        socialId: uid,
-        avatar: photoURL,
-        isEmailVerified: emailVerified || true, // Social login ถือว่ายืนยันแล้ว
-        
-        // ✅ เก็บผลการตรวจสอบอีเมล
-        emailValidation: {
-          isDisposable: emailValidation.isDisposable,
-          isSuspicious: emailValidation.isSuspicious,
-          domain: emailValidation.domain,
-          validationScore: emailValidation.score,
-          validationNotes: emailValidation.notes,
-        },
-        
-        // ✅ ตั้งค่าสถานะตามผลการตรวจสอบ (ผ่อนปรนสำหรับ social login)
-        requiresReview: emailValidation.requiresReview && emailValidation.score < 60,
-        isSuspended: emailValidation.score < 30, // suspend เฉพาะคะแนนต่ำมาก
-        suspensionReason: emailValidation.score < 30 ? 'Suspicious email pattern detected in social login' : undefined,
-        
-        registrationIP: req.ip || req.connection.remoteAddress,
-        registrationMetadata: {
-          socialProvider: provider,
-          emailVerified: emailVerified,
-          userAgent: req.headers['user-agent'],
-          timestamp: new Date().toISOString(),
-        }
-      });
-      
-      console.log(`📝 New social user created: ${email} (${role}) via ${provider} - Score: ${emailValidation.score}`);
-    }
-
-    // ✅ ตรวจสอบว่าบัญชีถูกระงับหรือไม่
-    if (user.isSuspended) {
-      return res.status(403).json({ 
-        message: `🚫 บัญชีถูกระงับการใช้งาน\n\nเหตุผล: ${user.suspensionReason}\n\nกรุณาติดต่อแอดมินเพื่อขอความช่วยเหลือ`,
-        suspended: true,
-        suspensionReason: user.suspensionReason
-      });
-    }
-
-    // ✅ ส่งอีเมลต้อนรับ
-    const welcomeResult = await sendWelcomeEmail(user.email, user.name, user.role);
-    if (welcomeResult.success) {
-      console.log(`📧 Welcome email sent: ${welcomeResult.messageId}`);
-    }
-
-    const token = createToken(user);
-
-    // ✅ ส่งข้อมูลกลับพร้อมสถานะการตรวจสอบ
-    const response = {
-      message: `เข้าสู่ระบบด้วย ${provider} สำเร็จ`,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        avatar: user.avatar,
-        isEmailVerified: user.isEmailVerified,
-        requiresReview: user.requiresReview,
-        isSuspended: user.isSuspended,
-      },
-      token,
-    };
-
-    // ✅ เพิ่มคำเตือนถ้าอีเมลน่าสงสัย
-    if (user.requiresReview) {
-      response.warning = {
-        message: "บัญชีของคุณอยู่ระหว่างการตรวจสอบ",
-        details: "เนื่องจากรูปแบบอีเมลมีความน่าสงสัย บัญชีจะถูกตรวจสอบโดยแอดมิน",
-        emailValidation: {
-          score: user.emailValidation?.validationScore || 0,
-          status: emailValidation.status
-        }
-      };
-    }
-
-    res.json(response);
-
-  } catch (err) {
-    console.log("Complete social registration error:", err);
-    res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
-  }
-});
-
-// ===================== FIREBASE GOOGLE LOGIN =====================
-// 🚨🚨🚨 SECURITY WARNING: DEV-ONLY IMPLEMENTATION 🚨🚨🚨
-// ❌ CRITICAL: This endpoint does NOT verify Firebase ID tokens
-// ❌ INSECURE: Trusts frontend data directly - can be bypassed
-// ❌ PRODUCTION: DO NOT USE in production without Firebase Admin SDK
-// ✅ DEV-ONLY: Suitable for development, demo, testing only
-// 
-// For production, implement:
-// 1. Firebase Admin SDK
-// 2. verifyIdToken() verification
-// 3. Send idToken from frontend, not user data
-// 
-// See: FIREBASE_SECURITY_ASSESSMENT.md for details
-// 🚨🚨🚨 SECURITY WARNING: DEV-ONLY IMPLEMENTATION 🚨🚨🚨
-
-router.post("/firebase-google", async (req, res) => {
-  // 🚨 SECURITY CHECK: Warn if used in production
-  if (process.env.NODE_ENV === 'production') {
-    console.error("🚨🚨🚨 SECURITY ALERT: Insecure Firebase endpoint used in production!");
-    console.error("🚨 This endpoint does not verify Firebase ID tokens");
-    console.error("🚨 Authentication can be bypassed - CRITICAL VULNERABILITY");
-    console.error("🚨 Implement Firebase Admin SDK before production deployment");
-  }
-  
-  console.log("🔥🔥🔥 Firebase Google Login endpoint HIT! 🔥🔥🔥");
-  console.log("⚠️ WARNING: DEV-ONLY implementation - no token verification");
-  console.log("📋 Request method:", req.method);
-  console.log("📋 Request path:", req.path);
-  console.log("📋 Request originalUrl:", req.originalUrl);
-  console.log("📋 Request body:", JSON.stringify(req.body, null, 2));
-  console.log("📋 Request headers:", JSON.stringify(req.headers, null, 2));
-  console.log("⏰ Timestamp:", new Date().toISOString());
-  
-  try {
-    const { uid, email, name, photoURL, emailVerified } = req.body;
-    
-    console.log("🔍 Extracted data:", { uid, email, name, photoURL, emailVerified });
-    
-    // ✅ Validate required fields
-    if (!uid || !email) {
-      console.log("❌ Missing required fields:", { uid: !!uid, email: !!email });
-      return res.status(400).json({ 
-        message: "ข้อมูล Firebase ไม่ครบถ้วน - ต้องมี uid และ email",
-        received: { uid: !!uid, email: !!email, name: !!name }
-      });
-    }
-
-    console.log("✅ Firebase data validated successfully");
-
-    // 🚨 SECURITY WARNING for production
-    if (process.env.NODE_ENV === 'production') {
-      console.warn("🚨 PRODUCTION SECURITY RISK: Using unverified Firebase data");
-    }
-
-    // ✅ ตรวจสอบว่ามีผู้ใช้นี้ในระบบแล้วหรือไม่
-    console.log("🔍 Looking up user in database:", email);
-    let user = await User.findOne({ email });
-    console.log("📊 User lookup result:", user ? `Found user: ${user._id}` : "User not found");
-
-    if (user) {
-      // ✅ ผู้ใช้มีอยู่แล้ว - login ปกติ
-      console.log(`🔄 Existing user Firebase login: ${email}`);
-      
-      // อัปเดตข้อมูล Firebase ถ้ายังไม่มี
-      let updated = false;
-      if (!user.socialProvider || user.socialProvider !== "firebase-google") {
-        user.socialProvider = "firebase-google";
-        user.socialId = uid;
-        updated = true;
-        console.log("📝 Updated socialProvider to firebase-google");
-      }
-      
-      if (photoURL && !user.avatar) {
-        user.avatar = photoURL;
-        updated = true;
-        console.log("📝 Updated avatar from Firebase");
-      }
-      
-      if (emailVerified && !user.isEmailVerified) {
-        user.isEmailVerified = true;
-        user.isActive = true;
-        updated = true;
-        console.log("📝 Updated email verification status");
-      }
-      
-      if (updated) {
-        await user.save();
-        console.log("✅ User updated and saved to database");
-      }
-
-      // ตรวจสอบว่าบัญชีถูกระงับหรือไม่
-      if (user.isSuspended) {
-        console.log(`🚫 User suspended: ${email}`);
-        return res.status(403).json({ 
-          message: `🚫 บัญชีถูกระงับการใช้งาน\n\nเหตุผล: ${user.suspensionReason}\n\nกรุณาติดต่อแอดมินเพื่อขอความช่วยเหลือ`,
-          suspended: true,
-          suspensionReason: user.suspensionReason
-        });
-      }
-
-      // ✅ สร้าง JWT token
-      console.log("🔐 Creating JWT token for user:", user._id);
-      const token = createToken(user);
-      console.log("✅ JWT token created successfully");
-
-      const responseData = {
-        message: "เข้าสู่ระบบด้วย Google สำเร็จ",
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          isActive: user.isActive,
-          avatar: user.avatar,
-          isEmailVerified: user.isEmailVerified,
-          requiresReview: user.requiresReview,
-          isSuspended: user.isSuspended,
-          socialProvider: user.socialProvider
-        },
-        token,
-      };
-
-      console.log("📤 Sending success response for existing user");
-      console.log("📊 Response data:", JSON.stringify({
-        userId: user._id,
-        email: user.email,
-        role: user.role,
-        hasToken: !!token
-      }, null, 2));
-
-      return res.json(responseData);
-      
-    } else {
-      // ✅ ผู้ใช้ใหม่ - ต้องเลือก role ก่อน
-      console.log(`👤 New user from Firebase Google: ${email} - needs role selection`);
-      
-      const responseData = {
-        message: "ผู้ใช้ใหม่ - ต้องเลือกประเภทการใช้งาน",
-        newUser: true,
-        needsRoleSelection: true,
-        socialData: {
-          uid,
-          email,
-          name,
-          photoURL,
-          emailVerified
-        },
-        provider: "google"
-      };
-
-      console.log("📤 Sending new user response");
-      console.log("📊 Response data:", JSON.stringify(responseData, null, 2));
-
-      return res.json(responseData);
-    }
-
-  } catch (err) {
-    console.error("❌❌❌ Firebase Google auth ERROR:", err);
-    console.error("❌ Error message:", err.message);
-    console.error("❌ Error stack:", err.stack);
-    
-    const errorResponse = {
-      message: "เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google",
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined,
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log("📤 Sending error response:", JSON.stringify(errorResponse, null, 2));
-    res.status(500).json(errorResponse);
-  }
-});
-
-// ✅ Test endpoint สำหรับตรวจสอบ
-router.get("/test-firebase", (req, res) => {
-  console.log("🧪 Test Firebase endpoint hit!");
-  res.json({ 
-    message: "Firebase endpoint is working!",
-    timestamp: new Date().toISOString(),
-    routes: [
-      "POST /api/auth/firebase-google",
-      "GET /api/auth/test-firebase"
-    ]
-  });
-});
+// ✅ REMOVED INSECURE FIREBASE ROUTE
+// The insecure /firebase-google endpoint has been removed for security.
+// Use the secure endpoint in firebaseAuthRoutes.js instead.
 
 export default router;

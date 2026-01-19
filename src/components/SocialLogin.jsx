@@ -13,11 +13,14 @@ export default function SocialLogin({ onSuccess, onError }) {
   const isFirebaseReady = !!auth && !!googleProvider;
 
   // ===============================
-  // ส่งข้อมูล Firebase user ไป backend
+  // ส่ง Firebase ID Token ไป backend (SECURE)
   // ===============================
   const handleFirebaseUser = useCallback(
     async (user) => {
       try {
+        // ✅ Get Firebase ID Token (SECURE)
+        const idToken = await user.getIdToken();
+        
         const apiUrl = `${API_BASE}/api/auth/firebase-google`.replace(
           /\/api\/api\//,
           '/api/'
@@ -30,11 +33,7 @@ export default function SocialLogin({ onSuccess, onError }) {
           },
           mode: 'cors',
           body: JSON.stringify({
-            uid: user.uid,
-            email: user.email,
-            name: user.displayName,
-            photoURL: user.photoURL,
-            emailVerified: user.emailVerified,
+            idToken // ✅ Send ID Token instead of user data
           }),
         });
 

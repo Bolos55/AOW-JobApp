@@ -22,7 +22,10 @@ export const createRateLimit = (windowMs = 15 * 60 * 1000, max = 100) => {
 };
 
 // Specific rate limits
-export const authRateLimit = createRateLimit(15 * 60 * 1000, 5); // 5 attempts per 15 minutes
+export const authRateLimit = process.env.NODE_ENV === 'development' 
+  ? createRateLimit(5 * 60 * 1000, 20) // Development: 20 attempts per 5 minutes
+  : createRateLimit(15 * 60 * 1000, 5); // Production: 5 attempts per 15 minutes
+
 export const apiRateLimit = createRateLimit(15 * 60 * 1000, 100); // 100 requests per 15 minutes
 export const uploadRateLimit = createRateLimit(60 * 60 * 1000, 10); // 10 uploads per hour
 
@@ -33,12 +36,13 @@ export const securityHeaders = helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
+      imgSrc: ["'self'", "data:", "https:", "http://localhost:5000"], // ✅ Allow localhost images
       scriptSrc: ["'self'"],
       connectSrc: ["'self'", "https://api.github.com", "https://github.com"],
     },
   },
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // ✅ Allow cross-origin resources
 });
 
 // CORS configuration
@@ -51,8 +55,9 @@ export const corsOptions = {
       'https://aow-jobapp-frontend.onrender.com'
     ];
     
-    // Allow requests with no origin (mobile apps, etc.) และ development
-    if (!origin || process.env.NODE_ENV === 'development') {
+    // ✅ Only allow specific origins, even in development
+    // Allow requests with no origin only for mobile apps/Postman testing
+    if (!origin && process.env.NODE_ENV === 'development') {
       return callback(null, true);
     }
     

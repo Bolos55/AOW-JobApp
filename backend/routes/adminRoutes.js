@@ -10,7 +10,9 @@ import { validateEmail, validateEmailBatch } from "../utils/emailValidator.js";
 const router = express.Router();
 
 // ✅ Debug log เพื่อตรวจสอบว่า adminRoutes ถูกโหลด
-console.log("📋 AdminRoutes module loaded");
+if (process.env.NODE_ENV === 'development') {
+  console.log("📋 AdminRoutes module loaded");
+}
 
 // ใช้ฟังก์ชันเดียวกับไฟล์ chatRoutes
 function getMyId(req) {
@@ -76,6 +78,35 @@ router.get("/stats", authMiddleware, requireAdmin, async (_req, res) => {
     return res
       .status(500)
       .json({ message: "ดึงสถิติไม่สำเร็จ" });
+  }
+});
+
+/**
+ * GET /api/admin/dashboard
+ * Dashboard data สำหรับ AdminView.jsx
+ */
+router.get("/dashboard", authMiddleware, requireAdmin, async (_req, res) => {
+  try {
+    const [totalUsers, totalJobs, totalApplications, activeJobs] =
+      await Promise.all([
+        User.countDocuments(),
+        Job.countDocuments(),
+        Application.countDocuments(),
+        Job.countDocuments({ isCompleted: { $ne: true } }), // isCompleted != true = ยังเปิดอยู่
+      ]);
+
+    return res.json({
+      totalUsers,
+      totalJobs,
+      totalApplications,
+      activeJobs,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("admin /dashboard error:", err);
+    return res
+      .status(500)
+      .json({ message: "ดึงข้อมูล dashboard ไม่สำเร็จ" });
   }
 });
 

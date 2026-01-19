@@ -1,46 +1,74 @@
 // backend/controllers/firebaseAuthController.js
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { verifyFirebaseToken } from "../config/firebase-admin.js";
 
 // ✅ สร้าง JWT token
-const createToken = (user) =>
-  jwt.sign(
+const createToken = (user) => {
+  const JWT_SECRET = process.env.JWT_SECRET;
+  const JWT_EXPIRE = process.env.JWT_EXPIRE || "7d";
+  
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
+  
+  return jwt.sign(
     {
       id: user._id,
       email: user.email,
       role: user.role || "jobseeker",
     },
-    process.env.JWT_SECRET || "dev-secret",
-    { expiresIn: process.env.JWT_EXPIRE || "7d" }
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRE }
   );
+};
 
-// ===================== FIREBASE GOOGLE LOGIN =====================
+// ===================== SECURE FIREBASE GOOGLE LOGIN =====================
 export const firebaseGoogleLogin = async (req, res) => {
-  console.log("🔥 Firebase Google Login Controller Hit!");
-  console.log("📋 Request body:", req.body);
-  console.log("🌐 Request headers:", req.headers);
+  if (process.env.NODE_ENV === 'development') {
+    console.log("🔥 Secure Firebase Google Login Controller Hit!");
+  }
   
   try {
-    const { uid, email, name, photoURL, emailVerified } = req.body;
+    const { idToken } = req.body;
     
     // ✅ Validate required fields
-    if (!uid || !email) {
-      console.log("❌ Missing required fields:", { uid: !!uid, email: !!email });
+    if (!idToken) {
       return res.status(400).json({ 
-        message: "ข้อมูล Firebase ไม่ครบถ้วน - ต้องมี uid และ email",
-        received: { uid: !!uid, email: !!email, name: !!name }
+        message: "ไม่พบ Firebase ID Token",
+        error: "ID_TOKEN_REQUIRED"
       });
     }
 
-    console.log("✅ Firebase data received:", { uid, email, name, emailVerified });
+    // ✅ Verify Firebase ID Token
+    const verificationResult = await verifyFirebaseToken(idToken);
+    
+    if (!verificationResult.success) {
+      console.warn('❌ Firebase token verification failed:', verificationResult.error);
+      return res.status(401).json({
+        message: "Firebase ID Token ไม่ถูกต้อง",
+        error: verificationResult.error
+      });
+    }
+
+    const { uid, email, name, picture, emailVerified } = verificationResult.user;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log("✅ Firebase token verified:", { uid, email, name, emailVerified });
+    }
 
     // ✅ ตรวจสอบว่ามีผู้ใช้นี้ในระบบแล้วหรือไม่
     let user = await User.findOne({ email });
-    console.log("🔍 User lookup result:", user ? `Found: ${user.email}` : "Not found");
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log("🔍 User lookup result:", user ? `Found: ${user.email}` : "Not found");
+    }
 
     if (user) {
       // ✅ ผู้ใช้มีอยู่แล้ว - login ปกติ
-      console.log(`🔄 Existing user Firebase login: ${email}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔄 Existing user Firebase login: ${email}`);
+      }
       
       // อัปเดตข้อมูล Firebase ถ้ายังไม่มี
       let updated = false;
@@ -48,30 +76,28 @@ export const firebaseGoogleLogin = async (req, res) => {
         user.socialProvider = "firebase-google";
         user.socialId = uid;
         updated = true;
-        console.log("📝 Updated socialProvider to firebase-google");
       }
       
-      if (photoURL && !user.avatar) {
-        user.avatar = photoURL;
+      if (picture && !user.avatar) {
+        user.avatar = picture;
         updated = true;
-        console.log("📝 Updated avatar from Firebase");
       }
       
       if (emailVerified && !user.isEmailVerified) {
         user.isEmailVerified = true;
         user.isActive = true;
         updated = true;
-        console.log("📝 Updated email verification status");
       }
       
       if (updated) {
         await user.save();
-        console.log("✅ User updated and saved to database");
+        if (process.env.NODE_ENV === 'development') {
+          console.log("✅ User updated and saved to database");
+        }
       }
 
       // ตรวจสอบว่าบัญชีถูกระงับหรือไม่
       if (user.isSuspended) {
-        console.log(`🚫 User suspended: ${email}`);
         return res.status(403).json({ 
           message: `🚫 บัญชีถูกระงับการใช้งาน\n\nเหตุผล: ${user.suspensionReason}\n\nกรุณาติดต่อแอดมินเพื่อขอความช่วยเหลือ`,
           suspended: true,
@@ -81,7 +107,6 @@ export const firebaseGoogleLogin = async (req, res) => {
 
       // ✅ สร้าง JWT token
       const token = createToken(user);
-      console.log("✅ JWT token created for existing user");
 
       const responseData = {
         message: "เข้าสู่ระบบด้วย Google สำเร็จ",
@@ -100,18 +125,13 @@ export const firebaseGoogleLogin = async (req, res) => {
         token,
       };
 
-      console.log("📤 Sending response for existing user:", {
-        userId: user._id,
-        email: user.email,
-        role: user.role,
-        hasToken: !!token
-      });
-
       return res.json(responseData);
       
     } else {
       // ✅ ผู้ใช้ใหม่ - ต้องเลือก role ก่อน
-      console.log(`👤 New user from Firebase Google: ${email} - needs role selection`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`👤 New user from Firebase Google: ${email} - needs role selection`);
+      }
       
       const responseData = {
         message: "ผู้ใช้ใหม่ - ต้องเลือกประเภทการใช้งาน",
@@ -121,23 +141,17 @@ export const firebaseGoogleLogin = async (req, res) => {
           uid,
           email,
           name,
-          photoURL,
+          photoURL: picture,
           emailVerified
         },
         provider: "google"
       };
-
-      console.log("📤 Sending response for new user:", {
-        email,
-        needsRoleSelection: true
-      });
 
       return res.json(responseData);
     }
 
   } catch (err) {
     console.error("❌ Firebase Google auth error:", err);
-    console.error("❌ Error stack:", err.stack);
     
     res.status(500).json({ 
       message: "เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google",
