@@ -7,7 +7,7 @@ import User from "../models/User.js";
 import { uploadRateLimit } from "../middleware/security.js";
 
 // ✅ Import Cloudinary upload configurations
-import { uploadPhoto, uploadResume } from "../config/cloudinary.js";
+import { uploadPhoto, uploadResume, isCloudinaryConfigured } from "../config/cloudinary.js";
 
 const router = express.Router();
 
@@ -215,8 +215,18 @@ router.post(
         return res.status(404).json({ message: "ไม่พบผู้ใช้" });
       }
 
-      // ✅ Use Cloudinary URL directly
-      const resumeUrl = req.file.path;
+      // ✅ Generate full URL for both Cloudinary and local storage
+      let resumeUrl;
+      if (isCloudinaryConfigured) {
+        // Cloudinary returns full URL
+        resumeUrl = req.file.path;
+      } else {
+        // Local storage - generate full URL
+        const API_BASE = process.env.NODE_ENV === 'production' 
+          ? 'https://aow-jobapp-backend.onrender.com'
+          : 'http://localhost:5000';
+        resumeUrl = `${API_BASE}/uploads/${req.file.filename}`;
+      }
       if (process.env.NODE_ENV === 'development') {
         console.log("📄 Resume URL from Cloudinary:", resumeUrl);
       }
@@ -281,8 +291,18 @@ router.post(
         return res.status(404).json({ message: "ไม่พบผู้ใช้" });
       }
 
-      // ✅ Use Cloudinary URL directly
-      const photoUrl = req.file.path;
+      // ✅ Generate full URL for both Cloudinary and local storage
+      let photoUrl;
+      if (isCloudinaryConfigured) {
+        // Cloudinary returns full URL
+        photoUrl = req.file.path;
+      } else {
+        // Local storage - generate full URL
+        const API_BASE = process.env.NODE_ENV === 'production' 
+          ? 'https://aow-jobapp-backend.onrender.com'
+          : 'http://localhost:5000';
+        photoUrl = `${API_BASE}/uploads/${req.file.filename}`;
+      }
       
       if (process.env.NODE_ENV === 'development') {
         console.log("📸 Photo URL from Cloudinary:", photoUrl);

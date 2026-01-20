@@ -1,16 +1,18 @@
 // src/utils/imageUtils.js
-// ✅ Simple image URL resolver - no more /uploads/ confusion
+// ✅ Simple image URL resolver - support full URLs only
 export const resolveImageUrl = (url) => {
   if (!url) return "";
-  // ✅ If it's already a full URL (Cloudinary), return as-is
+  // ✅ Only accept full URLs (Cloudinary or full backend URLs)
   if (url.startsWith("http")) return url;
-  // ✅ For any other case, return empty (force re-upload)
+  // ✅ Reject legacy paths - force re-upload
+  console.warn("Legacy photo path detected, please re-upload:", url);
   return "";
 };
 
 // ✅ Clean utility for all photo URLs
-export const getPhotoUrl = (profile, fallback = "") => {
-  return resolveImageUrl(profile?.photoUrl) || fallback;
+export const getPhotoUrl = (profile, fieldName = "photoUrl") => {
+  const url = profile?.[fieldName] || profile?.photoUrl;
+  return resolveImageUrl(url);
 };
 
 // ✅ Clean utility for all resume URLs  

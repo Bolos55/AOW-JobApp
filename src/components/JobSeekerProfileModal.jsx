@@ -256,6 +256,9 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
         
         // ✅ อัปเดต localStorage ด้วย photoUrl ใหม่
         updateProfileInStorage({ photoUrl: url });
+        
+        // ✅ Force re-render by updating key or state
+        console.log("✅ Photo uploaded successfully:", url);
       }
 
       alert("อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว");
