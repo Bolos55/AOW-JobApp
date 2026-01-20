@@ -62,7 +62,7 @@ app.use(monitorAuthFailure);
 app.use(monitorRateLimit);
 
 // ✅ Enhanced CORS configuration for production with photo upload support
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
@@ -83,6 +83,7 @@ app.use(cors({
       return callback(null, true);
     }
     
+    console.log('❌ CORS blocked origin:', origin);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -100,10 +101,43 @@ app.use(cors({
   exposedHeaders: ['Content-Length', 'X-Total-Count'],
   optionsSuccessStatus: 200,
   preflightContinue: false
-}));
+};
+
+app.use(cors(corsOptions));
+
+// ✅ Manual CORS headers for all responses (backup)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://aow-jobapp.onrender.com',
+    'https://aow-jobapp-frontend.onrender.com'
+  ];
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else if (process.env.NODE_ENV === 'development') {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    res.header('Access-Control-Allow-Origin', 'https://aow-jobapp-frontend.onrender.com');
+  }
+  
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, Cache-Control');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Max-Age', '86400');
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
 
 // ✅ Handle preflight requests for all routes
-app.options("*", cors());
+app.options("*", cors(corsOptions));
 
 // Input sanitize
 app.use(sanitizeInput);

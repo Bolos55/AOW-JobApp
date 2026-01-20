@@ -257,6 +257,31 @@ router.post(
   }
 );
 
+// ✅ Handle preflight requests for all profile routes
+router.options("*", (req, res) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://aow-jobapp.onrender.com',
+    'https://aow-jobapp-frontend.onrender.com'
+  ];
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else if (process.env.NODE_ENV === 'development') {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    res.header('Access-Control-Allow-Origin', 'https://aow-jobapp-frontend.onrender.com');
+  }
+  
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400');
+  res.sendStatus(200);
+});
+
 /* ========= OPTIONS /api/profile/me/photo ========= */
 // Handle preflight requests for photo upload
 router.options("/me/photo", (req, res) => {
