@@ -257,13 +257,69 @@ router.post(
   }
 );
 
+/* ========= OPTIONS /api/profile/me/photo ========= */
+// Handle preflight requests for photo upload
+router.options("/me/photo", (req, res) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://aow-jobapp.onrender.com',
+    'https://aow-jobapp-frontend.onrender.com'
+  ];
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else if (process.env.NODE_ENV === 'development') {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    res.header('Access-Control-Allow-Origin', 'https://aow-jobapp-frontend.onrender.com');
+  }
+  
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // 24 hours
+  res.sendStatus(200);
+});
+
 /* ========= POST /api/profile/me/photo ========= */
 // อัปโหลดรูปโปรไฟล์ + อัพเดต profile.photoUrl
 
-router.post("/me/photo", authMiddleware, (req, res) => {
+router.post("/me/photo", (req, res, next) => {
+  // ✅ Set comprehensive CORS headers for photo upload
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://aow-jobapp.onrender.com',
+    'https://aow-jobapp-frontend.onrender.com'
+  ];
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else if (process.env.NODE_ENV === 'development') {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    res.header('Access-Control-Allow-Origin', 'https://aow-jobapp-frontend.onrender.com');
+  }
+  
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400');
+  
+  next();
+}, authMiddleware, (req, res) => {
   console.log("🔥 HIT /me/photo - Starting upload");
   console.log("🔥 User ID:", req.user.id);
   console.log("🔥 Cloudinary configured:", isCloudinaryConfigured);
+  console.log("🔥 Request origin:", req.headers.origin);
+  console.log("🔥 Request headers:", {
+    'content-type': req.headers['content-type'],
+    'authorization': req.headers.authorization ? 'Present' : 'Missing',
+    'origin': req.headers.origin
+  });
   
   // ✅ Proper multer error handling
   uploadPhoto.single("photo")(req, res, async (uploadError) => {
@@ -272,7 +328,13 @@ router.post("/me/photo", authMiddleware, (req, res) => {
       console.error("❌ Multer/Upload error:", uploadError);
       console.error("❌ Error type:", uploadError.code);
       console.error("❌ Error message:", uploadError.message);
-      console.error("❌ Error stack:", uploadError.stack);
+      
+      // ✅ Set CORS headers even for errors
+      const origin = req.headers.origin;
+      if (origin) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+      }
       
       // ✅ Return proper error response (prevents 502)
       return res.status(400).json({
@@ -327,7 +389,13 @@ router.post("/me/photo", authMiddleware, (req, res) => {
       await user.save();
       console.log("✅ Photo saved successfully");
 
-      // ✅ Return success response
+      // ✅ Return success response with CORS headers
+      const origin = req.headers.origin;
+      if (origin) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+      }
+      
       return res.status(200).json({
         photoUrl: photoUrl,
         message: "อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว",
@@ -337,6 +405,13 @@ router.post("/me/photo", authMiddleware, (req, res) => {
     } catch (dbError) {
       console.error("❌ Database error:", dbError);
       console.error("❌ DB Error stack:", dbError.stack);
+      
+      // ✅ Set CORS headers even for errors
+      const origin = req.headers.origin;
+      if (origin) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+      }
       
       return res.status(500).json({
         message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",

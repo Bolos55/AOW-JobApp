@@ -306,6 +306,8 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
     setUploadingPhoto(true);
     try {
       console.log("📸 Starting photo upload...");
+      console.log("📸 File:", file.name, file.size, file.type);
+      
       const form = new FormData();
       form.append("photo", file);
 
@@ -313,16 +315,36 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
         method: "POST",
         headers: {
           ...authHeader(),
+          // ❌ Don't set Content-Type for FormData - let browser set it
         },
         body: form,
       });
 
       console.log("📸 Upload response status:", res.status);
+      console.log("📸 Upload response headers:", res.headers);
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         console.error("📸 Upload failed:", errorData);
-        throw new Error(errorData.message || "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ");
+        
+        // ✅ Handle specific error types with better messages
+        if (res.status === 0) {
+          throw new Error("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต");
+        } else if (res.status === 502 || res.status === 503) {
+          throw new Error("เซิร์ฟเวอร์ไม่พร้อมใช้งาน กรุณาลองใหม่ในอีกสักครู่");
+        } else if (res.status === 413) {
+          throw new Error("ไฟล์รูปใหญ่เกินไป กรุณาเลือกรูปที่เล็กกว่า 2MB");
+        } else if (res.status === 415) {
+          throw new Error("รูปแบบไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ JPG, PNG หรือ GIF");
+        } else if (res.status === 401) {
+          throw new Error("กรุณาเข้าสู่ระบบใหม่");
+        } else if (res.status === 403) {
+          throw new Error("ไม่มีสิทธิ์อัปโหลดรูป");
+        } else if (res.status === 429) {
+          throw new Error("คำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่");
+        } else {
+          throw new Error(errorData.message || `อัปโหลดรูปไม่สำเร็จ (รหัสข้อผิดพลาด: ${res.status})`);
+        }
       }
 
       const data = await res.json();
@@ -354,7 +376,12 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
       console.error("❌ uploadProfilePhoto error:", e);
       // ✅ Check if component is still mounted before showing alert
       if (mountedRef.current) {
-        alert(e.message || "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ");
+        // ✅ Show more specific error messages
+        if (e.name === 'TypeError' && e.message.includes('fetch')) {
+          alert("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต");
+        } else {
+          alert(e.message || "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ");
+        }
       }
     } finally {
       // ✅ Check if component is still mounted before setState

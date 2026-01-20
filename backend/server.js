@@ -61,14 +61,30 @@ app.use(detectSuspiciousPatterns);
 app.use(monitorAuthFailure);
 app.use(monitorRateLimit);
 
-// ✅ Enhanced CORS configuration for production
+// ✅ Enhanced CORS configuration for production with photo upload support
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://aow-jobapp.onrender.com',
-    'https://aow-jobapp-frontend.onrender.com'
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'https://aow-jobapp.onrender.com',
+      'https://aow-jobapp-frontend.onrender.com'
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Allow any origin in development
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
@@ -77,10 +93,13 @@ app.use(cors({
     'X-Requested-With', 
     'Origin',
     'Accept',
-    'Cache-Control'
+    'Cache-Control',
+    'X-Forwarded-For',
+    'X-Real-IP'
   ],
-  exposedHeaders: ['Content-Length'],
-  optionsSuccessStatus: 200
+  exposedHeaders: ['Content-Length', 'X-Total-Count'],
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 }));
 
 // ✅ Handle preflight requests for all routes
@@ -184,9 +203,15 @@ app.use("/api/chats", apiRateLimit);
 // ✅ Payment rate limiting (less strict for viewing, strict for transactions)
 app.use("/api/payments/create", createRateLimit(15 * 60 * 1000, 5)); // 5 payment creations per 15 minutes
 app.use("/api/payments/webhook", createRateLimit(5 * 60 * 1000, 50)); // 50 webhook calls per 5 minutes
-// ✅ Explicitly allow payment history viewing without rate limits
+
+// ✅ Explicitly bypass rate limits for payment history and status checks
 app.use("/api/payments/my-payments", (req, res, next) => {
   console.log("🔍 Payment history request - bypassing rate limits");
+  next();
+});
+
+app.use("/api/payments/:paymentId/status", (req, res, next) => {
+  console.log("🔍 Payment status request - bypassing rate limits");
   next();
 });
 
