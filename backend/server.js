@@ -306,10 +306,32 @@ app.use((err, req, res, _next) => {
 // ===============================
 const PORT = process.env.PORT || 5000;
 
+// ✅ Ensure uploads directories exist
+const ensureUploadsDirectories = () => {
+  const directories = [
+    'uploads',
+    'uploads/photos',
+    'uploads/resumes',
+    'uploads/idcards',
+    'uploads/profile'
+  ];
+  
+  directories.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`📁 Created directory: ${dir}`);
+    }
+  });
+};
+
 app.listen(PORT, () => {
   console.log("🚀 SERVER STARTED");
   console.log(`📡 Port: ${PORT}`);
   console.log(`🌍 ENV: ${process.env.NODE_ENV || "development"}`);
+  
+  // Ensure upload directories exist
+  ensureUploadsDirectories();
+  
   if (process.env.NODE_ENV === 'development') {
     console.log("✅ Firebase Google Login is NOT rate-limited");
   }

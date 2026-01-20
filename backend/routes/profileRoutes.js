@@ -3,6 +3,7 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import crypto from "crypto";
+import fs from "fs";
 import { authMiddleware } from "../middleware/auth.js";
 import User from "../models/User.js";
 
@@ -18,6 +19,13 @@ const createSecureStorage = (subfolder = '') => {
   return multer.diskStorage({
     destination: (req, file, cb) => {
       const uploadPath = subfolder ? `uploads/${subfolder}` : "uploads";
+      
+      // ✅ Create directory if it doesn't exist
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+        console.log(`📁 Created directory: ${uploadPath}`);
+      }
+      
       cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
@@ -325,11 +333,12 @@ router.post(
   (req, res, next) => {
     uploadPhoto.single("photo")(req, res, (err) => {
       if (err) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log("❌ Multer error:", err);
-        }
+        console.error("❌ Multer error:", err);
         if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(400).json({ message: "ไฟล์รูปใหญ่เกินไป (สูงสุด 10MB)" });
+          return res.status(400).json({ message: "ไฟล์รูปใหญ่เกินไป (สูงสุด 2MB)" });
+        }
+        if (err.code === 'ENOENT') {
+          return res.status(500).json({ message: "ไม่สามารถสร้างโฟลเดอร์สำหรับอัปโหลดได้" });
         }
         return res.status(400).json({ message: err.message || "อัปโหลดรูปไม่สำเร็จ" });
       }
