@@ -16,18 +16,27 @@ export default function PaymentHistory({ open, onClose }) {
     setError("");
 
     try {
+      console.log("🔍 Loading payments with filter:", filter);
+      
       const res = await fetch(`${API_BASE}/api/payments/my-payments?status=${filter === "all" ? "" : filter}`, {
         headers: authHeader()
       });
 
+      console.log("🔍 Payment API response status:", res.status);
+
       if (!res.ok) {
-        throw new Error("ไม่สามารถโหลดประวัติการชำระเงินได้");
+        const errorData = await res.json().catch(() => ({}));
+        console.error("🔍 Payment API error:", errorData);
+        throw new Error(errorData.message || "ไม่สามารถโหลดประวัติการชำระเงินได้");
       }
 
       const data = await res.json();
+      console.log("🔍 Payment API response data:", data);
+      
       setPayments(data.payments || []);
 
     } catch (err) {
+      console.error("🔍 Payment loading error:", err);
       setError(err.message);
     } finally {
       setLoading(false);
