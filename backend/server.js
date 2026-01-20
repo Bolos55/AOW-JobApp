@@ -61,9 +61,27 @@ app.use(detectSuspiciousPatterns);
 app.use(monitorAuthFailure);
 app.use(monitorRateLimit);
 
-// CORS
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+// CORS - ✅ Enhanced for file uploads
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://aow-jobapp.onrender.com',
+    'https://aow-jobapp-frontend.onrender.com'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Origin',
+    'Accept',
+    'Cache-Control'
+  ],
+  exposedHeaders: ['Content-Length'],
+}));
+app.options("*", cors());
 
 // Input sanitize
 app.use(sanitizeInput);

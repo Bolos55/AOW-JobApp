@@ -10,6 +10,13 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// ✅ Debug Cloudinary config
+console.log("🔧 Cloudinary Config:", {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "✅ Set" : "❌ Missing",
+  api_key: process.env.CLOUDINARY_API_KEY ? "✅ Set" : "❌ Missing", 
+  api_secret: process.env.CLOUDINARY_API_SECRET ? "✅ Set" : "❌ Missing"
+});
+
 // Storage for photos
 const photoStorage = new CloudinaryStorage({
   cloudinary: cloudinary,

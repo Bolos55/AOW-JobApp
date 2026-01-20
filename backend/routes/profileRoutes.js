@@ -2,7 +2,6 @@
 import express from "express";
 import { authMiddleware } from "../middleware/auth.js";
 import User from "../models/User.js";
-import cors from "cors";
 
 // Import rate limiting
 import { uploadRateLimit } from "../middleware/security.js";
@@ -11,25 +10,6 @@ import { uploadRateLimit } from "../middleware/security.js";
 import { uploadPhoto, uploadResume } from "../config/cloudinary.js";
 
 const router = express.Router();
-
-// ✅ Enable CORS for all profile routes
-router.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://aow-jobapp.onrender.com',
-    'https://aow-jobapp-frontend.onrender.com'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With', 
-    'Origin',
-    'Accept'
-  ]
-}));
 
 /* ========= GET /api/profile/me ========= */
 // ใช้ให้ผู้ใช้ดูโปรไฟล์ตัวเอง (JobSeekerView / modal โปรไฟล์)
@@ -273,7 +253,12 @@ router.post(
 
 router.post(
   "/me/photo",
-  uploadRateLimit, // ✅ Add rate limiting for uploads
+  (req, res, next) => {
+    console.log("🔥 HIT /me/photo - Request received");
+    console.log("🔥 Headers:", req.headers);
+    next();
+  },
+  uploadRateLimit,
   authMiddleware,
   uploadPhoto.single("photo"),
   async (req, res) => {
