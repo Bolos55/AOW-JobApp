@@ -1529,12 +1529,25 @@ function EmailValidationSection({ user }) {
   const [filter, setFilter] = useState('all');
   const [testEmail, setTestEmail] = useState('');
   const [testResult, setTestResult] = useState(null);
+  
+  // ✅ Track component mount status
+  const mountedRef = useRef(true);
 
   // ✅ Memoized auth header
   const authHeaders = useMemo(() => authHeader(), []);
 
+  // ✅ Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // ดึงข้อมูลผู้ใช้ที่น่าสงสัย
   const loadSuspiciousUsers = useCallback(async () => {
+    if (!mountedRef.current) return;
+    
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/admin/suspicious-users?status=${filter}`, {
@@ -1542,24 +1555,32 @@ function EmailValidationSection({ user }) {
       });
       if (res.ok) {
         const data = await res.json();
-        setSuspiciousUsers(data.users || []);
+        if (mountedRef.current) {
+          setSuspiciousUsers(data.users || []);
+        }
       }
     } catch (err) {
       console.error('Load suspicious users error:', err);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [filter, authHeaders]);
 
   // ดึงสถิติอีเมล
   const loadEmailStats = useCallback(async () => {
+    if (!mountedRef.current) return;
+    
     try {
       const res = await fetch(`${API_BASE}/api/admin/email-stats`, {
         headers: authHeaders,
       });
       if (res.ok) {
         const data = await res.json();
-        setEmailStats(data);
+        if (mountedRef.current) {
+          setEmailStats(data);
+        }
       }
     } catch (err) {
       console.error('Load email stats error:', err);
@@ -1569,6 +1590,8 @@ function EmailValidationSection({ user }) {
   // ตรวจสอบอีเมลแบบ batch
   const validateUsersBatch = async () => {
     if (!window.confirm('ตรวจสอบอีเมลผู้ใช้ทั้งหมด? (อาจใช้เวลาสักครู่)')) return;
+    
+    if (!mountedRef.current) return;
     
     setValidating(true);
     try {
@@ -1583,23 +1606,32 @@ function EmailValidationSection({ user }) {
       
       if (res.ok) {
         const data = await res.json();
-        alert(`ตรวจสอบเรียบร้อย!\n\nประมวลผล: ${data.processed} คน\nน่าสงสัย: ${data.suspicious} คน\nต้องตรวจสอบ: ${data.needsReview} คน`);
-        loadSuspiciousUsers();
-        loadEmailStats();
+        if (mountedRef.current) {
+          alert(`ตรวจสอบเรียบร้อย!\n\nประมวลผล: ${data.processed} คน\nน่าสงสัย: ${data.suspicious} คน\nต้องตรวจสอบ: ${data.needsReview} คน`);
+          loadSuspiciousUsers();
+          loadEmailStats();
+        }
       } else {
         const error = await res.json();
-        alert(`เกิดข้อผิดพลาด: ${error.message}`);
+        if (mountedRef.current) {
+          alert(`เกิดข้อผิดพลาด: ${error.message}`);
+        }
       }
     } catch (err) {
-      alert(`เกิดข้อผิดพลาด: ${err.message}`);
+      if (mountedRef.current) {
+        alert(`เกิดข้อผิดพลาด: ${err.message}`);
+      }
     } finally {
-      setValidating(false);
+      if (mountedRef.current) {
+        setValidating(false);
+      }
     }
   };
 
   // ทดสอบอีเมล
   const testEmailValidation = async () => {
     if (!testEmail.trim()) return;
+    if (!mountedRef.current) return;
     
     try {
       const res = await fetch(`${API_BASE}/api/admin/validate-email`, {
@@ -1613,19 +1645,26 @@ function EmailValidationSection({ user }) {
       
       if (res.ok) {
         const data = await res.json();
-        setTestResult(data.validation);
+        if (mountedRef.current) {
+          setTestResult(data.validation);
+        }
       } else {
         const error = await res.json();
-        alert(`เกิดข้อผิดพลาด: ${error.message}`);
+        if (mountedRef.current) {
+          alert(`เกิดข้อผิดพลาด: ${error.message}`);
+        }
       }
     } catch (err) {
-      alert(`เกิดข้อผิดพลาด: ${err.message}`);
+      if (mountedRef.current) {
+        alert(`เกิดข้อผิดพลาด: ${err.message}`);
+      }
     }
   };
   // ระงับบัญชี
   const suspendUser = async (userId, userName) => {
     const reason = prompt(`ระบุเหตุผลในการระงับบัญชี "${userName}":`);
     if (!reason) return;
+    if (!mountedRef.current) return;
     
     try {
       const res = await fetch(`${API_BASE}/api/admin/users/${userId}/suspend`, {
@@ -1639,20 +1678,27 @@ function EmailValidationSection({ user }) {
       
       if (res.ok) {
         const data = await res.json();
-        alert(data.message);
-        loadSuspiciousUsers();
+        if (mountedRef.current) {
+          alert(data.message);
+          loadSuspiciousUsers();
+        }
       } else {
         const error = await res.json();
-        alert(`เกิดข้อผิดพลาด: ${error.message}`);
+        if (mountedRef.current) {
+          alert(`เกิดข้อผิดพลาด: ${error.message}`);
+        }
       }
     } catch (err) {
-      alert(`เกิดข้อผิดพลาด: ${err.message}`);
+      if (mountedRef.current) {
+        alert(`เกิดข้อผิดพลาด: ${err.message}`);
+      }
     }
   };
 
   // ยกเลิกการระงับ
   const unsuspendUser = async (userId, userName) => {
     const notes = prompt(`หมายเหตุการยกเลิกระงับบัญชี "${userName}" (ไม่บังคับ):`);
+    if (!mountedRef.current) return;
     
     try {
       const res = await fetch(`${API_BASE}/api/admin/users/${userId}/unsuspend`, {
@@ -1666,14 +1712,20 @@ function EmailValidationSection({ user }) {
       
       if (res.ok) {
         const data = await res.json();
-        alert(data.message);
-        loadSuspiciousUsers();
+        if (mountedRef.current) {
+          alert(data.message);
+          loadSuspiciousUsers();
+        }
       } else {
         const error = await res.json();
-        alert(`เกิดข้อผิดพลาด: ${error.message}`);
+        if (mountedRef.current) {
+          alert(`เกิดข้อผิดพลาด: ${error.message}`);
+        }
       }
     } catch (err) {
-      alert(`เกิดข้อผิดพลาด: ${err.message}`);
+      if (mountedRef.current) {
+        alert(`เกิดข้อผิดพลาด: ${err.message}`);
+      }
     }
   };
 
@@ -1681,6 +1733,7 @@ function EmailValidationSection({ user }) {
   const reviewUser = async (userId, userName, approved) => {
     const notes = prompt(`หมายเหตุการตรวจสอบ "${userName}":`);
     if (!notes) return;
+    if (!mountedRef.current) return;
     
     try {
       const res = await fetch(`${API_BASE}/api/admin/users/${userId}/review`, {
@@ -1697,14 +1750,20 @@ function EmailValidationSection({ user }) {
       
       if (res.ok) {
         const data = await res.json();
-        alert(data.message);
-        loadSuspiciousUsers();
+        if (mountedRef.current) {
+          alert(data.message);
+          loadSuspiciousUsers();
+        }
       } else {
         const error = await res.json();
-        alert(`เกิดข้อผิดพลาด: ${error.message}`);
+        if (mountedRef.current) {
+          alert(`เกิดข้อผิดพลาด: ${error.message}`);
+        }
       }
     } catch (err) {
-      alert(`เกิดข้อผิดพลาด: ${err.message}`);
+      if (mountedRef.current) {
+        alert(`เกิดข้อผิดพลาด: ${err.message}`);
+      }
     }
   };
 

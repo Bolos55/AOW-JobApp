@@ -1,12 +1,28 @@
 // src/utils/imageUtils.js
-// ✅ Simple image URL resolver - support full URLs only
+import { API_BASE } from "../api";
+
+// ✅ Simple image URL resolver - support both Cloudinary and local URLs
 export const resolveImageUrl = (url) => {
   if (!url) return "";
-  // ✅ Only accept full URLs (Cloudinary or full backend URLs)
+  
+  // ✅ Full URLs (Cloudinary or external) - use as-is
   if (url.startsWith("http")) return url;
-  // ✅ Legacy paths - show placeholder instead of broken image
-  console.warn("Legacy photo path detected:", url);
-  return ""; // Return empty to hide broken images
+  
+  // ✅ Local paths - convert to full backend URL
+  if (url.startsWith("uploads/") || url.startsWith("/uploads/")) {
+    const cleanPath = url.startsWith("/") ? url.substring(1) : url;
+    const backendBase = API_BASE.replace(/\/api\/?$/, "");
+    return `${backendBase}/${cleanPath}`;
+  }
+  
+  // ✅ Legacy paths without uploads prefix
+  if (url.includes("/") && !url.startsWith("http")) {
+    const backendBase = API_BASE.replace(/\/api\/?$/, "");
+    return `${backendBase}/uploads/${url}`;
+  }
+  
+  console.warn("Unknown photo path format:", url);
+  return ""; // Return empty to show default avatar
 };
 
 // ✅ Clean utility for all photo URLs
@@ -14,9 +30,8 @@ export const getPhotoUrl = (profile, fieldName = "photoUrl") => {
   const url = profile?.[fieldName] || profile?.photoUrl;
   const resolvedUrl = resolveImageUrl(url);
   
-  // ✅ If no valid URL, return empty (will show default avatar)
   if (!resolvedUrl && url) {
-    console.log("🔄 Legacy photo detected, please re-upload:", url);
+    console.log("🔄 Could not resolve photo URL:", url);
   }
   
   return resolvedUrl;

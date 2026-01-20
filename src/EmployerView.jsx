@@ -55,7 +55,18 @@ export default function EmployerView({ user, onLogout }) {
   const [selectedJobForServiceFee, setSelectedJobForServiceFee] = useState(null);
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
 
+  // ✅ Track component mount status
+  const mountedRef = useRef(true);
+
   const token = localStorage.getItem("token") || "";
+
+  // ✅ Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const last = localStorage.getItem("adminChat:lastOpen");
@@ -67,6 +78,8 @@ export default function EmployerView({ user, onLogout }) {
 
   // โหลด dashboard
   const loadDashboard = async () => {
+    if (!mountedRef.current) return;
+    
     try {
       setLoading(true);
       setError("");
@@ -82,11 +95,15 @@ export default function EmployerView({ user, onLogout }) {
       });
       if (jobsRes.ok) {
         const data = await jobsRes.json().catch(() => []);
-        setMyJobs(Array.isArray(data) ? data : []);
+        if (mountedRef.current) {
+          setMyJobs(Array.isArray(data) ? data : []);
+        }
       } else {
         console.error("โหลด my-jobs ไม่ได้:", jobsRes.status);
-        setMyJobs([]);
-        setError("โหลดรายการงานไม่สำเร็จ");
+        if (mountedRef.current) {
+          setMyJobs([]);
+          setError("โหลดรายการงานไม่สำเร็จ");
+        }
       }
 
       // ผู้สมัครทั้งหมดของงานฉัน
@@ -96,19 +113,27 @@ export default function EmployerView({ user, onLogout }) {
       );
       if (appsRes.ok) {
         const data = await appsRes.json().catch(() => []);
-        setApplications(Array.isArray(data) ? data : []);
+        if (mountedRef.current) {
+          setApplications(Array.isArray(data) ? data : []);
+        }
       } else {
         console.error("โหลด my-applications-received ไม่ได้:", appsRes.status);
-        setApplications([]);
-        setError((prev) => prev || "โหลดข้อมูลผู้สมัครไม่สำเร็จ");
+        if (mountedRef.current) {
+          setApplications([]);
+          setError((prev) => prev || "โหลดข้อมูลผู้สมัครไม่สำเร็จ");
+        }
       }
     } catch (err) {
       console.error("โหลด dashboard นายจ้างพัง:", err);
-      setMyJobs([]);
-      setApplications([]);
-      setError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+      if (mountedRef.current) {
+        setMyJobs([]);
+        setApplications([]);
+        setError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -158,6 +183,7 @@ export default function EmployerView({ user, onLogout }) {
   const updateApplicationStatus = async (app, newStatus) => {
     if (!app?._id) return;
     if (app.status === newStatus) return;
+    if (!mountedRef.current) return;
 
     // ✅ เช็คว่าถ้าจะรับเข้าทำงาน ต้องมีการยืนยันบัตรประชาชนก่อน
     if (newStatus === "hired" && !app.idVerified) {
@@ -192,41 +218,51 @@ export default function EmployerView({ user, onLogout }) {
         
         // ✅ จัดการ error message พิเศษสำหรับกรณีบัตรประชาชนยังไม่ได้รับการอนุมัติ
         if (errorData.requiresIdVerification) {
-          alert("⚠️ " + errorData.message + "\n\nกรุณาติดต่อแอดมินเพื่อขอให้ตรวจสอบบัตรประชาชนของผู้สมัครคนนี้");
+          if (mountedRef.current) {
+            alert("⚠️ " + errorData.message + "\n\nกรุณาติดต่อแอดมินเพื่อขอให้ตรวจสอบบัตรประชาชนของผู้สมัครคนนี้");
+          }
         } else {
-          alert(errorData.message || "อัปเดตสถานะไม่สำเร็จ กรุณาลองใหม่");
+          if (mountedRef.current) {
+            alert(errorData.message || "อัปเดตสถานะไม่สำเร็จ กรุณาลองใหม่");
+          }
         }
         return;
       }
 
       const updated = await res.json().catch(() => null);
 
-      setApplications((prev) =>
-        prev.map((p) =>
-          p._id === app._id
-            ? { ...p, ...(updated || {}), status: newStatus }
-            : p
-        )
-      );
+      if (mountedRef.current) {
+        setApplications((prev) =>
+          prev.map((p) =>
+            p._id === app._id
+              ? { ...p, ...(updated || {}), status: newStatus }
+              : p
+          )
+        );
 
-      setSelectedApplication((prev) =>
-        prev && prev._id === app._id
-          ? { ...prev, ...(updated || {}), status: newStatus }
-          : prev
-      );
+        setSelectedApplication((prev) =>
+          prev && prev._id === app._id
+            ? { ...prev, ...(updated || {}), status: newStatus }
+            : prev
+        );
 
-      // แสดงข้อความสำเร็จ
-      if (newStatus === "hired") {
-        alert("✅ รับเข้าทำงานเรียบร้อยแล้ว!");
-      } else if (newStatus === "rejected") {
-        alert("✅ ปฏิเสธผู้สมัครเรียบร้อยแล้ว");
+        // แสดงข้อความสำเร็จ
+        if (newStatus === "hired") {
+          alert("✅ รับเข้าทำงานเรียบร้อยแล้ว!");
+        } else if (newStatus === "rejected") {
+          alert("✅ ปฏิเสธผู้สมัครเรียบร้อยแล้ว");
+        }
       }
 
     } catch (err) {
       console.error("error updateApplicationStatus:", err);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+      if (mountedRef.current) {
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+      }
     } finally {
-      setUpdatingAppId(null);
+      if (mountedRef.current) {
+        setUpdatingAppId(null);
+      }
     }
   };
 
@@ -234,6 +270,7 @@ export default function EmployerView({ user, onLogout }) {
   const closeJob = async (job) => {
     if (!job?._id) return;
     if (!window.confirm(`ยืนยันปิดงาน "${job.title}" หรือไม่?`)) return;
+    if (!mountedRef.current) return;
 
     try {
       const res = await fetch(`${API_BASE}/api/employer/jobs/${job._id}/close`, {
@@ -246,12 +283,14 @@ export default function EmployerView({ user, onLogout }) {
 
       if (!res.ok) {
         console.error("ปิดงานไม่สำเร็จ:", res.status);
-        alert("ปิดงานไม่สำเร็จ กรุณาลองใหม่");
+        if (mountedRef.current) {
+          alert("ปิดงานไม่สำเร็จ กรุณาลองใหม่");
+        }
         return;
       }
 
       const updated = await res.json().catch(() => null);
-      if (!updated) return;
+      if (!updated || !mountedRef.current) return;
 
       setMyJobs((prev) =>
         prev.map((j) => (j._id === job._id ? { ...j, ...updated } : j))
@@ -262,7 +301,9 @@ export default function EmployerView({ user, onLogout }) {
       );
     } catch (err) {
       console.error("closeJob error:", err);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+      if (mountedRef.current) {
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+      }
     }
   };
 
