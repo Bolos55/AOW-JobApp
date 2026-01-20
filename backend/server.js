@@ -61,7 +61,7 @@ app.use(detectSuspiciousPatterns);
 app.use(monitorAuthFailure);
 app.use(monitorRateLimit);
 
-// CORS - ✅ Enhanced for file uploads
+// ✅ Enhanced CORS configuration for production
 app.use(cors({
   origin: [
     'http://localhost:3000',
@@ -80,7 +80,10 @@ app.use(cors({
     'Cache-Control'
   ],
   exposedHeaders: ['Content-Length'],
+  optionsSuccessStatus: 200
 }));
+
+// ✅ Handle preflight requests for all routes
 app.options("*", cors());
 
 // Input sanitize
@@ -99,27 +102,31 @@ app.use('/api/payments/webhook', (req, res, next) => {
 });
 
 // ===============================
-// Static uploads with CORS support
+// Static uploads with enhanced CORS and error handling
 // ===============================
 if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 
-// ✅ CORS middleware specifically for uploads
-app.use("/uploads", cors({
-  origin: [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://aow-jobapp.onrender.com',
-    'https://aow-jobapp-frontend.onrender.com'
-  ],
-  methods: ['GET'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin'],
-  credentials: false
-}));
-
+// ✅ Enhanced static file serving with proper error handling
 app.use("/uploads", (req, res, next) => {
+  // Set CORS headers for static files
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  
   const filePath = `uploads${req.path}`;
-  if (fs.existsSync(filePath)) return next();
-  res.status(404).json({ error: "File not found" });
+  console.log(`📁 Static file request: ${filePath}`);
+  
+  if (fs.existsSync(filePath)) {
+    console.log(`✅ File exists: ${filePath}`);
+    return next();
+  } else {
+    console.log(`❌ File not found: ${filePath}`);
+    return res.status(404).json({ 
+      error: "File not found",
+      path: req.path,
+      message: "รูปภาพที่ร้องขอไม่พบ อาจถูกลบหรือย้ายแล้ว"
+    });
+  }
 });
 
 app.use("/uploads", express.static("uploads", {
@@ -128,6 +135,7 @@ app.use("/uploads", express.static("uploads", {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
   }
 }));
 
@@ -310,25 +318,58 @@ app.use((err, req, res, _next) => {
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
   res.header('Access-Control-Allow-Credentials', 'true');
   
+  // ✅ Enhanced error logging
   logger.error("Global Error", {
     message: err.message,
+    stack: err.stack,
     path: req.originalUrl,
     method: req.method,
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+    timestamp: new Date().toISOString()
   });
 
-  if (err.status === 429) {
+  // ✅ Handle specific error types
+  if (err.status === 429 || err.code === 'RATE_LIMITED') {
     return res.status(429).json({
       error: "Too Many Requests",
-      message: "Rate limit exceeded",
+      message: "คำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่",
+      retryAfter: err.retryAfter || 60
     });
   }
 
-  res.status(err.status || 500).json({
-    error: "Internal Server Error",
-    message:
-      process.env.NODE_ENV === "development"
-        ? err.message
-        : "Something went wrong",
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      error: "Validation Error",
+      message: "ข้อมูลที่ส่งมาไม่ถูกต้อง",
+      details: process.env.NODE_ENV === "development" ? err.message : undefined
+    });
+  }
+
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      error: "Invalid ID",
+      message: "รหัสที่ระบุไม่ถูกต้อง"
+    });
+  }
+
+  if (err.code === 11000) {
+    return res.status(409).json({
+      error: "Duplicate Entry",
+      message: "ข้อมูลซ้ำกับที่มีอยู่แล้ว"
+    });
+  }
+
+  // ✅ Default error response
+  const statusCode = err.status || err.statusCode || 500;
+  res.status(statusCode).json({
+    error: statusCode >= 500 ? "Internal Server Error" : "Request Error",
+    message: process.env.NODE_ENV === "development" 
+      ? err.message 
+      : statusCode >= 500 
+        ? "เกิดข้อผิดพลาดภายในระบบ กรุณาลองใหม่อีกครั้ง"
+        : err.message || "เกิดข้อผิดพลาด",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack })
   });
 });
 

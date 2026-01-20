@@ -27,17 +27,32 @@ export default function PaymentHistory({ open, onClose }) {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         console.error("🔍 Payment API error:", errorData);
-        throw new Error(errorData.message || "ไม่สามารถโหลดประวัติการชำระเงินได้");
+        
+        // ✅ Handle specific error types
+        if (res.status === 429) {
+          throw new Error("คำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่");
+        } else if (res.status === 401) {
+          throw new Error("กรุณาเข้าสู่ระบบใหม่");
+        } else if (res.status === 403) {
+          throw new Error("ไม่มีสิทธิ์เข้าถึงข้อมูลนี้");
+        } else {
+          throw new Error(errorData.message || "ไม่สามารถโหลดประวัติการชำระเงินได้");
+        }
       }
 
       const data = await res.json();
       console.log("🔍 Payment API response data:", data);
       
-      setPayments(data.payments || []);
+      // ✅ Validate response structure
+      if (!data || typeof data !== 'object') {
+        throw new Error("ข้อมูลที่ได้รับไม่ถูกต้อง");
+      }
+      
+      setPayments(Array.isArray(data.payments) ? data.payments : []);
 
     } catch (err) {
       console.error("🔍 Payment loading error:", err);
-      setError(err.message);
+      setError(err.message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
     } finally {
       setLoading(false);
     }

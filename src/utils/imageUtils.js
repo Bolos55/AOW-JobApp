@@ -1,12 +1,14 @@
 // src/utils/imageUtils.js
 import { API_BASE } from "../api";
 
-// ✅ Simple image URL resolver - support both Cloudinary and local URLs
+// ✅ Enhanced image URL resolver with comprehensive error handling
 export const resolveImageUrl = (url) => {
-  if (!url) return "";
+  if (!url || typeof url !== 'string') return "";
   
   // ✅ Full URLs (Cloudinary or external) - use as-is
-  if (url.startsWith("http")) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
   
   // ✅ Local paths - convert to full backend URL
   if (url.startsWith("uploads/") || url.startsWith("/uploads/")) {
@@ -21,23 +23,39 @@ export const resolveImageUrl = (url) => {
     return `${backendBase}/uploads/${url}`;
   }
   
+  // ✅ Handle relative paths
+  if (!url.includes("/") && url.length > 0) {
+    const backendBase = API_BASE.replace(/\/api\/?$/, "");
+    return `${backendBase}/uploads/photos/${url}`;
+  }
+  
   console.warn("Unknown photo path format:", url);
   return ""; // Return empty to show default avatar
 };
 
-// ✅ Clean utility for all photo URLs
+// ✅ Enhanced utility for all photo URLs with error handling
 export const getPhotoUrl = (profile, fieldName = "photoUrl") => {
-  const url = profile?.[fieldName] || profile?.photoUrl;
-  const resolvedUrl = resolveImageUrl(url);
-  
-  if (!resolvedUrl && url) {
-    console.log("🔄 Could not resolve photo URL:", url);
+  try {
+    const url = profile?.[fieldName] || profile?.photoUrl;
+    const resolvedUrl = resolveImageUrl(url);
+    
+    if (!resolvedUrl && url) {
+      console.log("🔄 Could not resolve photo URL:", url);
+    }
+    
+    return resolvedUrl;
+  } catch (error) {
+    console.error("Error resolving photo URL:", error);
+    return "";
   }
-  
-  return resolvedUrl;
 };
 
-// ✅ Clean utility for all resume URLs  
+// ✅ Enhanced utility for all resume URLs with error handling
 export const getResumeUrl = (profile) => {
-  return resolveImageUrl(profile?.resumeUrl);
+  try {
+    return resolveImageUrl(profile?.resumeUrl);
+  } catch (error) {
+    console.error("Error resolving resume URL:", error);
+    return "";
+  }
 };
