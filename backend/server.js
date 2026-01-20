@@ -210,6 +210,12 @@ app.get("/api/health", (req, res) => {
       authentication: "JWT + Firebase",
       fileUpload: "secure",
       paymentWebhook: "HMAC-SHA256"
+    },
+    cloudinary: {
+      configured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME ? "✅ Set" : "❌ Missing",
+      apiKey: process.env.CLOUDINARY_API_KEY ? "✅ Set" : "❌ Missing",
+      apiSecret: process.env.CLOUDINARY_API_SECRET ? "✅ Set" : "❌ Missing"
     }
   });
 });

@@ -347,7 +347,33 @@ router.post("/me/photo", authMiddleware, (req, res) => {
   });
 });
 
-/* ========= GET /api/profile/:userId (เฉพาะ admin + employer) ========= */
+/* ========= GET /api/profile/me/photo-status ========= */
+// Check if user's photo is using Cloudinary or local storage
+router.get("/me/photo-status", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("profile");
+    if (!user) {
+      return res.status(404).json({ message: "ไม่พบผู้ใช้" });
+    }
+
+    const photoUrl = user.profile?.photoUrl || "";
+    const isCloudinary = photoUrl.startsWith("https://res.cloudinary.com/");
+    const isLocal = photoUrl.includes("/uploads/") && !photoUrl.startsWith("http");
+    
+    return res.json({
+      hasPhoto: !!photoUrl,
+      photoUrl: photoUrl,
+      isCloudinary: isCloudinary,
+      isLocal: isLocal,
+      needsReupload: isLocal,
+      cloudinaryConfigured: isCloudinaryConfigured,
+      message: isLocal ? "รูปโปรไฟล์ของคุณอยู่ในระบบเก่า กรุณาอัปโหลดใหม่เพื่อความเสถียร" : "รูปโปรไฟล์ของคุณอยู่ในระบบใหม่แล้ว"
+    });
+  } catch (e) {
+    console.error("❌ GET /api/profile/me/photo-status error:", e);
+    return res.status(500).json({ message: "เกิดข้อผิดพลาดภายในระบบ" });
+  }
+});
 // ให้ admin / employer เปิดดูโปรไฟล์ของคนอื่นได้ (รวมรูปด้วย)
 
 router.get("/:userId", authMiddleware, async (req, res) => {
