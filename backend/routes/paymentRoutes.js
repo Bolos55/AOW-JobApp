@@ -373,13 +373,19 @@ router.post("/:paymentId/cancel",
  */
 router.get("/my-payments", authMiddleware, async (req, res) => {
   try {
+    console.log("🔍 GET /api/payments/my-payments - Start");
+    
     const userId = getUserId(req);
+    console.log("🔍 User ID:", userId);
+    
     const { page = 1, limit = 10, status } = req.query;
+    console.log("🔍 Query params:", { page, limit, status });
 
     const filter = { employerId: userId };
     if (status) {
       filter.status = status;
     }
+    console.log("🔍 Filter:", filter);
 
     const payments = await Payment.find(filter)
       .populate('jobId', 'title company')
@@ -387,9 +393,12 @@ router.get("/my-payments", authMiddleware, async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
-    const total = await Payment.countDocuments(filter);
+    console.log("🔍 Found payments:", payments.length);
 
-    res.json({
+    const total = await Payment.countDocuments(filter);
+    console.log("🔍 Total payments:", total);
+
+    const response = {
       payments: payments.map(p => ({
         paymentId: p.paymentId,
         amount: p.amount,
@@ -399,11 +408,11 @@ router.get("/my-payments", authMiddleware, async (req, res) => {
         boostFeatures: p.boostFeatures,
         paidAt: p.paidAt,
         createdAt: p.createdAt,
-        job: {
+        job: p.jobId ? {
           id: p.jobId._id,
           title: p.jobId.title,
           company: p.jobId.company
-        }
+        } : null
       })),
       pagination: {
         page: parseInt(page),
@@ -411,10 +420,13 @@ router.get("/my-payments", authMiddleware, async (req, res) => {
         total,
         pages: Math.ceil(total / limit)
       }
-    });
+    };
+
+    console.log("🔍 Response:", JSON.stringify(response, null, 2));
+    res.json(response);
 
   } catch (err) {
-    console.error("Get my payments error:", err);
+    console.error("❌ Get my payments error:", err);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงประวัติการชำระเงิน" });
   }
 });

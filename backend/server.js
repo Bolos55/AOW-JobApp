@@ -166,22 +166,21 @@ app.post("/api/auth/register", authRateLimit);
 app.post("/api/auth/forgot-password", authRateLimit);
 app.post("/api/auth/reset-password", authRateLimit);
 
-// ✅ API rate limiting for general endpoints
+// ✅ API rate limiting for general endpoints (exclude payments)
 app.use("/api/jobs", apiRateLimit);
 app.use("/api/applications", apiRateLimit);
 app.use("/api/reviews", apiRateLimit);
 app.use("/api/chats", apiRateLimit);
-// ❌ Remove profile rate limit - handled in routes
-// app.use("/api/profile", apiRateLimit);
-
-// ❌ Remove duplicate upload rate limits - handled in routes  
-// app.use("/api/profile/me/resume", uploadRateLimit);
-// app.use("/api/profile/me/photo", uploadRateLimit);
+// ❌ Exclude /api/payments from general rate limiting
 
 // ✅ Payment rate limiting (less strict for viewing, strict for transactions)
 app.use("/api/payments/create", createRateLimit(15 * 60 * 1000, 5)); // 5 payment creations per 15 minutes
 app.use("/api/payments/webhook", createRateLimit(5 * 60 * 1000, 50)); // 50 webhook calls per 5 minutes
-// ❌ No rate limit for viewing payment history - it's just reading data
+// ✅ Explicitly allow payment history viewing without rate limits
+app.use("/api/payments/my-payments", (req, res, next) => {
+  console.log("🔍 Payment history request - bypassing rate limits");
+  next();
+});
 
 // OAuth / Firebase / GitHub ❌ ไม่โดน rate limit (ใช้ provider's rate limiting)
 
