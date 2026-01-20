@@ -265,71 +265,97 @@ router.post(
   (req, res, next) => {
     console.log("🔥 HIT /me/photo - Request received");
     console.log("🔥 Headers:", req.headers);
+    console.log("🔥 Cloudinary configured:", isCloudinaryConfigured);
     next();
   },
   authMiddleware,
-  uploadPhoto.single("photo"),
+  (req, res, next) => {
+    // ✅ Wrap multer in try-catch to prevent crashes
+    uploadPhoto.single("photo")(req, res, (err) => {
+      if (err) {
+        console.error("❌ Multer/Upload error:", err);
+        console.error("❌ Error stack:", err.stack);
+        
+        // ✅ Send proper error response with CORS headers
+        res.status(400).json({ 
+          message: err.message || "อัปโหลดรูปไม่สำเร็จ",
+          error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+        return;
+      }
+      next();
+    });
+  },
   async (req, res) => {
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log("📸 POST /api/profile/me/photo - User ID:", req.user.id);
-        console.log("📸 Uploaded file:", req.file);
-      }
+      console.log("📸 Processing photo upload...");
+      console.log("📸 User ID:", req.user.id);
+      console.log("📸 File received:", req.file ? "✅ Yes" : "❌ No");
       
       if (!req.file) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log("❌ No file found in request");
-        }
+        console.log("❌ No file found in request");
         return res.status(400).json({ message: "ไม่พบไฟล์รูปโปรไฟล์" });
       }
 
+      console.log("📸 File details:", {
+        filename: req.file.filename,
+        path: req.file.path,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
+
       const user = await User.findById(req.user.id);
       if (!user) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log("❌ User not found:", req.user.id);
-        }
+        console.log("❌ User not found:", req.user.id);
         return res.status(404).json({ message: "ไม่พบผู้ใช้" });
       }
 
       // ✅ Generate full URL for both Cloudinary and local storage
       let photoUrl;
-      if (isCloudinaryConfigured) {
-        // Cloudinary returns full URL
-        photoUrl = req.file.path;
-      } else {
-        // Local storage - generate full URL
-        const API_BASE = process.env.NODE_ENV === 'production' 
-          ? 'https://aow-jobapp-backend.onrender.com'
-          : 'http://localhost:5000';
-        photoUrl = `${API_BASE}/uploads/${req.file.filename}`;
-      }
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log("📸 Photo URL from Cloudinary:", photoUrl);
+      try {
+        if (isCloudinaryConfigured) {
+          // Cloudinary returns full URL
+          photoUrl = req.file.path;
+          console.log("📸 Using Cloudinary URL:", photoUrl);
+        } else {
+          // Local storage - generate full URL
+          const API_BASE = process.env.NODE_ENV === 'production' 
+            ? 'https://aow-jobapp-backend.onrender.com'
+            : 'http://localhost:5000';
+          photoUrl = `${API_BASE}/uploads/photos/${req.file.filename}`;
+          console.log("📸 Using local URL:", photoUrl);
+        }
+      } catch (urlError) {
+        console.error("❌ Error generating photo URL:", urlError);
+        throw new Error("ไม่สามารถสร้าง URL รูปภาพได้");
       }
 
+      // ✅ Save to database
       user.profile = {
         ...(user.profile || {}),
         photoUrl: photoUrl,
       };
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log("📸 Profile before save:", user.profile);
-      }
+      console.log("📸 Saving profile with photoUrl:", photoUrl);
       await user.save();
-      if (process.env.NODE_ENV === 'development') {
-        console.log("✅ Photo profile saved successfully");
-      }
+      console.log("✅ Photo profile saved successfully");
 
-      return res.json({
+      // ✅ Return proper response format
+      return res.status(200).json({
         message: "อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว",
         photoUrl: photoUrl,
+        success: true
       });
+      
     } catch (e) {
       console.error("❌ POST /api/profile/me/photo error:", e);
-      return res
-        .status(500)
-        .json({ message: "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" });
+      console.error("❌ Error stack:", e.stack);
+      
+      // ✅ Always return proper JSON response
+      return res.status(500).json({ 
+        message: "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+        error: process.env.NODE_ENV === 'development' ? e.message : undefined
+      });
     }
   }
 );

@@ -297,6 +297,12 @@ app.use("*", (req, res) => {
 // Global Error Handler
 // ===============================
 app.use((err, req, res, _next) => {
+  // ✅ Always set CORS headers even for errors
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
   logger.error("Global Error", {
     message: err.message,
     path: req.originalUrl,

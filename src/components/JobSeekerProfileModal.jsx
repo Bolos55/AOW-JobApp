@@ -230,6 +230,7 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
     setUploadingPhoto(true);
     try {
+      console.log("📸 Starting photo upload...");
       const form = new FormData();
       form.append("photo", file);
 
@@ -241,29 +242,37 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
         body: form,
       });
 
-      const data = await res.json().catch(() => ({}));
-
+      console.log("📸 Upload response status:", res.status);
+      
       if (!res.ok) {
-        throw new Error(data.message || "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ");
+        const errorData = await res.json().catch(() => ({}));
+        console.error("📸 Upload failed:", errorData);
+        throw new Error(errorData.message || "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ");
       }
 
-      const url = data.photoUrl || data.profilePhotoUrl || "";
-      if (url) {
+      const data = await res.json();
+      console.log("📸 Upload success:", data);
+
+      const photoUrl = data.photoUrl;
+      if (photoUrl) {
+        console.log("📸 Setting new photoUrl:", photoUrl);
         setProfile((prev) => ({
           ...prev,
-          photoUrl: url,
+          photoUrl: photoUrl,
         }));
         
         // ✅ อัปเดต localStorage ด้วย photoUrl ใหม่
-        updateProfileInStorage({ photoUrl: url });
+        updateProfileInStorage({ photoUrl: photoUrl });
         
-        // ✅ Force re-render by updating key or state
-        console.log("✅ Photo uploaded successfully:", url);
+        console.log("✅ Photo uploaded and state updated successfully");
+        alert("อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว");
+      } else {
+        console.warn("⚠️ No photoUrl in response");
+        alert("อัปโหลดสำเร็จ แต่ไม่ได้รับ URL รูปภาพ");
       }
 
-      alert("อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว");
     } catch (e) {
-      console.error("uploadProfilePhoto error:", e);
+      console.error("❌ uploadProfilePhoto error:", e);
       alert(e.message || "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ");
     } finally {
       setUploadingPhoto(false);
