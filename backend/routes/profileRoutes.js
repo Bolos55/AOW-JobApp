@@ -260,95 +260,91 @@ router.post(
 /* ========= POST /api/profile/me/photo ========= */
 // อัปโหลดรูปโปรไฟล์ + อัพเดต profile.photoUrl
 
-router.post("/me/photo", authMiddleware, async (req, res) => {
-  try {
-    console.log("🔥 HIT /me/photo - Starting upload process");
-    console.log("🔥 User ID:", req.user.id);
-    console.log("🔥 Cloudinary configured:", isCloudinaryConfigured);
-    console.log("🔥 Request headers:", req.headers);
-    
-    // ✅ Handle upload with proper error catching
-    const upload = uploadPhoto.single("photo");
-    
-    upload(req, res, async (uploadError) => {
-      if (uploadError) {
-        console.error("❌ Upload error:", uploadError);
-        console.error("❌ Upload error stack:", uploadError.stack);
-        return res.status(400).json({ 
-          message: uploadError.message || "อัปโหลดรูปไม่สำเร็จ",
-          error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
-        });
+router.post("/me/photo", authMiddleware, (req, res) => {
+  console.log("🔥 HIT /me/photo - Starting upload");
+  console.log("🔥 User ID:", req.user.id);
+  console.log("🔥 Cloudinary configured:", isCloudinaryConfigured);
+  
+  // ✅ Proper multer error handling
+  uploadPhoto.single("photo")(req, res, async (uploadError) => {
+    // ✅ Handle multer/upload errors first
+    if (uploadError) {
+      console.error("❌ Multer/Upload error:", uploadError);
+      console.error("❌ Error type:", uploadError.code);
+      console.error("❌ Error message:", uploadError.message);
+      console.error("❌ Error stack:", uploadError.stack);
+      
+      // ✅ Return proper error response (prevents 502)
+      return res.status(400).json({
+        message: uploadError.message || "อัปโหลดรูปไม่สำเร็จ",
+        error: uploadError.code || "UPLOAD_ERROR",
+        details: process.env.NODE_ENV === 'development' ? uploadError.stack : undefined
+      });
+    }
+
+    try {
+      console.log("📸 Upload successful, processing...");
+      console.log("📸 File received:", req.file ? "✅ Yes" : "❌ No");
+      
+      if (!req.file) {
+        console.log("❌ No file in request");
+        return res.status(400).json({ message: "ไม่พบไฟล์รูปโปรไฟล์" });
       }
 
-      try {
-        console.log("📸 Upload successful, processing file...");
-        console.log("📸 File received:", req.file ? "✅ Yes" : "❌ No");
-        
-        if (!req.file) {
-          console.log("❌ No file found in request");
-          return res.status(400).json({ message: "ไม่พบไฟล์รูปโปรไฟล์" });
-        }
+      console.log("📸 File details:", {
+        filename: req.file.filename || req.file.originalname,
+        path: req.file.path,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
 
-        console.log("📸 File details:", {
-          filename: req.file.filename,
-          path: req.file.path,
-          size: req.file.size,
-          mimetype: req.file.mimetype
-        });
-
-        const user = await User.findById(req.user.id);
-        if (!user) {
-          console.log("❌ User not found:", req.user.id);
-          return res.status(404).json({ message: "ไม่พบผู้ใช้" });
-        }
-
-        // ✅ Generate full URL
-        let photoUrl;
-        if (isCloudinaryConfigured) {
-          photoUrl = req.file.path;
-          console.log("📸 Using Cloudinary URL:", photoUrl);
-        } else {
-          const API_BASE = process.env.NODE_ENV === 'production' 
-            ? 'https://aow-jobapp-backend.onrender.com'
-            : 'http://localhost:5000';
-          photoUrl = `${API_BASE}/uploads/photos/${req.file.filename}`;
-          console.log("📸 Using local URL:", photoUrl);
-        }
-
-        // ✅ Save to database
-        user.profile = {
-          ...(user.profile || {}),
-          photoUrl: photoUrl,
-        };
-
-        await user.save();
-        console.log("✅ Photo saved successfully:", photoUrl);
-
-        // ✅ Return exact format expected by frontend
-        return res.status(200).json({
-          photoUrl: photoUrl,
-          message: "อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว",
-          success: true
-        });
-
-      } catch (dbError) {
-        console.error("❌ Database error:", dbError);
-        console.error("❌ Database error stack:", dbError.stack);
-        return res.status(500).json({ 
-          message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
-          error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
-        });
+      // ✅ Find user
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        console.log("❌ User not found:", req.user.id);
+        return res.status(404).json({ message: "ไม่พบผู้ใช้" });
       }
-    });
 
-  } catch (routeError) {
-    console.error("❌ Route error:", routeError);
-    console.error("❌ Route error stack:", routeError.stack);
-    return res.status(500).json({ 
-      message: "เกิดข้อผิดพลาดในการอัปโหลด",
-      error: process.env.NODE_ENV === 'development' ? routeError.message : undefined
-    });
-  }
+      // ✅ Generate photoUrl
+      let photoUrl;
+      if (isCloudinaryConfigured) {
+        photoUrl = req.file.path; // Cloudinary URL
+        console.log("📸 Cloudinary URL:", photoUrl);
+      } else {
+        const API_BASE = process.env.NODE_ENV === 'production' 
+          ? 'https://aow-jobapp-backend.onrender.com'
+          : 'http://localhost:5000';
+        photoUrl = `${API_BASE}/uploads/photos/${req.file.filename}`;
+        console.log("📸 Local URL:", photoUrl);
+      }
+
+      // ✅ Save to database
+      user.profile = {
+        ...(user.profile || {}),
+        photoUrl: photoUrl,
+      };
+
+      await user.save();
+      console.log("✅ Photo saved successfully");
+
+      // ✅ Return success response
+      return res.status(200).json({
+        photoUrl: photoUrl,
+        message: "อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว",
+        success: true
+      });
+
+    } catch (dbError) {
+      console.error("❌ Database error:", dbError);
+      console.error("❌ DB Error stack:", dbError.stack);
+      
+      return res.status(500).json({
+        message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
+        error: "DATABASE_ERROR",
+        details: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+      });
+    }
+  });
 });
 
 /* ========= GET /api/profile/:userId (เฉพาะ admin + employer) ========= */

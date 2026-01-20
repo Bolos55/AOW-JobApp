@@ -353,6 +353,12 @@ app.listen(PORT, () => {
   console.log(`📡 Port: ${PORT}`);
   console.log(`🌍 ENV: ${process.env.NODE_ENV || "development"}`);
   
+  // ✅ Debug Cloudinary config on server start
+  console.log("🔧 Cloudinary Environment Check:");
+  console.log("  CLOUDINARY_CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME ? "✅ Set" : "❌ Missing");
+  console.log("  CLOUDINARY_API_KEY:", process.env.CLOUDINARY_API_KEY ? "✅ Set" : "❌ Missing");
+  console.log("  CLOUDINARY_API_SECRET:", process.env.CLOUDINARY_API_SECRET ? "✅ Set" : "❌ Missing");
+  
   // Ensure upload directories exist
   ensureUploadsDirectories();
   
