@@ -261,16 +261,29 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
       // ✅ Check if component is still mounted before setState
       if (mountedRef.current) {
+        // ✅ Force clear all photo-related data
         setProfile((prev) => ({
           ...prev,
           photoUrl: "",
         }));
         
-        // ✅ อัปเดต localStorage ด้วย
+        // ✅ อัปเดต localStorage และ clear ทุกอย่าง
         updateProfileInStorage({ photoUrl: "" });
         
-        console.log("✅ Photo deleted and state updated successfully");
+        // ✅ Force clear localStorage keys ที่อาจเก็บ photo URL
+        const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+        if (currentUser.profile) {
+          currentUser.profile.photoUrl = "";
+          localStorage.setItem("user", JSON.stringify(currentUser));
+        }
+        
+        console.log("✅ Photo deleted and all states cleared successfully");
         alert("ลบรูปโปรไฟล์เรียบร้อยแล้ว");
+        
+        // ✅ Call onSaved to refresh parent component
+        if (typeof onSaved === "function") {
+          onSaved();
+        }
       }
 
     } catch (e) {
@@ -410,6 +423,17 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
     "";
 
   const profilePhoto = getPhotoUrl({ photoUrl: rawPhoto });
+
+  // ✅ Debug logging
+  console.log("🔍 Profile photo debug:", {
+    "profile.photoUrl": profile.photoUrl,
+    "user?.profilePhotoUrl": user?.profilePhotoUrl,
+    "user?.photoUrl": user?.photoUrl,
+    "user?.avatarUrl": user?.avatarUrl,
+    "rawPhoto": rawPhoto,
+    "profilePhoto": profilePhoto,
+    "hasPhoto": !!profilePhoto
+  });
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
