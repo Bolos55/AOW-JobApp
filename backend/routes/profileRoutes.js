@@ -347,6 +347,45 @@ router.post("/me/photo", authMiddleware, (req, res) => {
   });
 });
 
+/* ========= DELETE /api/profile/me/photo ========= */
+// ลบรูปโปรไฟล์ + อัพเดต profile.photoUrl เป็นค่าว่าง
+
+router.delete("/me/photo", authMiddleware, async (req, res) => {
+  try {
+    console.log("🗑️ DELETE /api/profile/me/photo - User ID:", req.user.id);
+    
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      console.log("❌ User not found:", req.user.id);
+      return res.status(404).json({ message: "ไม่พบผู้ใช้" });
+    }
+
+    // ✅ Clear photoUrl from database
+    user.profile = {
+      ...(user.profile || {}),
+      photoUrl: "",
+    };
+
+    await user.save();
+    console.log("✅ Photo deleted from profile successfully");
+
+    return res.status(200).json({
+      message: "ลบรูปโปรไฟล์เรียบร้อยแล้ว",
+      photoUrl: "",
+      success: true
+    });
+
+  } catch (dbError) {
+    console.error("❌ Database error:", dbError);
+    
+    return res.status(500).json({
+      message: "เกิดข้อผิดพลาดในการลบรูปโปรไฟล์",
+      error: "DATABASE_ERROR",
+      details: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+    });
+  }
+});
+
 /* ========= GET /api/profile/me/photo-status ========= */
 // Check if user's photo is using Cloudinary or local storage
 router.get("/me/photo-status", authMiddleware, async (req, res) => {

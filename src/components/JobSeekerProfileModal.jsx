@@ -232,7 +232,60 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
     }
   };
 
-  // อัปโหลดรูปโปรไฟล์
+  // ลบรูปโปรไฟล์
+  const handleDeleteProfilePhoto = async () => {
+    if (!window.confirm("ยืนยันการลบรูปโปรไฟล์?")) return;
+    if (!mountedRef.current) return;
+
+    setUploadingPhoto(true);
+    try {
+      console.log("🗑️ Starting photo deletion...");
+      
+      const res = await fetch(`${API_BASE}/api/profile/me/photo`, {
+        method: "DELETE",
+        headers: {
+          ...authHeader(),
+        },
+      });
+
+      console.log("🗑️ Delete response status:", res.status);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("🗑️ Delete failed:", errorData);
+        throw new Error(errorData.message || "ลบรูปโปรไฟล์ไม่สำเร็จ");
+      }
+
+      const data = await res.json();
+      console.log("🗑️ Delete success:", data);
+
+      // ✅ Check if component is still mounted before setState
+      if (mountedRef.current) {
+        setProfile((prev) => ({
+          ...prev,
+          photoUrl: "",
+        }));
+        
+        // ✅ อัปเดต localStorage ด้วย
+        updateProfileInStorage({ photoUrl: "" });
+        
+        console.log("✅ Photo deleted and state updated successfully");
+        alert("ลบรูปโปรไฟล์เรียบร้อยแล้ว");
+      }
+
+    } catch (e) {
+      console.error("❌ deleteProfilePhoto error:", e);
+      // ✅ Check if component is still mounted before showing alert
+      if (mountedRef.current) {
+        alert(e.message || "ลบรูปโปรไฟล์ไม่สำเร็จ");
+      }
+    } finally {
+      // ✅ Check if component is still mounted before setState
+      if (mountedRef.current) {
+        setUploadingPhoto(false);
+      }
+    }
+  };
   const handleUploadProfilePhoto = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -368,7 +421,7 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
           <X className="w-5 h-5" />
         </button>
 
-        {/* ⭐ ส่วนหัว + รูปโปรไฟล์ + ปุ่มอัปโหลดรูป */}
+        {/* ⭐ ส่วนหัว + รูปโปรไฟล์ + ปุ่มอัปโหลดรูป + ปุ่มลบรูป */}
         <div className="flex items-center gap-4 mb-4">
           {/* รูปโปรไฟล์ที่คลิกได้ */}
           <label className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center cursor-pointer hover:shadow-lg transition-all group border-2 border-dashed border-blue-300 hover:border-blue-500">
@@ -425,9 +478,22 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
             </p>
             
             {/* คำแนะนำการอัปโหลดรูป */}
-            <p className="text-xs text-blue-600">
+            <p className="text-xs text-blue-600 mb-2">
               💡 {profilePhoto ? "กดที่รูปเพื่อเปลี่ยนรูปใหม่" : "กดที่รูปเพื่อใส่รูปของคุณ"}
             </p>
+
+            {/* ปุ่มลบรูป - แสดงเฉพาะเมื่อมีรูป */}
+            {profilePhoto && (
+              <button
+                type="button"
+                onClick={handleDeleteProfilePhoto}
+                disabled={uploadingPhoto}
+                className="text-xs px-3 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50 flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                {uploadingPhoto ? "กำลังลบ..." : "ลบรูปโปรไฟล์"}
+              </button>
+            )}
           </div>
         </div>
 
