@@ -306,6 +306,17 @@ router.options("/me/photo", (req, res) => {
 
 router.post("/me/photo", 
   authMiddleware,
+  // ✅ Check Cloudinary before multer
+  (req, res, next) => {
+    if (!isCloudinaryConfigured) {
+      console.error("❌ Cloudinary not configured - photo upload blocked");
+      return res.status(503).json({
+        message: "ระบบอัปโหลดรูปไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง",
+        error: "CLOUDINARY_NOT_CONFIGURED"
+      });
+    }
+    next();
+  },
   uploadPhoto.single("photo"),
   // ✅ CRITICAL: Multer Error Handler (prevents 502)
   (err, req, res, next) => {

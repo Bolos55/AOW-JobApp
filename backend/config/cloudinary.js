@@ -3,48 +3,62 @@ import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
 
-// ✅ Validate Cloudinary ENV at startup
-if (!process.env.CLOUDINARY_CLOUD_NAME || 
-    !process.env.CLOUDINARY_API_KEY || 
-    !process.env.CLOUDINARY_API_SECRET) {
-  throw new Error("❌ CRITICAL: Cloudinary environment variables missing. Required: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET");
+// ✅ Check Cloudinary ENV (don't throw error, just warn)
+const cloudinaryValid = process.env.CLOUDINARY_CLOUD_NAME && 
+                        process.env.CLOUDINARY_API_KEY && 
+                        process.env.CLOUDINARY_API_SECRET;
+
+if (!cloudinaryValid) {
+  console.warn("⚠️ WARNING: Cloudinary environment variables missing");
+  console.warn("⚠️ Photo upload will not work properly");
+  console.warn("⚠️ Missing:", {
+    cloud_name: !process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: !process.env.CLOUDINARY_API_KEY,
+    api_secret: !process.env.CLOUDINARY_API_SECRET
+  });
 }
 
-// Configure Cloudinary
-const cloudinaryConfig = {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-};
+// Configure Cloudinary (only if valid)
+if (cloudinaryValid) {
+  const cloudinaryConfig = {
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  };
 
-cloudinary.config(cloudinaryConfig);
-console.log("✅ Cloudinary configured successfully");
-console.log("🔧 Cloud Name:", cloudinaryConfig.cloud_name);
+  cloudinary.config(cloudinaryConfig);
+  console.log("✅ Cloudinary configured successfully");
+  console.log("🔧 Cloud Name:", cloudinaryConfig.cloud_name);
+}
 
-// ✅ FORCE Cloudinary-only storage (no local fallback)
-const photoStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'aow-jobapp/photos',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
-    transformation: [
-      { width: 500, height: 500, crop: 'limit' },
-      { quality: 'auto' }
-    ],
-  },
-});
+// ✅ Create storage (with fallback for missing ENV)
+const photoStorage = cloudinaryValid 
+  ? new CloudinaryStorage({
+      cloudinary: cloudinary,
+      params: {
+        folder: 'aow-jobapp/photos',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+        transformation: [
+          { width: 500, height: 500, crop: 'limit' },
+          { quality: 'auto' }
+        ],
+      },
+    })
+  : null; // Will cause multer to fail gracefully
 
-const resumeStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'aow-jobapp/resumes',
-    allowed_formats: ['pdf', 'doc', 'docx'],
-    resource_type: 'raw',
-  },
-});
+const resumeStorage = cloudinaryValid
+  ? new CloudinaryStorage({
+      cloudinary: cloudinary,
+      params: {
+        folder: 'aow-jobapp/resumes',
+        allowed_formats: ['pdf', 'doc', 'docx'],
+        resource_type: 'raw',
+      },
+    })
+  : null; // Will cause multer to fail gracefully
 
-// ✅ Multer upload instances with strict error handling
-export const uploadPhoto = multer({
+// ✅ Multer upload instances with graceful failure
+export const uploadPhoto = photoStorage ? multer({
   storage: photoStorage,
   limits: {
     fileSize: 2 * 1024 * 1024, // 2MB
@@ -59,9 +73,9 @@ export const uploadPhoto = multer({
       cb(new Error('Invalid file type. Only JPG, PNG, GIF allowed.'), false);
     }
   }
-});
+}) : multer(); // Empty multer that will fail
 
-export const uploadResume = multer({
+export const uploadResume = resumeStorage ? multer({
   storage: resumeStorage,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB
@@ -76,9 +90,9 @@ export const uploadResume = multer({
       cb(new Error('Invalid file type. Only PDF, DOC, DOCX allowed.'), false);
     }
   }
-});
+}) : multer(); // Empty multer that will fail
 
 export { cloudinary };
 
-// ✅ Always true since we force Cloudinary
-export const isCloudinaryConfigured = true;
+// ✅ Export validation status
+export const isCloudinaryConfigured = cloudinaryValid;
