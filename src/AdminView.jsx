@@ -17,7 +17,6 @@ import {
   Menu,
   X,
   TrendingUp,
-  Settings,
   Mail,
   ChevronUp,
 } from "lucide-react";
@@ -146,7 +145,7 @@ export default function AdminView({ user, onLogout }) {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   // ✅ Memoized auth header
-  const authHeaders = useMemo(() => authHeader(), [token]);
+  const authHeaders = useMemo(() => authHeader(), []);
 
   // ✅ AbortController สำหรับ cleanup
   const abortControllerRef = useRef(null);

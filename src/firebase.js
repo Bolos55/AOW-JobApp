@@ -2,15 +2,6 @@
   import { initializeApp, getApps } from 'firebase/app';
   import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
-  // Security: ห้าม hardcode ค่า sensitive data
-  const PLACEHOLDER_VALUES = [
-    'AIzaSyCpq_OYRG43zPRQlwAa85iWZBLOTntiGfc',
-    'jobapp-93cfa',
-    'jobapp-93cfa.firebaseapp.com',
-    '935454716852',
-    '1:935454716852:web:0e2bf94092c9b17d1938e1'
-  ];
-
   // ✅ ตรวจสอบว่ามี Firebase config จริงหรือไม่
   const hasValidFirebaseConfig = () => {
     return (
