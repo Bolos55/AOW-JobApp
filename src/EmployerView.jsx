@@ -1,5 +1,5 @@
 // src/EmployerView.jsx
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   User as UserIcon,
   Plus,
