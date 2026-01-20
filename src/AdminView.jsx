@@ -14,6 +14,12 @@ import {
   Filter,
   CheckCircle,
   AlertTriangle,
+  Menu,
+  X,
+  TrendingUp,
+  Settings,
+  Mail,
+  ChevronUp,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE, authHeader } from "./api";
@@ -43,6 +49,95 @@ export default function AdminView({ user, onLogout }) {
   const [appFilter, setAppFilter] = useState("all");
   const [chatOpen, setChatOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("dashboard");
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // เมนูสำหรับ sidebar
+  const menuItems = [
+    {
+      id: "dashboard",
+      title: "📊 Dashboard",
+      icon: BarChart3,
+      description: "สถิติและภาพรวมระบบ"
+    },
+    {
+      id: "online-status",
+      title: "🟢 สถานะออนไลน์",
+      icon: TrendingUp,
+      description: "ผู้ใช้ที่ออนไลน์"
+    },
+    {
+      id: "users",
+      title: "👥 จัดการผู้ใช้",
+      icon: Users,
+      description: "ผู้ใช้ทั้งหมดและการตั้งสิทธิ์"
+    },
+    {
+      id: "jobs",
+      title: "💼 จัดการงาน",
+      icon: Briefcase,
+      description: "งานทั้งหมดในระบบ"
+    },
+    {
+      id: "applications",
+      title: "📄 ใบสมัครงาน",
+      icon: FileText,
+      description: "ใบสมัครและการยืนยันบัตร ปชช."
+    },
+    {
+      id: "email-validation",
+      title: "📧 ตรวจสอบอีเมล",
+      icon: Mail,
+      description: "จัดการอีเมลปลอมและน่าสงสัย"
+    }
+  ];
+
+  // ฟังก์ชันเลื่อนไปยังส่วนที่เลือก
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+      setActiveSection(sectionId);
+      setSidebarOpen(false); // ปิด sidebar หลังกด
+    }
+  };
+
+  // ตรวจสอบ section ที่กำลังดูอยู่
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = menuItems.map(item => item.id);
+      const scrollPosition = window.scrollY + 100;
+
+      // แสดงปุ่มกลับด้านบน
+      setShowScrollTop(window.scrollY > 300);
+
+      for (const sectionId of sections) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const { offsetTop, offsetHeight } = element;
+          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+            setActiveSection(sectionId);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [menuItems]);
+
+  // ฟังก์ชันกลับด้านบน
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
   const token = localStorage.getItem("token");
   const isAdmin = user?.role === "admin";
@@ -407,16 +502,115 @@ export default function AdminView({ user, onLogout }) {
   return (
     <>
       <div className="min-h-screen bg-gray-50 pb-16">
+        {/* Sidebar Overlay */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar */}
+        <div className={`fixed top-0 left-0 h-full w-80 bg-white shadow-xl z-50 transform transition-transform duration-300 overflow-y-auto ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
+          {/* Sidebar Header */}
+          <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold">⚙️ Admin Menu</h2>
+                <p className="text-sm opacity-90">เลือกส่วนที่ต้องการดู</p>
+              </div>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-2 hover:bg-white/20 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Quick Stats */}
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-white/20 rounded-lg p-2 text-center">
+                <p className="font-bold">{stats.totalUsers}</p>
+                <p className="opacity-90">ผู้ใช้</p>
+              </div>
+              <div className="bg-white/20 rounded-lg p-2 text-center">
+                <p className="font-bold">{stats.totalJobs}</p>
+                <p className="opacity-90">งาน</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Menu Items */}
+          <div className="p-4 space-y-2">
+            {menuItems.map((item) => {
+              const IconComponent = item.icon;
+              const isActive = activeSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className={`w-full text-left p-3 rounded-lg transition-colors group ${
+                    isActive 
+                      ? 'bg-blue-100 border-l-4 border-blue-500' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <IconComponent className={`w-5 h-5 ${
+                      isActive 
+                        ? 'text-blue-600' 
+                        : 'text-gray-600 group-hover:text-blue-600'
+                    }`} />
+                    <div>
+                      <p className={`font-medium ${
+                        isActive 
+                          ? 'text-blue-600' 
+                          : 'text-gray-800 group-hover:text-blue-600'
+                      }`}>
+                        {item.title}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-gray-50">
+            <div className="text-center text-xs text-gray-500">
+              <p>AOW Job Platform</p>
+              <p>Admin Panel v1.0</p>
+            </div>
+          </div>
+        </div>
+
         {/* Header */}
         <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-6">
           <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-2xl font-bold">
-                ⚙️ สวัสดี, Admin {user?.name || ""}
-              </h1>
-              <p className="text-sm opacity-90">
-                แอดมิน - จัดการระบบทั้งหมด และกำหนดสิทธิ์ผู้ใช้งาน
-              </p>
+            <div className="flex items-center gap-4">
+              {/* Hamburger Menu Button */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="bg-white/10 hover:bg-white/20 p-2 rounded-lg flex items-center gap-2"
+              >
+                <Menu className="w-5 h-5" />
+                <span className="text-sm">เมนู</span>
+              </button>
+              
+              <div>
+                <h1 className="text-2xl font-bold">
+                  ⚙️ สวัสดี, Admin {user?.name || ""}
+                </h1>
+                <p className="text-sm opacity-90">
+                  แอดมิน - จัดการระบบทั้งหมด และกำหนดสิทธิ์ผู้ใช้งาน
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               {/* ปุ่มไปกล่องแชทใหญ่ */}
@@ -460,7 +654,12 @@ export default function AdminView({ user, onLogout }) {
 
         <div className="p-6 space-y-6">
           {/* Dashboard Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div id="dashboard">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-blue-600" />
+              📊 Dashboard & สถิติ
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-lg border">
               <Users className="w-8 h-8 text-blue-600 mb-2" />
               <p className="text-2xl font-bold">{stats.totalUsers}</p>
@@ -488,13 +687,22 @@ export default function AdminView({ user, onLogout }) {
           </div>
 
           {/* Online Status Widget */}
-          <OnlineStatusWidget isAdmin={true} />
+          <div id="online-status">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <TrendingUp className="w-6 h-6 text-green-600" />
+              🟢 สถานะออนไลน์
+            </h2>
+            <OnlineStatusWidget isAdmin={true} />
+          </div>
 
           {/* ผู้ใช้ทั้งหมด */}
-          <div>
+          <div id="users">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold">ผู้ใช้ทั้งหมด</h2>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Users className="w-6 h-6 text-purple-600" />
+                  👥 จัดการผู้ใช้ทั้งหมด
+                </h2>
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   <span>
@@ -678,9 +886,12 @@ export default function AdminView({ user, onLogout }) {
           </div>
 
           {/* งานทั้งหมด + ช่องค้นหา */}
-          <div>
+          <div id="jobs">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-bold">งานทั้งหมด (จัดการ)</h2>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Briefcase className="w-6 h-6 text-green-600" />
+                💼 จัดการงานทั้งหมด
+              </h2>
 
               {/* ✅ ช่องค้นหางาน */}
               <div className="flex items-center gap-2">
@@ -752,11 +963,12 @@ export default function AdminView({ user, onLogout }) {
           </div>
 
           {/* ใบสมัคร + ยืนยันบัตรประชาชน */}
-          <div>
+          <div id="applications">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="text-lg font-bold">
-                  ใบสมัครงาน & การยืนยันบัตรประชาชน
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <FileText className="w-6 h-6 text-orange-600" />
+                  📄 ใบสมัครงาน & การยืนยันบัตรประชาชน
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">
                   💡 สามารถลบใบสมัครที่ตรวจสอบแล้วได้ | ❌ ปฏิเสธพร้อมแจ้งเตือนผู้สมัครทางอีเมล | 🔄 รีเซ็ตสถานะได้
@@ -991,7 +1203,15 @@ export default function AdminView({ user, onLogout }) {
       </div>
 
       {/* ✅ Email Validation Management Section */}
-      <EmailValidationSection user={user} />
+      <div id="email-validation">
+        <div className="p-6">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Mail className="w-6 h-6 text-blue-600" />
+            📧 จัดการการตรวจสอบอีเมล
+          </h2>
+          <EmailValidationSection user={user} />
+        </div>
+      </div>
 
       {/* Modal แสดงโปรไฟล์ผู้ใช้ */}
       {selectedUserProfile && (
@@ -1204,6 +1424,17 @@ export default function AdminView({ user, onLogout }) {
         unread={unread}
         onToggle={() => setChatOpen((v) => !v)}
       />
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-20 right-6 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg z-30 transition-all duration-300"
+          title="กลับด้านบน"
+        >
+          <ChevronUp className="w-5 h-5" />
+        </button>
+      )}
     </>
   );
 }
