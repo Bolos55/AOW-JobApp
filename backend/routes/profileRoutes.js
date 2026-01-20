@@ -1,91 +1,15 @@
 // backend/routes/profileRoutes.js
 import express from "express";
-import multer from "multer";
-import path from "path";
-import crypto from "crypto";
-import fs from "fs";
 import { authMiddleware } from "../middleware/auth.js";
 import User from "../models/User.js";
 
 // Import rate limiting
 import { uploadRateLimit } from "../middleware/security.js";
 
+// ✅ Import Cloudinary upload configurations
+import { uploadPhoto, uploadResume } from "../config/cloudinary.js";
+
 const router = express.Router();
-
-/* ========= SECURE FILE UPLOAD CONFIGURATION ========= */
-
-// ✅ Secure file storage with random filenames
-const createSecureStorage = (subfolder = '') => {
-  return multer.diskStorage({
-    destination: (req, file, cb) => {
-      const uploadPath = subfolder ? `uploads/${subfolder}` : "uploads";
-      
-      // ✅ Create directory if it doesn't exist
-      if (!fs.existsSync(uploadPath)) {
-        fs.mkdirSync(uploadPath, { recursive: true });
-        console.log(`📁 Created directory: ${uploadPath}`);
-      }
-      
-      cb(null, uploadPath);
-    },
-    filename: (req, file, cb) => {
-      // ✅ Generate cryptographically secure random filename
-      const randomName = crypto.randomBytes(16).toString('hex');
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `${randomName}${ext}`);
-    },
-  });
-};
-
-// ✅ Secure file filter for resumes
-const resumeFileFilter = (req, file, cb) => {
-  const allowedExtensions = ['.pdf', '.doc', '.docx'];
-  const allowedMimeTypes = [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  ];
-  
-  const ext = path.extname(file.originalname).toLowerCase();
-  
-  if (allowedExtensions.includes(ext) && allowedMimeTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("ไฟล์ต้องเป็น PDF, DOC หรือ DOCX เท่านั้น"));
-  }
-};
-
-// ✅ Secure file filter for photos
-const photoFileFilter = (req, file, cb) => {
-  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
-  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
-  
-  const ext = path.extname(file.originalname).toLowerCase();
-  
-  if (allowedExtensions.includes(ext) && allowedMimeTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("ไฟล์ต้องเป็น JPG, PNG หรือ GIF เท่านั้น"));
-  }
-};
-
-const uploadResume = multer({
-  storage: createSecureStorage('resumes'),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // ✅ Reduced to 5MB
-    files: 1
-  },
-  fileFilter: resumeFileFilter
-});
-
-const uploadPhoto = multer({
-  storage: createSecureStorage('photos'),
-  limits: {
-    fileSize: 2 * 1024 * 1024, // ✅ Reduced to 2MB for photos
-    files: 1
-  },
-  fileFilter: photoFileFilter
-});
 
 /* ========= GET /api/profile/me ========= */
 // ใช้ให้ผู้ใช้ดูโปรไฟล์ตัวเอง (JobSeekerView / modal โปรไฟล์)
@@ -292,14 +216,15 @@ router.post(
         return res.status(404).json({ message: "ไม่พบผู้ใช้" });
       }
 
-      const resumePath = (req.file.path || "").replace(/\\/g, "/");
+      // ✅ Use Cloudinary URL directly
+      const resumeUrl = req.file.path;
       if (process.env.NODE_ENV === 'development') {
-        console.log("📄 Resume path to save:", resumePath);
+        console.log("📄 Resume URL from Cloudinary:", resumeUrl);
       }
 
       user.profile = {
         ...(user.profile || {}),
-        resumeUrl: resumePath,
+        resumeUrl: resumeUrl,
       };
 
       if (process.env.NODE_ENV === 'development') {
@@ -312,7 +237,7 @@ router.post(
 
       return res.json({
         message: "อัปโหลดเรซูเม่เรียบร้อยแล้ว",
-        resumeUrl: resumePath,
+        resumeUrl: resumeUrl,
       });
     } catch (e) {
       console.error("❌ POST /api/profile/me/resume error:", e);
@@ -336,9 +261,6 @@ router.post(
         console.error("❌ Multer error:", err);
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({ message: "ไฟล์รูปใหญ่เกินไป (สูงสุด 2MB)" });
-        }
-        if (err.code === 'ENOENT') {
-          return res.status(500).json({ message: "ไม่สามารถสร้างโฟลเดอร์สำหรับอัปโหลดได้" });
         }
         return res.status(400).json({ message: err.message || "อัปโหลดรูปไม่สำเร็จ" });
       }
@@ -367,14 +289,11 @@ router.post(
         return res.status(404).json({ message: "ไม่พบผู้ใช้" });
       }
 
-      // path ที่จะให้ frontend ใช้โหลด (server.js ต้องมี app.use("/uploads", express.static("uploads")))
-      const photoPath = (req.file.path || "").replace(/\\/g, "/");
-      // ✅ Remove 'uploads/' prefix since static serving already handles it
-      const photoUrl = photoPath.startsWith('uploads/') ? photoPath.substring(8) : photoPath;
+      // ✅ Use Cloudinary URL directly
+      const photoUrl = req.file.path;
       
       if (process.env.NODE_ENV === 'development') {
-        console.log("📸 Original path:", photoPath);
-        console.log("📸 Photo URL to save:", photoUrl);
+        console.log("📸 Photo URL from Cloudinary:", photoUrl);
       }
 
       user.profile = {
