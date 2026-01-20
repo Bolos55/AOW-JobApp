@@ -11,7 +11,9 @@ const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
 const resolveFileUrl = (url) => {
   if (!url) return "";
   if (url.startsWith("http")) return url;
-  return `${FILE_BASE.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`;
+  // ✅ Add /uploads prefix if not present
+  const cleanUrl = url.replace(/^\/+/, "");
+  return `${FILE_BASE.replace(/\/+$/, "")}/uploads/${cleanUrl}`;
 };
 
 export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) {

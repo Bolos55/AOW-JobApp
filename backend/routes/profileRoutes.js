@@ -369,13 +369,17 @@ router.post(
 
       // path ที่จะให้ frontend ใช้โหลด (server.js ต้องมี app.use("/uploads", express.static("uploads")))
       const photoPath = (req.file.path || "").replace(/\\/g, "/");
+      // ✅ Remove 'uploads/' prefix since static serving already handles it
+      const photoUrl = photoPath.startsWith('uploads/') ? photoPath.substring(8) : photoPath;
+      
       if (process.env.NODE_ENV === 'development') {
-        console.log("📸 Photo path to save:", photoPath);
+        console.log("📸 Original path:", photoPath);
+        console.log("📸 Photo URL to save:", photoUrl);
       }
 
       user.profile = {
         ...(user.profile || {}),
-        photoUrl: photoPath,
+        photoUrl: photoUrl,
       };
 
       if (process.env.NODE_ENV === 'development') {
@@ -388,7 +392,7 @@ router.post(
 
       return res.json({
         message: "อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว",
-        photoUrl: photoPath,
+        photoUrl: photoUrl,
       });
     } catch (e) {
       console.error("❌ POST /api/profile/me/photo error:", e);
