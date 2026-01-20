@@ -178,8 +178,10 @@ app.use("/api/chats", apiRateLimit);
 // app.use("/api/profile/me/resume", uploadRateLimit);
 // app.use("/api/profile/me/photo", uploadRateLimit);
 
-// ✅ Payment rate limiting (stricter)
-app.use("/api/payments", createRateLimit(15 * 60 * 1000, 10)); // 10 requests per 15 minutes
+// ✅ Payment rate limiting (less strict for viewing, strict for transactions)
+app.use("/api/payments/create", createRateLimit(15 * 60 * 1000, 5)); // 5 payment creations per 15 minutes
+app.use("/api/payments/webhook", createRateLimit(5 * 60 * 1000, 50)); // 50 webhook calls per 5 minutes
+// ❌ No rate limit for viewing payment history - it's just reading data
 
 // OAuth / Firebase / GitHub ❌ ไม่โดน rate limit (ใช้ provider's rate limiting)
 
