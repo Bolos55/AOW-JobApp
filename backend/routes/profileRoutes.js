@@ -191,7 +191,6 @@ router.put("/me", authMiddleware, async (req, res) => {
 
 router.post(
   "/me/resume",
-  uploadRateLimit, // ✅ Add rate limiting for uploads
   authMiddleware,
   uploadResume.single("resume"),
   async (req, res) => {
@@ -258,7 +257,6 @@ router.post(
     console.log("🔥 Headers:", req.headers);
     next();
   },
-  uploadRateLimit,
   authMiddleware,
   uploadPhoto.single("photo"),
   async (req, res) => {

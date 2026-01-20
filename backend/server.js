@@ -171,11 +171,12 @@ app.use("/api/jobs", apiRateLimit);
 app.use("/api/applications", apiRateLimit);
 app.use("/api/reviews", apiRateLimit);
 app.use("/api/chats", apiRateLimit);
-app.use("/api/profile", apiRateLimit);
+// ❌ Remove profile rate limit - handled in routes
+// app.use("/api/profile", apiRateLimit);
 
-// ✅ Upload rate limiting
-app.use("/api/profile/me/resume", uploadRateLimit);
-app.use("/api/profile/me/photo", uploadRateLimit);
+// ❌ Remove duplicate upload rate limits - handled in routes  
+// app.use("/api/profile/me/resume", uploadRateLimit);
+// app.use("/api/profile/me/photo", uploadRateLimit);
 
 // ✅ Payment rate limiting (stricter)
 app.use("/api/payments", createRateLimit(15 * 60 * 1000, 10)); // 10 requests per 15 minutes
@@ -256,9 +257,8 @@ app.use("/api/pdpa", pdpaRoutes);
 app.use("/api/online", onlineStatusRoutes);
 
 // ===============================
-// General API rate limit
-// ===============================
-app.use("/api", apiRateLimit);
+// ❌ Remove general API rate limit - too broad
+// app.use("/api", apiRateLimit);
 
 // ===============================
 // Debug / Test
