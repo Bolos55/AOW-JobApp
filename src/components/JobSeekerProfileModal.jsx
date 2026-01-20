@@ -1,5 +1,5 @@
 // src/components/JobSeekerProfileModal.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { X, Upload, FileText, User as UserIcon } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
 import { getPhotoUrl, getResumeUrl } from "../utils/imageUtils";
@@ -13,6 +13,7 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
   const [saving, setSaving] = useState(false);
   const [uploadingResume, setUploadingResume] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const mountedRef = useRef(true); // ✅ Track if component is mounted
 
   const [profile, setProfile] = useState({
     fullName: "",
@@ -27,6 +28,14 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
   // เก็บ error ของแต่ละช่อง
   const [errors, setErrors] = useState({});
+
+  // ✅ Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // โหลดข้อมูลโปรไฟล์เมื่อเปิด modal
   useEffect(() => {
@@ -256,16 +265,20 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
       const photoUrl = data.photoUrl;
       if (photoUrl) {
         console.log("📸 Setting new photoUrl:", photoUrl);
-        setProfile((prev) => ({
-          ...prev,
-          photoUrl: photoUrl,
-        }));
         
-        // ✅ อัปเดต localStorage ด้วย photoUrl ใหม่
-        updateProfileInStorage({ photoUrl: photoUrl });
-        
-        console.log("✅ Photo uploaded and state updated successfully");
-        alert("อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว");
+        // ✅ Check if component is still mounted before setState
+        if (mountedRef.current) {
+          setProfile((prev) => ({
+            ...prev,
+            photoUrl: photoUrl,
+          }));
+          
+          // ✅ อัปเดต localStorage ด้วย photoUrl ใหม่
+          updateProfileInStorage({ photoUrl: photoUrl });
+          
+          console.log("✅ Photo uploaded and state updated successfully");
+          alert("อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว");
+        }
       } else {
         console.warn("⚠️ No photoUrl in response");
         alert("อัปโหลดสำเร็จ แต่ไม่ได้รับ URL รูปภาพ");
@@ -273,10 +286,16 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
     } catch (e) {
       console.error("❌ uploadProfilePhoto error:", e);
-      alert(e.message || "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ");
+      // ✅ Check if component is still mounted before showing alert
+      if (mountedRef.current) {
+        alert(e.message || "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ");
+      }
     } finally {
-      setUploadingPhoto(false);
-      e.target.value = "";
+      // ✅ Check if component is still mounted before setState
+      if (mountedRef.current) {
+        setUploadingPhoto(false);
+        e.target.value = "";
+      }
     }
   };
 
