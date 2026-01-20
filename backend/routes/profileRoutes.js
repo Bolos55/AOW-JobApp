@@ -189,296 +189,232 @@ router.put("/me", authMiddleware, async (req, res) => {
 /* ========= POST /api/profile/me/resume ========= */
 // อัปโหลดไฟล์เรซูเม่ + อัพเดต profile.resumeUrl
 
-router.post(
-  "/me/resume",
+router.post("/me/resume",
   authMiddleware,
   uploadResume.single("resume"),
+  // ✅ CRITICAL: Multer Error Handler (prevents 502)
+  (err, req, res, next) => {
+    console.error("❌ RESUME MULTER ERROR:", err);
+    
+    // ✅ Set CORS headers even for multer errors
+    const origin = req.headers.origin;
+    if (origin && ['http://localhost:3000', 'https://aow-jobapp-frontend.onrender.com'].includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        message: "ไฟล์เรซูเม่ใหญ่เกินไป กรุณาเลือกไฟล์ที่เล็กกว่า 5MB",
+        error: "FILE_TOO_LARGE"
+      });
+    }
+    
+    if (err.message.includes('Invalid file type')) {
+      return res.status(400).json({
+        message: "รูปแบบไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ PDF, DOC หรือ DOCX",
+        error: "INVALID_FILE_TYPE"
+      });
+    }
+    
+    return res.status(400).json({
+      message: "อัปโหลดเรซูเม่ไม่สำเร็จ",
+      error: "UPLOAD_ERROR",
+      details: err.message
+    });
+  },
   async (req, res) => {
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log("📄 POST /api/profile/me/resume - User ID:", req.user.id);
-        console.log("📄 Uploaded file:", req.file);
-      }
+      console.log("📄 Resume upload successful");
+      console.log("📄 User ID:", req.user.id);
+      console.log("📄 File received:", req.file ? "✅ Yes" : "❌ No");
       
       if (!req.file) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log("❌ No resume file found in request");
-        }
-        return res.status(400).json({ message: "ไม่พบไฟล์เรซูเม่" });
+        return res.status(400).json({ 
+          message: "ไม่พบไฟล์เรซูเม่",
+          error: "NO_FILE"
+        });
       }
 
       const user = await User.findById(req.user.id);
       if (!user) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log("❌ User not found:", req.user.id);
-        }
-        return res.status(404).json({ message: "ไม่พบผู้ใช้" });
+        return res.status(404).json({ 
+          message: "ไม่พบผู้ใช้",
+          error: "USER_NOT_FOUND"
+        });
       }
 
-      // ✅ Generate full URL for both Cloudinary and local storage
-      let resumeUrl;
-      if (isCloudinaryConfigured) {
-        // Cloudinary returns full URL
-        resumeUrl = req.file.path;
-      } else {
-        // Local storage - generate full URL
-        const API_BASE = process.env.NODE_ENV === 'production' 
-          ? 'https://aow-jobapp-backend.onrender.com'
-          : 'http://localhost:5000';
-        resumeUrl = `${API_BASE}/uploads/${req.file.filename}`;
-      }
-      if (process.env.NODE_ENV === 'development') {
-        console.log("📄 Resume URL from Cloudinary:", resumeUrl);
-      }
+      // ✅ Save Cloudinary URL to database (always https://res.cloudinary.com/...)
+      const resumeUrl = req.file.path; // Cloudinary returns full URL
+      console.log("📄 Cloudinary URL:", resumeUrl);
 
       user.profile = {
         ...(user.profile || {}),
         resumeUrl: resumeUrl,
       };
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log("📄 Profile before save:", user.profile);
-      }
       await user.save();
-      if (process.env.NODE_ENV === 'development') {
-        console.log("✅ Resume profile saved successfully");
+      console.log("✅ Resume saved to database:", resumeUrl);
+
+      // ✅ Set CORS headers for success response
+      const origin = req.headers.origin;
+      if (origin && ['http://localhost:3000', 'https://aow-jobapp-frontend.onrender.com'].includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
       }
+      res.header('Access-Control-Allow-Credentials', 'true');
 
       return res.json({
         message: "อัปโหลดเรซูเม่เรียบร้อยแล้ว",
         resumeUrl: resumeUrl,
       });
-    } catch (e) {
-      console.error("❌ POST /api/profile/me/resume error:", e);
-      return res
-        .status(500)
-        .json({ message: "อัปโหลดเรซูเม่ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" });
+      
+    } catch (dbError) {
+      console.error("❌ Resume database error:", dbError);
+      
+      // ✅ Set CORS headers for database errors
+      const origin = req.headers.origin;
+      if (origin && ['http://localhost:3000', 'https://aow-jobapp-frontend.onrender.com'].includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+      }
+      res.header('Access-Control-Allow-Credentials', 'true');
+      
+      return res.status(500).json({
+        message: "เกิดข้อผิดพลาดในการบันทึกเรซูเม่",
+        error: "DATABASE_ERROR",
+        details: dbError.message
+      });
     }
   }
 );
-
-// ✅ Handle preflight requests for all profile routes
-router.options("*", (req, res) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://aow-jobapp.onrender.com',
-    'https://aow-jobapp-frontend.onrender.com'
-  ];
-  
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else if (process.env.NODE_ENV === 'development') {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-  } else {
-    res.header('Access-Control-Allow-Origin', 'https://aow-jobapp-frontend.onrender.com');
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400');
-  res.sendStatus(200);
-});
 
 /* ========= OPTIONS /api/profile/me/photo ========= */
 // Handle preflight requests for photo upload
 router.options("/me/photo", (req, res) => {
   const origin = req.headers.origin;
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://aow-jobapp.onrender.com',
-    'https://aow-jobapp-frontend.onrender.com'
-  ];
-  
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && ['http://localhost:3000', 'https://aow-jobapp-frontend.onrender.com'].includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
-  } else if (process.env.NODE_ENV === 'development') {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-  } else {
-    res.header('Access-Control-Allow-Origin', 'https://aow-jobapp-frontend.onrender.com');
   }
-  
   res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
   res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400'); // 24 hours
+  res.header('Access-Control-Max-Age', '86400');
   res.sendStatus(200);
 });
 
 /* ========= POST /api/profile/me/photo ========= */
 // อัปโหลดรูปโปรไฟล์ + อัพเดต profile.photoUrl
 
-router.post("/me/photo", (req, res, next) => {
-  // ✅ Set comprehensive CORS headers for photo upload
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://aow-jobapp.onrender.com',
-    'https://aow-jobapp-frontend.onrender.com'
-  ];
-  
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else if (process.env.NODE_ENV === 'development') {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-  } else {
-    res.header('Access-Control-Allow-Origin', 'https://aow-jobapp-frontend.onrender.com');
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400');
-  
-  next();
-}, authMiddleware, async (req, res) => {
-  console.log("🔥 HIT /me/photo - Starting upload");
-  console.log("🔥 User ID:", req.user.id);
-  console.log("🔥 Cloudinary configured:", isCloudinaryConfigured);
-  console.log("🔥 Request origin:", req.headers.origin);
-  console.log("🔥 Request headers:", {
-    'content-type': req.headers['content-type'],
-    'authorization': req.headers.authorization ? 'Present' : 'Missing',
-    'origin': req.headers.origin
-  });
-  
-  // ✅ Wrap everything in try-catch to prevent 502 errors
-  try {
-    // ✅ Enhanced multer error handling with timeout
-    const uploadPromise = new Promise((resolve, reject) => {
-      const upload = uploadPhoto.single("photo");
-      
-      // Set timeout to prevent hanging
-      const timeout = setTimeout(() => {
-        reject(new Error('Upload timeout - request took too long'));
-      }, 30000); // 30 seconds timeout
-      
-      upload(req, res, (uploadError) => {
-        clearTimeout(timeout);
-        
-        if (uploadError) {
-          console.error("❌ Multer/Upload error:", uploadError);
-          console.error("❌ Error type:", uploadError.code);
-          console.error("❌ Error message:", uploadError.message);
-          
-          // ✅ Set CORS headers even for errors
-          const origin = req.headers.origin;
-          if (origin) {
-            res.header('Access-Control-Allow-Origin', origin);
-            res.header('Access-Control-Allow-Credentials', 'true');
-          }
-          
-          return reject(uploadError);
-        }
-        
-        resolve();
-      });
-    });
+router.post("/me/photo", 
+  authMiddleware,
+  uploadPhoto.single("photo"),
+  // ✅ CRITICAL: Multer Error Handler (prevents 502)
+  (err, req, res, next) => {
+    console.error("❌ MULTER ERROR:", err);
+    console.error("❌ Error code:", err.code);
+    console.error("❌ Error message:", err.message);
     
-    // Wait for upload to complete
-    await uploadPromise;
-    
-    console.log("📸 Upload successful, processing...");
-    console.log("📸 File received:", req.file ? "✅ Yes" : "❌ No");
-    
-    if (!req.file) {
-      console.log("❌ No file in request");
-      return res.status(400).json({ message: "ไม่พบไฟล์รูปโปรไฟล์" });
-    }
-
-    console.log("📸 File details:", {
-      filename: req.file.filename || req.file.originalname,
-      path: req.file.path,
-      size: req.file.size,
-      mimetype: req.file.mimetype
-    });
-
-    // ✅ Find user
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      console.log("❌ User not found:", req.user.id);
-      return res.status(404).json({ message: "ไม่พบผู้ใช้" });
-    }
-
-    // ✅ Generate photoUrl
-    let photoUrl;
-    if (isCloudinaryConfigured) {
-      photoUrl = req.file.path; // Cloudinary URL
-      console.log("📸 Cloudinary URL:", photoUrl);
-    } else {
-      const API_BASE = process.env.NODE_ENV === 'production' 
-        ? 'https://aow-jobapp-backend.onrender.com'
-        : 'http://localhost:5000';
-      photoUrl = `${API_BASE}/uploads/photos/${req.file.filename}`;
-      console.log("📸 Local URL:", photoUrl);
-    }
-
-    // ✅ Save to database
-    user.profile = {
-      ...(user.profile || {}),
-      photoUrl: photoUrl,
-    };
-
-    await user.save();
-    console.log("✅ Photo saved successfully");
-
-    // ✅ Return success response with CORS headers
+    // ✅ Set CORS headers even for multer errors
     const origin = req.headers.origin;
-    if (origin) {
+    if (origin && ['http://localhost:3000', 'https://aow-jobapp-frontend.onrender.com'].includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
     }
+    res.header('Access-Control-Allow-Credentials', 'true');
     
-    return res.status(200).json({
-      photoUrl: photoUrl,
-      message: "อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว",
-      success: true
-    });
-
-  } catch (error) {
-    console.error("❌ Photo upload error:", error);
-    console.error("❌ Error stack:", error.stack);
-    
-    // ✅ Set CORS headers even for errors
-    const origin = req.headers.origin;
-    if (origin) {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-    }
-    
-    // ✅ Handle specific error types
-    if (error.message === 'Upload timeout - request took too long') {
-      return res.status(408).json({
-        message: "การอัปโหลดใช้เวลานานเกินไป กรุณาลองใหม่",
-        error: "UPLOAD_TIMEOUT"
-      });
-    }
-    
-    if (error.code === 'LIMIT_FILE_SIZE') {
+    // ✅ Handle specific multer errors
+    if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({
         message: "ไฟล์รูปใหญ่เกินไป กรุณาเลือกรูปที่เล็กกว่า 2MB",
         error: "FILE_TOO_LARGE"
       });
     }
     
-    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
       return res.status(400).json({
         message: "รูปแบบไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ JPG, PNG หรือ GIF",
         error: "INVALID_FILE_TYPE"
       });
     }
     
-    return res.status(500).json({
-      message: "เกิดข้อผิดพลาดในการอัปโหลดรูป",
+    if (err.message.includes('Invalid file type')) {
+      return res.status(400).json({
+        message: "รูปแบบไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ JPG, PNG หรือ GIF",
+        error: "INVALID_FILE_TYPE"
+      });
+    }
+    
+    // ✅ Generic multer error
+    return res.status(400).json({
+      message: "อัปโหลดรูปไม่สำเร็จ",
       error: "UPLOAD_ERROR",
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: err.message
     });
+  },
+  async (req, res) => {
+    try {
+      console.log("📸 Photo upload successful");
+      console.log("📸 User ID:", req.user.id);
+      console.log("📸 File received:", req.file ? "✅ Yes" : "❌ No");
+      
+      if (!req.file) {
+        return res.status(400).json({ 
+          message: "ไม่พบไฟล์รูปโปรไฟล์",
+          error: "NO_FILE"
+        });
+      }
+
+      console.log("📸 Cloudinary URL:", req.file.path);
+
+      // ✅ Find user
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        return res.status(404).json({ 
+          message: "ไม่พบผู้ใช้",
+          error: "USER_NOT_FOUND"
+        });
+      }
+
+      // ✅ Save Cloudinary URL to database (always https://res.cloudinary.com/...)
+      const photoUrl = req.file.path; // Cloudinary returns full URL
+      
+      user.profile = {
+        ...(user.profile || {}),
+        photoUrl: photoUrl,
+      };
+
+      await user.save();
+      console.log("✅ Photo saved to database:", photoUrl);
+
+      // ✅ Set CORS headers for success response
+      const origin = req.headers.origin;
+      if (origin && ['http://localhost:3000', 'https://aow-jobapp-frontend.onrender.com'].includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+      }
+      res.header('Access-Control-Allow-Credentials', 'true');
+      
+      return res.status(200).json({
+        photoUrl: photoUrl,
+        message: "อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว",
+        success: true
+      });
+
+    } catch (dbError) {
+      console.error("❌ Database error:", dbError);
+      
+      // ✅ Set CORS headers for database errors
+      const origin = req.headers.origin;
+      if (origin && ['http://localhost:3000', 'https://aow-jobapp-frontend.onrender.com'].includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+      }
+      res.header('Access-Control-Allow-Credentials', 'true');
+      
+      return res.status(500).json({
+        message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
+        error: "DATABASE_ERROR",
+        details: dbError.message
+      });
+    }
   }
-});
+);
 
 /* ========= DELETE /api/profile/me/photo ========= */
 // ลบรูปโปรไฟล์ + อัพเดต profile.photoUrl เป็นค่าว่าง

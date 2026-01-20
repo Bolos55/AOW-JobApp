@@ -497,13 +497,27 @@ app.listen(PORT, () => {
   console.log(`📡 Port: ${PORT}`);
   console.log(`🌍 ENV: ${process.env.NODE_ENV || "development"}`);
   
-  // ✅ Debug Cloudinary config on server start
+  // ✅ CRITICAL: Validate Cloudinary config on server start
   console.log("🔧 Cloudinary Environment Check:");
-  console.log("  CLOUDINARY_CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME ? "✅ Set" : "❌ Missing");
-  console.log("  CLOUDINARY_API_KEY:", process.env.CLOUDINARY_API_KEY ? "✅ Set" : "❌ Missing");
-  console.log("  CLOUDINARY_API_SECRET:", process.env.CLOUDINARY_API_SECRET ? "✅ Set" : "❌ Missing");
+  if (!process.env.CLOUDINARY_CLOUD_NAME) {
+    console.error("❌ CRITICAL: CLOUDINARY_CLOUD_NAME missing");
+    process.exit(1);
+  }
+  if (!process.env.CLOUDINARY_API_KEY) {
+    console.error("❌ CRITICAL: CLOUDINARY_API_KEY missing");
+    process.exit(1);
+  }
+  if (!process.env.CLOUDINARY_API_SECRET) {
+    console.error("❌ CRITICAL: CLOUDINARY_API_SECRET missing");
+    process.exit(1);
+  }
   
-  // Ensure upload directories exist
+  console.log("  CLOUDINARY_CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME);
+  console.log("  CLOUDINARY_API_KEY:", "✅ Set");
+  console.log("  CLOUDINARY_API_SECRET:", "✅ Set");
+  console.log("✅ Cloudinary configuration validated successfully");
+  
+  // Ensure upload directories exist (for legacy support only)
   ensureUploadsDirectories();
   
   if (process.env.NODE_ENV === 'development') {

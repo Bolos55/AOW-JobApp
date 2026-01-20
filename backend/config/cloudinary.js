@@ -2,9 +2,13 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
+
+// ✅ Validate Cloudinary ENV at startup
+if (!process.env.CLOUDINARY_CLOUD_NAME || 
+    !process.env.CLOUDINARY_API_KEY || 
+    !process.env.CLOUDINARY_API_SECRET) {
+  throw new Error("❌ CRITICAL: Cloudinary environment variables missing. Required: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET");
+}
 
 // Configure Cloudinary
 const cloudinaryConfig = {
@@ -13,86 +17,48 @@ const cloudinaryConfig = {
   api_secret: process.env.CLOUDINARY_API_SECRET,
 };
 
-// ✅ Check if Cloudinary is configured
-const isCloudinaryConfigured = cloudinaryConfig.cloud_name && 
-                               cloudinaryConfig.api_key && 
-                               cloudinaryConfig.api_secret;
+cloudinary.config(cloudinaryConfig);
+console.log("✅ Cloudinary configured successfully");
+console.log("🔧 Cloud Name:", cloudinaryConfig.cloud_name);
 
-if (isCloudinaryConfigured) {
-  cloudinary.config(cloudinaryConfig);
-  console.log("🔧 Cloudinary Config: ✅ Configured");
-  console.log("🔧 Cloud Name:", cloudinaryConfig.cloud_name);
-  console.log("🔧 API Key:", cloudinaryConfig.api_key ? "✅ Set" : "❌ Missing");
-  console.log("🔧 API Secret:", cloudinaryConfig.api_secret ? "✅ Set" : "❌ Missing");
-} else {
-  console.log("🔧 Cloudinary Config: ❌ Missing - Using local storage");
-  console.log("🔧 Missing:", {
-    cloud_name: !cloudinaryConfig.cloud_name,
-    api_key: !cloudinaryConfig.api_key,
-    api_secret: !cloudinaryConfig.api_secret
-  });
-}
+// ✅ FORCE Cloudinary-only storage (no local fallback)
+const photoStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'aow-jobapp/photos',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+    transformation: [
+      { width: 500, height: 500, crop: 'limit' },
+      { quality: 'auto' }
+    ],
+  },
+});
 
-// Storage for photos
-const photoStorage = isCloudinaryConfigured 
-  ? new CloudinaryStorage({
-      cloudinary: cloudinary,
-      params: {
-        folder: 'aow-jobapp/photos',
-        allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
-        transformation: [
-          { width: 500, height: 500, crop: 'limit' },
-          { quality: 'auto' }
-        ],
-      },
-    })
-  : multer.diskStorage({
-      destination: (req, file, cb) => {
-        const uploadPath = "uploads/photos";
-        if (!fs.existsSync(uploadPath)) {
-          fs.mkdirSync(uploadPath, { recursive: true });
-        }
-        cb(null, uploadPath);
-      },
-      filename: (req, file, cb) => {
-        const randomName = crypto.randomBytes(16).toString('hex');
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `${randomName}${ext}`);
-      },
-    });
+const resumeStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'aow-jobapp/resumes',
+    allowed_formats: ['pdf', 'doc', 'docx'],
+    resource_type: 'raw',
+  },
+});
 
-// Storage for resumes  
-const resumeStorage = isCloudinaryConfigured
-  ? new CloudinaryStorage({
-      cloudinary: cloudinary,
-      params: {
-        folder: 'aow-jobapp/resumes',
-        allowed_formats: ['pdf', 'doc', 'docx'],
-        resource_type: 'raw',
-      },
-    })
-  : multer.diskStorage({
-      destination: (req, file, cb) => {
-        const uploadPath = "uploads/resumes";
-        if (!fs.existsSync(uploadPath)) {
-          fs.mkdirSync(uploadPath, { recursive: true });
-        }
-        cb(null, uploadPath);
-      },
-      filename: (req, file, cb) => {
-        const randomName = crypto.randomBytes(16).toString('hex');
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `${randomName}${ext}`);
-      },
-    });
-
-// Multer upload instances
+// ✅ Multer upload instances with strict error handling
 export const uploadPhoto = multer({
   storage: photoStorage,
   limits: {
     fileSize: 2 * 1024 * 1024, // 2MB
     files: 1
   },
+  fileFilter: (req, file, cb) => {
+    // ✅ Strict file type validation
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPG, PNG, GIF allowed.'), false);
+    }
+  }
 });
 
 export const uploadResume = multer({
@@ -101,6 +67,18 @@ export const uploadResume = multer({
     fileSize: 5 * 1024 * 1024, // 5MB
     files: 1
   },
+  fileFilter: (req, file, cb) => {
+    // ✅ Strict file type validation
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, DOC, DOCX allowed.'), false);
+    }
+  }
 });
 
-export { cloudinary, isCloudinaryConfigured };
+export { cloudinary };
+
+// ✅ Always true since we force Cloudinary
+export const isCloudinaryConfigured = true;
