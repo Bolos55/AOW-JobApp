@@ -6,40 +6,8 @@ import User from "../models/User.js";
 // Import rate limiting
 import { uploadRateLimit } from "../middleware/security.js";
 
-// ✅ Import Cloudinary upload configurations (temporarily disabled)
-// import { uploadPhoto, uploadResume } from "../config/cloudinary.js";
-import multer from "multer";
-import path from "path";
-import crypto from "crypto";
-import fs from "fs";
-
-// ✅ Temporary local storage (until Cloudinary is configured)
-const createSecureStorage = (subfolder = '') => {
-  return multer.diskStorage({
-    destination: (req, file, cb) => {
-      const uploadPath = subfolder ? `uploads/${subfolder}` : "uploads";
-      if (!fs.existsSync(uploadPath)) {
-        fs.mkdirSync(uploadPath, { recursive: true });
-      }
-      cb(null, uploadPath);
-    },
-    filename: (req, file, cb) => {
-      const randomName = crypto.randomBytes(16).toString('hex');
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `${randomName}${ext}`);
-    },
-  });
-};
-
-const uploadPhoto = multer({
-  storage: createSecureStorage('photos'),
-  limits: { fileSize: 2 * 1024 * 1024, files: 1 },
-});
-
-const uploadResume = multer({
-  storage: createSecureStorage('resumes'),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
-});
+// ✅ Import Cloudinary upload configurations
+import { uploadPhoto, uploadResume } from "../config/cloudinary.js";
 
 const router = express.Router();
 
