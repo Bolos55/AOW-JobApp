@@ -1,5 +1,5 @@
 // src/AdminView.jsx
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   User as UserIcon,
   Users,
@@ -27,100 +27,8 @@ import ChatWidget from "./components/ChatWidget";
 import ChatDockButton from "./components/ChatDockButton";
 import OnlineStatusWidget from "./components/OnlineStatusWidget";
 
-// ✅ Static menu items (ย้ายออกนอก component เพื่อป้องกัน re-render)
-const MENU_ITEMS = [
-  {
-    id: "dashboard",
-    title: "📊 Dashboard",
-    icon: BarChart3,
-    description: "สถิติและภาพรวมระบบ"
-  },
-  {
-    id: "online-status",
-    title: "🟢 สถานะออนไลน์",
-    icon: TrendingUp,
-    description: "ผู้ใช้ที่ออนไลน์"
-  },
-  {
-    id: "users",
-    title: "👥 จัดการผู้ใช้",
-    icon: Users,
-    description: "ผู้ใช้ทั้งหมดและการตั้งสิทธิ์"
-  },
-  {
-    id: "jobs",
-    title: "💼 จัดการงาน",
-    icon: Briefcase,
-    description: "งานทั้งหมดในระบบ"
-  },
-  {
-    id: "applications",
-    title: "� ใบสมัครงาน",
-    icon: FileText,
-    description: "ใบสมัครและการยืนยันบัตร ปชช."
-  },
-  {
-    id: "email-validation",
-    title: "� ตรวจสอบอีเมล",
-    icon: Mail,
-    description: "จัดการอีเมลปลอมและน่าสงสัย"
-  }
-];
-
-// ✅ Static color mapping สำหรับ Tailwind CSS
-const COLOR_CLASSES = {
-  blue: {
-    bg: 'bg-blue-600',
-    bgHover: 'hover:bg-blue-700',
-    text: 'text-blue-700',
-    bgLight: 'bg-blue-100',
-    border: 'border-blue-200',
-    hoverBg: 'hover:bg-blue-50'
-  },
-  yellow: {
-    bg: 'bg-yellow-500',
-    bgHover: 'hover:bg-yellow-600',
-    text: 'text-yellow-700',
-    bgLight: 'bg-yellow-100',
-    border: 'border-yellow-200',
-    hoverBg: 'hover:bg-yellow-50'
-  },
-  orange: {
-    bg: 'bg-orange-500',
-    bgHover: 'hover:bg-orange-600',
-    text: 'text-orange-700',
-    bgLight: 'bg-orange-100',
-    border: 'border-orange-200',
-    hoverBg: 'hover:bg-orange-50'
-  },
-  red: {
-    bg: 'bg-red-500',
-    bgHover: 'hover:bg-red-600',
-    text: 'text-red-700',
-    bgLight: 'bg-red-100',
-    border: 'border-red-200',
-    hoverBg: 'hover:bg-red-50'
-  }
-};
 export default function AdminView({ user, onLogout }) {
   const navigate = useNavigate();
-  
-  // ✅ Token guard - ตรวจสอบ token ก่อน
-  const token = localStorage.getItem("token");
-  const isAdmin = user?.role === "admin";
-  
-  useEffect(() => {
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-    if (!isAdmin) {
-      // ให้แสดง error แทน redirect ทันที
-      return;
-    }
-  }, [token, isAdmin, navigate]);
-
-  // State management
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalJobs: 0,
@@ -145,14 +53,48 @@ export default function AdminView({ user, onLogout }) {
   const [activeSection, setActiveSection] = useState("dashboard");
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  // ✅ Memoized auth header
-  const authHeaders = useMemo(() => authHeader(), [token]);
-
-  // ✅ AbortController สำหรับ cleanup
-  const abortControllerRef = useRef(null);
+  // เมนูสำหรับ sidebar
+  const menuItems = [
+    {
+      id: "dashboard",
+      title: "📊 Dashboard",
+      icon: BarChart3,
+      description: "สถิติและภาพรวมระบบ"
+    },
+    {
+      id: "online-status",
+      title: "🟢 สถานะออนไลน์",
+      icon: TrendingUp,
+      description: "ผู้ใช้ที่ออนไลน์"
+    },
+    {
+      id: "users",
+      title: "👥 จัดการผู้ใช้",
+      icon: Users,
+      description: "ผู้ใช้ทั้งหมดและการตั้งสิทธิ์"
+    },
+    {
+      id: "jobs",
+      title: "💼 จัดการงาน",
+      icon: Briefcase,
+      description: "งานทั้งหมดในระบบ"
+    },
+    {
+      id: "applications",
+      title: "📄 ใบสมัครงาน",
+      icon: FileText,
+      description: "ใบสมัครและการยืนยันบัตร ปชช."
+    },
+    {
+      id: "email-validation",
+      title: "📧 ตรวจสอบอีเมล",
+      icon: Mail,
+      description: "จัดการอีเมลปลอมและน่าสงสัย"
+    }
+  ];
 
   // ฟังก์ชันเลื่อนไปยังส่วนที่เลือก
-  const scrollToSection = useCallback((sectionId) => {
+  const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ 
@@ -160,21 +102,14 @@ export default function AdminView({ user, onLogout }) {
         block: 'start'
       });
       setActiveSection(sectionId);
-      setSidebarOpen(false);
+      setSidebarOpen(false); // ปิด sidebar หลังกด
     }
-  }, []);
+  };
 
-  // ฟังก์ชันกลับด้านบน
-  const scrollToTop = useCallback(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  }, []);
-  // ✅ ตรวจสอบ section ที่กำลังดูอยู่ (ใช้ static MENU_ITEMS)
+  // ตรวจสอบ section ที่กำลังดูอยู่
   useEffect(() => {
     const handleScroll = () => {
-      const sections = MENU_ITEMS.map(item => item.id);
+      const sections = menuItems.map(item => item.id);
       const scrollPosition = window.scrollY + 100;
 
       // แสดงปุ่มกลับด้านบน
@@ -194,26 +129,27 @@ export default function AdminView({ user, onLogout }) {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []); // ✅ ไม่มี dependency ที่เปลี่ยนแปลง
+  }, [menuItems]);
 
-  // ✅ ดึงข้อมูลทั้งหมดพร้อม AbortController
-  const loadAllData = useCallback(async () => {
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
+  // ฟังก์ชันกลับด้านบน
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
+  const token = localStorage.getItem("token");
+  const isAdmin = user?.role === "admin";
+
+  // ===== ดึงข้อมูลทั้งหมด =====
+  const loadAllData = async () => {
     setLoadingAll(true);
     setLoadError("");
-    
     try {
       // สถิติ
       const statsRes = await fetch(`${API_BASE}/api/admin/stats`, {
-        headers: authHeaders,
-        signal
+        headers: authHeader(),
       });
       if (statsRes.ok) {
         const data = await statsRes.json();
@@ -222,8 +158,7 @@ export default function AdminView({ user, onLogout }) {
 
       // ผู้ใช้ทั้งหมด
       const usersRes = await fetch(`${API_BASE}/api/admin/users`, {
-        headers: authHeaders,
-        signal
+        headers: authHeader(),
       });
       if (usersRes.ok) {
         const data = await usersRes.json();
@@ -232,8 +167,7 @@ export default function AdminView({ user, onLogout }) {
 
       // งานทั้งหมด
       const jobsRes = await fetch(`${API_BASE}/api/admin/jobs`, {
-        headers: authHeaders,
-        signal
+        headers: authHeader(),
       });
       if (jobsRes.ok) {
         const data = await jobsRes.json();
@@ -242,98 +176,78 @@ export default function AdminView({ user, onLogout }) {
 
       // ใบสมัครทั้งหมด
       const appsRes = await fetch(`${API_BASE}/api/admin/applications`, {
-        headers: authHeaders,
-        signal
+        headers: authHeader(),
       });
       if (appsRes.ok) {
         const data = await appsRes.json();
         setApplications(Array.isArray(data) ? data : []);
       }
     } catch (e) {
-      if (e.name !== 'AbortError') {
-        setLoadError("โหลดข้อมูลแอดมินไม่สำเร็จ กรุณาลองกดรีเฟรชอีกครั้ง");
-      }
+      setLoadError("โหลดข้อมูลแอดมินไม่สำเร็จ กรุณาลองกดรีเฟรชอีกครั้ง");
     } finally {
       setLoadingAll(false);
     }
-  }, [authHeaders]);
+  };
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
+    loadAllData();
   }, []);
 
-  useEffect(() => {
-    if (token && isAdmin) {
-      loadAllData();
-    }
-  }, [loadAllData, token, isAdmin]);
   // ===== งานที่ผ่านการกรองจากช่องค้นหา =====
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      const q = jobSearch.trim().toLowerCase();
-      if (!q) return true;
-      return (
-        (job.title || "").toLowerCase().includes(q) ||
-        (job.company || "").toLowerCase().includes(q) ||
-        (job.createdBy?.name || "").toLowerCase().includes(q)
-      );
-    });
-  }, [jobs, jobSearch]);
+  const filteredJobs = jobs.filter((job) => {
+    const q = jobSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (job.title || "").toLowerCase().includes(q) ||
+      (job.company || "").toLowerCase().includes(q) ||
+      (job.createdBy?.name || "").toLowerCase().includes(q)
+    );
+  });
 
   // ===== ผู้ใช้ที่ผ่านการกรอง =====
-  const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
-      const q = userSearch.trim().toLowerCase();
-      const matchText =
-        !q ||
-        (u.name || "").toLowerCase().includes(q) ||
-        (u.email || "").toLowerCase().includes(q);
-      const matchRole = userRoleFilter === "all" || u.role === userRoleFilter;
-      return matchText && matchRole;
-    });
-  }, [users, userSearch, userRoleFilter]);
+  const filteredUsers = users.filter((u) => {
+    const q = userSearch.trim().toLowerCase();
+    const matchText =
+      !q ||
+      (u.name || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q);
+    const matchRole = userRoleFilter === "all" || u.role === userRoleFilter;
+    return matchText && matchRole;
+  });
 
   // จำนวนผู้ใช้แต่ละ role
-  const roleCounts = useMemo(() => {
-    return users.reduce(
-      (acc, u) => {
-        if (u.role === "admin") acc.admin += 1;
-        else if (u.role === "employer") acc.employer += 1;
-        else acc.jobseeker += 1;
-        return acc;
-      },
-      { admin: 0, employer: 0, jobseeker: 0 }
-    );
-  }, [users]);
+  const roleCounts = users.reduce(
+    (acc, u) => {
+      if (u.role === "admin") acc.admin += 1;
+      else if (u.role === "employer") acc.employer += 1;
+      else acc.jobseeker += 1;
+      return acc;
+    },
+    { admin: 0, employer: 0, jobseeker: 0 }
+  );
 
   // ===== ใบสมัครหลัง filter =====
-  const filteredApplications = useMemo(() => {
-    return applications.filter((app) => {
-      if (appFilter === "all") return true;
-      if (appFilter === "verified") return !!app.idVerified;
-      if (appFilter === "pending") return !app.idVerified && app.verificationStatus !== "rejected";
-      if (appFilter === "rejected") return app.verificationStatus === "rejected";
-      return true;
-    });
-  }, [applications, appFilter]);
+  const filteredApplications = applications.filter((app) => {
+    if (appFilter === "all") return true;
+    if (appFilter === "verified") return !!app.idVerified;
+    if (appFilter === "pending") return !app.idVerified && app.verificationStatus !== "rejected";
+    if (appFilter === "rejected") return app.verificationStatus === "rejected";
+    return true;
+  });
 
   const deleteJob = async (jobId) => {
     if (!window.confirm("ลบงานนี้ใช่ไหม?")) return;
     try {
       await fetch(`${API_BASE}/api/admin/jobs/${jobId}`, {
         method: "DELETE",
-        headers: authHeaders,
+        headers: authHeader(),
       });
       setJobs((prev) => prev.filter((j) => j._id !== jobId));
     } catch {
       alert("ลบไม่สำเร็จ");
     }
   };
+
   // ✅ เปลี่ยน role + บันทึกว่าใครเป็นคนตั้ง
   const changeUserRole = async (targetUser, role) => {
     if (!targetUser || !targetUser._id) return;
@@ -358,7 +272,7 @@ export default function AdminView({ user, onLogout }) {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders,
+          ...authHeader(),
         },
         body: JSON.stringify({ role }),
       });
@@ -388,7 +302,7 @@ export default function AdminView({ user, onLogout }) {
     if (!u || !u._id) return;
     try {
       const res = await fetch(`${API_BASE}/api/profile/${u._id}`, {
-        headers: authHeaders,
+        headers: authHeader(),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -399,6 +313,7 @@ export default function AdminView({ user, onLogout }) {
       alert(e.message || "ดึงโปรไฟล์ไม่สำเร็จ");
     }
   };
+
   // ✅ ดูรูปบัตรประชาชน
   const openIdCard = (app) => {
     if (!app.idCardPath) {
@@ -421,7 +336,7 @@ export default function AdminView({ user, onLogout }) {
     try {
       const res = await fetch(`${API_BASE}/api/admin/applications/${app._id}`, {
         method: "DELETE",
-        headers: authHeaders,
+        headers: authHeader(),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -430,7 +345,9 @@ export default function AdminView({ user, onLogout }) {
         throw new Error(data.message || "ลบใบสมัครไม่สำเร็จ");
       }
 
+      // อัปเดต state โดยลบรายการที่ถูกลบออก
       setApplications((prev) => prev.filter((a) => a._id !== app._id));
+      
       alert("ลบใบสมัครเรียบร้อยแล้ว");
     } catch (e) {
       alert(e.message || "ลบใบสมัครไม่สำเร็จ");
@@ -450,7 +367,7 @@ export default function AdminView({ user, onLogout }) {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders,
+          ...authHeader(),
         },
         body: JSON.stringify({ verified }),
       });
@@ -467,6 +384,7 @@ export default function AdminView({ user, onLogout }) {
       alert(e.message || "อัปเดตการยืนยันไม่สำเร็จ");
     }
   };
+
   // ✅ รีเซ็ตสถานะการยืนยัน
   const resetVerificationStatus = async (app) => {
     const confirmMsg = `รีเซ็ตสถานะการยืนยันของ "${app.applicantName}" ?\n\n` +
@@ -479,7 +397,7 @@ export default function AdminView({ user, onLogout }) {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders,
+          ...authHeader(),
         },
         body: JSON.stringify({ 
           resetBy: user?.name || "Admin"
@@ -522,7 +440,7 @@ export default function AdminView({ user, onLogout }) {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...authHeaders,
+          ...authHeader(),
         },
         body: JSON.stringify({ 
           reason: reason.trim(),
@@ -544,6 +462,7 @@ export default function AdminView({ user, onLogout }) {
       alert(e.message || "ปฏิเสธการยืนยันไม่สำเร็จ");
     }
   };
+
   // แสดงข้อความว่าใครตั้งสิทธิ์ + เมื่อไหร่
   const renderPromoteInfo = (u) => {
     if (!u || !u.promotedAt) return null;
@@ -622,9 +541,10 @@ export default function AdminView({ user, onLogout }) {
               </div>
             </div>
           </div>
+
           {/* Menu Items */}
           <div className="p-4 space-y-2">
-            {MENU_ITEMS.map((item) => {
+            {menuItems.map((item) => {
               const IconComponent = item.icon;
               const isActive = activeSection === item.id;
               return (
@@ -740,32 +660,32 @@ export default function AdminView({ user, onLogout }) {
               📊 Dashboard & สถิติ
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white p-4 rounded-lg border">
-                <Users className="w-8 h-8 text-blue-600 mb-2" />
-                <p className="text-2xl font-bold">{stats.totalUsers}</p>
-                <p className="text-sm text-gray-600">ผู้ใช้ทั้งหมด</p>
-                <p className="text-[11px] text-gray-400 mt-1">
-                  👤 Jobseeker: {roleCounts.jobseeker} | 🏢 Employer:{" "}
-                  {roleCounts.employer} | ⚙️ Admin: {roleCounts.admin}
-                </p>
-              </div>
-              <div className="bg-white p-4 rounded-lg border">
-                <Briefcase className="w-8 h-8 text-green-600 mb-2" />
-                <p className="text-2xl font-bold">{stats.totalJobs}</p>
-                <p className="text-sm text-gray-600">งานทั้งหมด</p>
-              </div>
-              <div className="bg-white p-4 rounded-lg border">
-                <FileText className="w-8 h-8 text-purple-600 mb-2" />
-                <p className="text-2xl font-bold">{stats.totalApplications}</p>
-                <p className="text-sm text-gray-600">ใบสมัครทั้งหมด</p>
-              </div>
-              <div className="bg-white p-4 rounded-lg border">
-                <BarChart3 className="w-8 h-8 text-orange-600 mb-2" />
-                <p className="text-2xl font-bold">{stats.activeJobs}</p>
-                <p className="text-sm text-gray-600">งานที่เปิดอยู่</p>
-              </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <Users className="w-8 h-8 text-blue-600 mb-2" />
+              <p className="text-2xl font-bold">{stats.totalUsers}</p>
+              <p className="text-sm text-gray-600">ผู้ใช้ทั้งหมด</p>
+              <p className="text-[11px] text-gray-400 mt-1">
+                � กJobseeker: {roleCounts.jobseeker} | 🏢 Employer:{" "}
+                {roleCounts.employer} | ⚙️ Admin: {roleCounts.admin}
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <Briefcase className="w-8 h-8 text-green-600 mb-2" />
+              <p className="text-2xl font-bold">{stats.totalJobs}</p>
+              <p className="text-sm text-gray-600">งานทั้งหมด</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <FileText className="w-8 h-8 text-purple-600 mb-2" />
+              <p className="text-2xl font-bold">{stats.totalApplications}</p>
+              <p className="text-sm text-gray-600">ใบสมัครทั้งหมด</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <BarChart3 className="w-8 h-8 text-orange-600 mb-2" />
+              <p className="text-2xl font-bold">{stats.activeJobs}</p>
+              <p className="text-sm text-gray-600">งานที่เปิดอยู่</p>
             </div>
           </div>
+
           {/* Online Status Widget */}
           <div id="online-status">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -854,6 +774,7 @@ export default function AdminView({ user, onLogout }) {
                 </div>
               </div>
             </div>
+
             <div className="bg-white rounded-lg border overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50">
@@ -963,6 +884,7 @@ export default function AdminView({ user, onLogout }) {
               </table>
             </div>
           </div>
+
           {/* งานทั้งหมด + ช่องค้นหา */}
           <div id="jobs">
             <div className="flex items-center justify-between mb-2">
@@ -1039,6 +961,7 @@ export default function AdminView({ user, onLogout }) {
               )}
             </div>
           </div>
+
           {/* ใบสมัคร + ยืนยันบัตรประชาชน */}
           <div id="applications">
             <div className="flex items-center justify-between mb-3">
@@ -1101,6 +1024,7 @@ export default function AdminView({ user, onLogout }) {
                 </button>
               </div>
             </div>
+
             <div className="bg-white rounded-lg border overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
@@ -1277,6 +1201,7 @@ export default function AdminView({ user, onLogout }) {
           </div>
         </div>
       </div>
+
       {/* ✅ Email Validation Management Section */}
       <div id="email-validation">
         <div className="p-6">
@@ -1405,6 +1330,7 @@ export default function AdminView({ user, onLogout }) {
           </div>
         </div>
       )}
+
       {/* Modal แสดงรายละเอียดงาน */}
       {selectedJob && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
@@ -1512,25 +1438,23 @@ export default function AdminView({ user, onLogout }) {
     </>
   );
 }
-// ✅ Email Validation Management Component (แยกออกมาเป็น component ย่อย)
+
+// ✅ Email Validation Management Component
 function EmailValidationSection({ user }) {
   const [suspiciousUsers, setSuspiciousUsers] = useState([]);
   const [emailStats, setEmailStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('all'); // all, suspicious, review, suspended
   const [testEmail, setTestEmail] = useState('');
   const [testResult, setTestResult] = useState(null);
-
-  // ✅ Memoized auth header
-  const authHeaders = useMemo(() => authHeader(), []);
 
   // ดึงข้อมูลผู้ใช้ที่น่าสงสัย
   const loadSuspiciousUsers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/admin/suspicious-users?status=${filter}`, {
-        headers: authHeaders,
+        headers: authHeader(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -1541,13 +1465,13 @@ function EmailValidationSection({ user }) {
     } finally {
       setLoading(false);
     }
-  }, [filter, authHeaders]);
+  }, [filter]);
 
   // ดึงสถิติอีเมล
-  const loadEmailStats = useCallback(async () => {
+  const loadEmailStats = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/admin/email-stats`, {
-        headers: authHeaders,
+        headers: authHeader(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -1556,7 +1480,7 @@ function EmailValidationSection({ user }) {
     } catch (err) {
       console.error('Load email stats error:', err);
     }
-  }, [authHeaders]);
+  };
 
   // ตรวจสอบอีเมลแบบ batch
   const validateUsersBatch = async () => {
@@ -1568,7 +1492,7 @@ function EmailValidationSection({ user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
+          ...authHeader(),
         },
         body: JSON.stringify({ limit: 100 }),
       });
@@ -1598,7 +1522,7 @@ function EmailValidationSection({ user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
+          ...authHeader(),
         },
         body: JSON.stringify({ email: testEmail.trim() }),
       });
@@ -1614,6 +1538,7 @@ function EmailValidationSection({ user }) {
       alert(`เกิดข้อผิดพลาด: ${err.message}`);
     }
   };
+
   // ระงับบัญชี
   const suspendUser = async (userId, userName) => {
     const reason = prompt(`ระบุเหตุผลในการระงับบัญชี "${userName}":`);
@@ -1624,7 +1549,7 @@ function EmailValidationSection({ user }) {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
+          ...authHeader(),
         },
         body: JSON.stringify({ reason: reason.trim() }),
       });
@@ -1651,7 +1576,7 @@ function EmailValidationSection({ user }) {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
+          ...authHeader(),
         },
         body: JSON.stringify({ notes: notes || '' }),
       });
@@ -1679,7 +1604,7 @@ function EmailValidationSection({ user }) {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders,
+          ...authHeader(),
         },
         body: JSON.stringify({ 
           approved, 
@@ -1703,17 +1628,10 @@ function EmailValidationSection({ user }) {
   useEffect(() => {
     loadSuspiciousUsers();
     loadEmailStats();
-  }, [loadSuspiciousUsers, loadEmailStats]);
-  // ✅ Static filter options สำหรับ Tailwind CSS
-  const FILTER_OPTIONS = [
-    { key: 'all', label: 'ทั้งหมด', colorClass: COLOR_CLASSES.blue },
-    { key: 'suspicious', label: 'น่าสงสัย', colorClass: COLOR_CLASSES.yellow },
-    { key: 'review', label: 'ต้องตรวจสอบ', colorClass: COLOR_CLASSES.orange },
-    { key: 'suspended', label: 'ถูกระงับ', colorClass: COLOR_CLASSES.red },
-  ];
+  }, [filter, loadSuspiciousUsers]);
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Email Validation Stats */}
       {emailStats && (
         <div className="bg-white p-6 rounded-lg border">
@@ -1817,6 +1735,7 @@ function EmailValidationSection({ user }) {
           </div>
         </div>
       </div>
+
       {/* Suspicious Users Management */}
       <div className="bg-white p-6 rounded-lg border">
         <div className="flex items-center justify-between mb-4">
@@ -1824,16 +1743,21 @@ function EmailValidationSection({ user }) {
             ⚠️ จัดการผู้ใช้ที่น่าสงสัย
           </h2>
           
-          {/* ✅ Filter ใช้ static classes */}
+          {/* Filter */}
           <div className="flex gap-2">
-            {FILTER_OPTIONS.map(({ key, label, colorClass }) => (
+            {[
+              { key: 'all', label: 'ทั้งหมด', color: 'blue' },
+              { key: 'suspicious', label: 'น่าสงสัย', color: 'yellow' },
+              { key: 'review', label: 'ต้องตรวจสอบ', color: 'orange' },
+              { key: 'suspended', label: 'ถูกระงับ', color: 'red' },
+            ].map(({ key, label, color }) => (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
-                className={`px-3 py-1 rounded-lg text-xs transition-colors ${
+                className={`px-3 py-1 rounded-lg text-xs ${
                   filter === key
-                    ? `${colorClass.bg} text-white`
-                    : `${colorClass.bgLight} ${colorClass.text} ${colorClass.hoverBg}`
+                    ? `bg-${color}-600 text-white`
+                    : `bg-${color}-100 text-${color}-700 hover:bg-${color}-200`
                 }`}
               >
                 {label}
@@ -1844,33 +1768,31 @@ function EmailValidationSection({ user }) {
 
         {loading ? (
           <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-sm text-gray-500 mt-2">กำลังโหลด...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-sm text-gray-600">กำลังโหลด...</p>
+          </div>
+        ) : suspiciousUsers.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <p>ไม่พบผู้ใช้ตามเงื่อนไขที่เลือก</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left">ผู้ใช้</th>
-                  <th className="px-4 py-2 text-left">อีเมล</th>
-                  <th className="px-4 py-2 text-left">สถานะ</th>
-                  <th className="px-4 py-2 text-left">คะแนน</th>
-                  <th className="px-4 py-2 text-left">จัดการ</th>
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left px-3 py-2">ชื่อ</th>
+                  <th className="text-left px-3 py-2">อีเมล</th>
+                  <th className="text-left px-3 py-2">คะแนน</th>
+                  <th className="text-left px-3 py-2">สถานะ</th>
+                  <th className="text-left px-3 py-2">วันที่สมัคร</th>
+                  <th className="text-left px-3 py-2">การจัดการ</th>
                 </tr>
               </thead>
               <tbody>
                 {suspiciousUsers.map((user) => (
-                  <tr key={user._id} className="border-t hover:bg-gray-50">
-                    <td className="px-4 py-2">
-                      <div>
-                        <p className="font-medium">{user.name}</p>
-                        <p className="text-xs text-gray-500">
-                          สมัคร: {new Date(user.createdAt).toLocaleDateString('th-TH')}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">
+                  <tr key={user._id} className="border-b hover:bg-gray-50">
+                    <td className="px-3 py-2">{user.name}</td>
+                    <td className="px-3 py-2">
                       <div>
                         <p>{user.email}</p>
                         {user.emailValidation?.domain && (
@@ -1880,8 +1802,17 @@ function EmailValidationSection({ user }) {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-2">
-                      <div className="space-y-1">
+                    <td className="px-3 py-2">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        (user.emailValidation?.validationScore || 0) >= 70 ? 'bg-green-100 text-green-700' :
+                        (user.emailValidation?.validationScore || 0) >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {user.emailValidation?.validationScore || 0}/100
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col gap-1">
                         {user.isSuspended && (
                           <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
                             ระงับ
@@ -1894,7 +1825,7 @@ function EmailValidationSection({ user }) {
                         )}
                         {user.emailValidation?.isDisposable && (
                           <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
-                            อีเมลชั่วคราว
+                            Disposable
                           </span>
                         )}
                         {user.emailValidation?.isSuspicious && (
@@ -1904,66 +1835,47 @@ function EmailValidationSection({ user }) {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-2">
-                      {user.emailValidation?.validationScore ? (
-                        <div className="flex items-center gap-2">
-                          <span className={`font-medium ${
-                            user.emailValidation.validationScore >= 70 ? 'text-green-600' :
-                            user.emailValidation.validationScore >= 50 ? 'text-yellow-600' :
-                            'text-red-600'
-                          }`}>
-                            {user.emailValidation.validationScore}/100
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-xs">ไม่ได้ตรวจสอบ</span>
-                      )}
+                    <td className="px-3 py-2 text-xs text-gray-500">
+                      {new Date(user.createdAt).toLocaleDateString('th-TH')}
                     </td>
-                    <td className="px-4 py-2">
-                      <div className="flex gap-2 flex-wrap">
-                        {user.isSuspended ? (
-                          <button
-                            onClick={() => unsuspendUser(user._id, user.name)}
-                            className="px-2 py-1 text-xs rounded border border-green-200 text-green-700 hover:bg-green-50"
-                          >
-                            ยกเลิกระงับ
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => suspendUser(user._id, user.name)}
-                            className="px-2 py-1 text-xs rounded border border-red-200 text-red-700 hover:bg-red-50"
-                          >
-                            ระงับบัญชี
-                          </button>
-                        )}
-                        
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
                         {user.requiresReview && (
                           <>
                             <button
                               onClick={() => reviewUser(user._id, user.name, true)}
-                              className="px-2 py-1 text-xs rounded border border-green-200 text-green-700 hover:bg-green-50"
+                              className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
                             >
-                              อนุมัติ
+                              ✅ อนุมัติ
                             </button>
                             <button
                               onClick={() => reviewUser(user._id, user.name, false)}
-                              className="px-2 py-1 text-xs rounded border border-red-200 text-red-700 hover:bg-red-50"
+                              className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
                             >
-                              ปฏิเสธ
+                              ❌ ปฏิเสธ
                             </button>
                           </>
+                        )}
+                        
+                        {user.isSuspended ? (
+                          <button
+                            onClick={() => unsuspendUser(user._id, user.name)}
+                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                          >
+                            🔓 ยกเลิกระงับ
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => suspendUser(user._id, user.name)}
+                            className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+                          >
+                            🚫 ระงับ
+                          </button>
                         )}
                       </div>
                     </td>
                   </tr>
                 ))}
-                {suspiciousUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                      ไม่พบผู้ใช้ตามเงื่อนไขที่เลือก
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
