@@ -21,8 +21,16 @@ const isCloudinaryConfigured = cloudinaryConfig.cloud_name &&
 if (isCloudinaryConfigured) {
   cloudinary.config(cloudinaryConfig);
   console.log("🔧 Cloudinary Config: ✅ Configured");
+  console.log("🔧 Cloud Name:", cloudinaryConfig.cloud_name);
+  console.log("🔧 API Key:", cloudinaryConfig.api_key ? "✅ Set" : "❌ Missing");
+  console.log("🔧 API Secret:", cloudinaryConfig.api_secret ? "✅ Set" : "❌ Missing");
 } else {
   console.log("🔧 Cloudinary Config: ❌ Missing - Using local storage");
+  console.log("🔧 Missing:", {
+    cloud_name: !cloudinaryConfig.cloud_name,
+    api_key: !cloudinaryConfig.api_key,
+    api_secret: !cloudinaryConfig.api_secret
+  });
 }
 
 // Storage for photos

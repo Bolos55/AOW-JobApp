@@ -260,105 +260,96 @@ router.post(
 /* ========= POST /api/profile/me/photo ========= */
 // อัปโหลดรูปโปรไฟล์ + อัพเดต profile.photoUrl
 
-router.post(
-  "/me/photo",
-  (req, res, next) => {
-    console.log("🔥 HIT /me/photo - Request received");
-    console.log("🔥 Headers:", req.headers);
+router.post("/me/photo", authMiddleware, async (req, res) => {
+  try {
+    console.log("🔥 HIT /me/photo - Starting upload process");
+    console.log("🔥 User ID:", req.user.id);
     console.log("🔥 Cloudinary configured:", isCloudinaryConfigured);
-    next();
-  },
-  authMiddleware,
-  (req, res, next) => {
-    // ✅ Wrap multer in try-catch to prevent crashes
-    uploadPhoto.single("photo")(req, res, (err) => {
-      if (err) {
-        console.error("❌ Multer/Upload error:", err);
-        console.error("❌ Error stack:", err.stack);
-        
-        // ✅ Send proper error response with CORS headers
-        res.status(400).json({ 
-          message: err.message || "อัปโหลดรูปไม่สำเร็จ",
-          error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    console.log("🔥 Request headers:", req.headers);
+    
+    // ✅ Handle upload with proper error catching
+    const upload = uploadPhoto.single("photo");
+    
+    upload(req, res, async (uploadError) => {
+      if (uploadError) {
+        console.error("❌ Upload error:", uploadError);
+        console.error("❌ Upload error stack:", uploadError.stack);
+        return res.status(400).json({ 
+          message: uploadError.message || "อัปโหลดรูปไม่สำเร็จ",
+          error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
         });
-        return;
-      }
-      next();
-    });
-  },
-  async (req, res) => {
-    try {
-      console.log("📸 Processing photo upload...");
-      console.log("📸 User ID:", req.user.id);
-      console.log("📸 File received:", req.file ? "✅ Yes" : "❌ No");
-      
-      if (!req.file) {
-        console.log("❌ No file found in request");
-        return res.status(400).json({ message: "ไม่พบไฟล์รูปโปรไฟล์" });
       }
 
-      console.log("📸 File details:", {
-        filename: req.file.filename,
-        path: req.file.path,
-        size: req.file.size,
-        mimetype: req.file.mimetype
-      });
-
-      const user = await User.findById(req.user.id);
-      if (!user) {
-        console.log("❌ User not found:", req.user.id);
-        return res.status(404).json({ message: "ไม่พบผู้ใช้" });
-      }
-
-      // ✅ Generate full URL for both Cloudinary and local storage
-      let photoUrl;
       try {
+        console.log("📸 Upload successful, processing file...");
+        console.log("📸 File received:", req.file ? "✅ Yes" : "❌ No");
+        
+        if (!req.file) {
+          console.log("❌ No file found in request");
+          return res.status(400).json({ message: "ไม่พบไฟล์รูปโปรไฟล์" });
+        }
+
+        console.log("📸 File details:", {
+          filename: req.file.filename,
+          path: req.file.path,
+          size: req.file.size,
+          mimetype: req.file.mimetype
+        });
+
+        const user = await User.findById(req.user.id);
+        if (!user) {
+          console.log("❌ User not found:", req.user.id);
+          return res.status(404).json({ message: "ไม่พบผู้ใช้" });
+        }
+
+        // ✅ Generate full URL
+        let photoUrl;
         if (isCloudinaryConfigured) {
-          // Cloudinary returns full URL
           photoUrl = req.file.path;
           console.log("📸 Using Cloudinary URL:", photoUrl);
         } else {
-          // Local storage - generate full URL
           const API_BASE = process.env.NODE_ENV === 'production' 
             ? 'https://aow-jobapp-backend.onrender.com'
             : 'http://localhost:5000';
           photoUrl = `${API_BASE}/uploads/photos/${req.file.filename}`;
           console.log("📸 Using local URL:", photoUrl);
         }
-      } catch (urlError) {
-        console.error("❌ Error generating photo URL:", urlError);
-        throw new Error("ไม่สามารถสร้าง URL รูปภาพได้");
+
+        // ✅ Save to database
+        user.profile = {
+          ...(user.profile || {}),
+          photoUrl: photoUrl,
+        };
+
+        await user.save();
+        console.log("✅ Photo saved successfully:", photoUrl);
+
+        // ✅ Return exact format expected by frontend
+        return res.status(200).json({
+          photoUrl: photoUrl,
+          message: "อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว",
+          success: true
+        });
+
+      } catch (dbError) {
+        console.error("❌ Database error:", dbError);
+        console.error("❌ Database error stack:", dbError.stack);
+        return res.status(500).json({ 
+          message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
+          error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+        });
       }
+    });
 
-      // ✅ Save to database
-      user.profile = {
-        ...(user.profile || {}),
-        photoUrl: photoUrl,
-      };
-
-      console.log("📸 Saving profile with photoUrl:", photoUrl);
-      await user.save();
-      console.log("✅ Photo profile saved successfully");
-
-      // ✅ Return proper response format
-      return res.status(200).json({
-        message: "อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว",
-        photoUrl: photoUrl,
-        success: true
-      });
-      
-    } catch (e) {
-      console.error("❌ POST /api/profile/me/photo error:", e);
-      console.error("❌ Error stack:", e.stack);
-      
-      // ✅ Always return proper JSON response
-      return res.status(500).json({ 
-        message: "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
-        error: process.env.NODE_ENV === 'development' ? e.message : undefined
-      });
-    }
+  } catch (routeError) {
+    console.error("❌ Route error:", routeError);
+    console.error("❌ Route error stack:", routeError.stack);
+    return res.status(500).json({ 
+      message: "เกิดข้อผิดพลาดในการอัปโหลด",
+      error: process.env.NODE_ENV === 'development' ? routeError.message : undefined
+    });
   }
-);
+});
 
 /* ========= GET /api/profile/:userId (เฉพาะ admin + employer) ========= */
 // ให้ admin / employer เปิดดูโปรไฟล์ของคนอื่นได้ (รวมรูปด้วย)
