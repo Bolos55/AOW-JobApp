@@ -4,13 +4,13 @@ import { X, FileText, User as UserIcon, MapPin, Phone, Mail, Briefcase, Award } 
 import { API_BASE, authHeader } from "../api";
 
 /* ========= helper แปลง path จาก backend -> URL เต็ม ========= */
-const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
-
-// รับค่าเช่น "uploads/profile/xxx.png" หรือ "http://..." แล้วคืนเป็น URL ที่เปิดได้จริง
+// รับค่าเช่น "https://res.cloudinary.com/..." หรือ "uploads/profile/xxx.png" แล้วคืนเป็น URL ที่เปิดได้จริง
 const resolveFileUrl = (url) => {
   if (!url) return "";
+  // ✅ If it's already a full URL (Cloudinary), return as-is
   if (url.startsWith("http")) return url;
-  // ✅ Add /uploads prefix if not present
+  // ✅ Legacy local files - add /uploads prefix
+  const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
   const cleanUrl = url.replace(/^\/+/, "");
   return `${FILE_BASE.replace(/\/+$/, "")}/uploads/${cleanUrl}`;
 };
