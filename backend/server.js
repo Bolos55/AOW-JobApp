@@ -10,7 +10,6 @@ import cors from "cors";
 // ===============================
 import {
   securityHeaders,
-  corsOptions,
   sanitizeInput,
   apiRateLimit,
   authRateLimit,
