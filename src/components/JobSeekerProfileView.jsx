@@ -2,23 +2,9 @@
 import { useEffect, useState } from "react";
 import { X, FileText, User as UserIcon, MapPin, Phone, Mail, Briefcase, Award } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
+import { getPhotoUrl, getResumeUrl } from "../utils/imageUtils";
 
 /* ========= helper แปลง path จาก backend -> URL เต็ม ========= */
-// รับค่าเช่น "https://res.cloudinary.com/..." หรือ "uploads/profile/xxx.png" แล้วคืนเป็น URL ที่เปิดได้จริง
-const resolveFileUrl = (url) => {
-  if (!url) return "";
-  // ✅ If it's already a full URL (Cloudinary), return as-is
-  if (url.startsWith("http")) return url;
-  // ✅ Legacy local files - add /uploads prefix (but avoid double /uploads/)
-  const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
-  const cleanUrl = url.replace(/^\/+/, "");
-  // ✅ Check if URL already starts with uploads/ to avoid duplication
-  if (cleanUrl.startsWith("uploads/")) {
-    return `${FILE_BASE.replace(/\/+$/, "")}/${cleanUrl}`;
-  }
-  return `${FILE_BASE.replace(/\/+$/, "")}/uploads/${cleanUrl}`;
-};
-
 export default function JobSeekerProfileView({ open, onClose, userId, userName }) {
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState(null);
@@ -64,7 +50,7 @@ export default function JobSeekerProfileView({ open, onClose, userId, userName }
 
   if (!open) return null;
 
-  const profilePhoto = resolveFileUrl(profile?.profile?.photoUrl || "");
+  const profilePhoto = getPhotoUrl(profile?.profile);
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
@@ -177,7 +163,7 @@ export default function JobSeekerProfileView({ open, onClose, userId, userName }
                   ไฟล์เรซูเม่
                 </h3>
                 <a
-                  href={resolveFileUrl(profile?.profile?.resumeUrl)}
+                  href={getResumeUrl(profile?.profile)}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"

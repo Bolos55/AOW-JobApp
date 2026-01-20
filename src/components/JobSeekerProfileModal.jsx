@@ -2,25 +2,11 @@
 import { useEffect, useState } from "react";
 import { X, Upload, FileText, User as UserIcon } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
+import { getPhotoUrl, getResumeUrl } from "../utils/imageUtils";
 import { updateProfileInStorage } from "../utils/authUtils";
 
 /* ========= helper แปลง path จาก backend -> URL เต็ม ========= */
 const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
-
-// รับค่าเช่น "https://res.cloudinary.com/..." หรือ "uploads/profile/xxx.png" แล้วคืนเป็น URL ที่เปิดได้จริง
-const resolveFileUrl = (url) => {
-  if (!url) return "";
-  // ✅ If it's already a full URL (Cloudinary), return as-is
-  if (url.startsWith("http")) return url;
-  // ✅ Legacy local files - add /uploads prefix (but avoid double /uploads/)
-  const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
-  const cleanUrl = url.replace(/^\/+/, "");
-  // ✅ Check if URL already starts with uploads/ to avoid duplication
-  if (cleanUrl.startsWith("uploads/")) {
-    return `${FILE_BASE.replace(/\/+$/, "")}/${cleanUrl}`;
-  }
-  return `${FILE_BASE.replace(/\/+$/, "")}/uploads/${cleanUrl}`;
-};
 
 export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) {
   const [loading, setLoading] = useState(false);
@@ -339,7 +325,7 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
     user?.avatarUrl ||
     "";
 
-  const profilePhoto = resolveFileUrl(rawPhoto);
+  const profilePhoto = getPhotoUrl({ photoUrl: rawPhoto });
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
@@ -607,7 +593,7 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
               {profile.resumeUrl && (
                 <div className="mt-3 text-center">
                   <a
-                    href={resolveFileUrl(profile.resumeUrl)}
+                    href={getResumeUrl(profile)}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"

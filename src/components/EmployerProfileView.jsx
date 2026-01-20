@@ -2,23 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { X, Building2, MapPin, Phone, Globe, Users, Award } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
+import { getPhotoUrl } from "../utils/imageUtils";
 
 /* ========= helper แปลง path จาก backend -> URL เต็ม ========= */
 const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
-
-const resolveFileUrl = (url) => {
-  if (!url) return "";
-  // ✅ If it's already a full URL (Cloudinary), return as-is
-  if (url.startsWith("http")) return url;
-  // ✅ Legacy local files - add /uploads prefix (but avoid double /uploads/)
-  const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
-  const cleanUrl = url.replace(/^\/+/, "");
-  // ✅ Check if URL already starts with uploads/ to avoid duplication
-  if (cleanUrl.startsWith("uploads/")) {
-    return `${FILE_BASE.replace(/\/+$/, "")}/${cleanUrl}`;
-  }
-  return `${FILE_BASE.replace(/\/+$/, "")}/uploads/${cleanUrl}`;
-};
 
 export default function EmployerProfileView({ open, onClose, userId, companyName }) {
   const [loading, setLoading] = useState(false);
@@ -65,7 +52,7 @@ export default function EmployerProfileView({ open, onClose, userId, companyName
 
   if (!open) return null;
 
-  const logoUrl = resolveFileUrl(profile?.profile?.logoUrl || "");
+  const logoUrl = getPhotoUrl(profile?.profile, "logoUrl");
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">

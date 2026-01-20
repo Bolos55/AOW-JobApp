@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { API_BASE, authHeader } from "./api";
+import { getPhotoUrl } from "./utils/imageUtils";
 import AddJobModal from "./components/AddJobModal";
 import ReviewSection from "./components/ReviewSection";
 import ChatWidget from "./components/ChatWidget"; // ✅ เพิ่มอันนี้
@@ -583,11 +584,7 @@ export default function EmployerView({ user, onLogout }) {
                 const status = app.status || "pending";
                 const isUpdating = updatingAppId === app._id;
 
-                const applicantPhoto = app.applicant?.profile?.photoUrl 
-                  ? (app.applicant.profile.photoUrl.startsWith("http") 
-                      ? app.applicant.profile.photoUrl 
-                      : `${API_BASE.replace(/\/api\/?$/, "")}/uploads/${app.applicant.profile.photoUrl}`)
-                  : app.applicant?.avatar || "";
+                const applicantPhoto = getPhotoUrl(app.applicant?.profile) || app.applicant?.avatar || "";
 
                 return (
                   <div
@@ -812,11 +809,7 @@ function ApplicationDetailModal({ open, app, onClose, onUpdateStatus, updatingAp
   const status = app.status || "pending";
   const isUpdating = updatingAppId === app._id;
 
-  const applicantPhoto = app.applicant?.profile?.photoUrl 
-    ? (app.applicant.profile.photoUrl.startsWith("http") 
-        ? app.applicant.profile.photoUrl 
-        : `${API_BASE.replace(/\/api\/?$/, "")}/uploads/${app.applicant.profile.photoUrl}`)
-    : app.applicant?.avatar || "";
+  const applicantPhoto = getPhotoUrl(app.applicant?.profile) || app.applicant?.avatar || "";
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
