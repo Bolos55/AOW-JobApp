@@ -372,7 +372,22 @@ app.use("*", (req, res) => {
 // ===============================
 app.use((err, req, res, _next) => {
   // ✅ Always set CORS headers even for errors
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://aow-jobapp.onrender.com',
+    'https://aow-jobapp-frontend.onrender.com'
+  ];
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else if (process.env.NODE_ENV === 'development') {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    res.header('Access-Control-Allow-Origin', 'https://aow-jobapp-frontend.onrender.com');
+  }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -416,6 +431,29 @@ app.use((err, req, res, _next) => {
     return res.status(409).json({
       error: "Duplicate Entry",
       message: "ข้อมูลซ้ำกับที่มีอยู่แล้ว"
+    });
+  }
+
+  // ✅ Handle multer errors specifically
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({
+      error: "File Too Large",
+      message: "ไฟล์ใหญ่เกินไป กรุณาเลือกไฟล์ที่เล็กกว่า"
+    });
+  }
+
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({
+      error: "Invalid File Type",
+      message: "รูปแบบไฟล์ไม่ถูกต้อง"
+    });
+  }
+
+  // ✅ Handle timeout errors
+  if (err.code === 'ETIMEDOUT' || err.message.includes('timeout')) {
+    return res.status(408).json({
+      error: "Request Timeout",
+      message: "คำขอใช้เวลานานเกินไป กรุณาลองใหม่"
     });
   }
 

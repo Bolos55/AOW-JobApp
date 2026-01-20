@@ -311,6 +311,10 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
       const form = new FormData();
       form.append("photo", file);
 
+      // ✅ Add timeout to fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+
       const res = await fetch(`${API_BASE}/api/profile/me/photo`, {
         method: "POST",
         headers: {
@@ -318,7 +322,10 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
           // ❌ Don't set Content-Type for FormData - let browser set it
         },
         body: form,
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       console.log("📸 Upload response status:", res.status);
       console.log("📸 Upload response headers:", res.headers);
@@ -330,7 +337,11 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
         // ✅ Handle specific error types with better messages
         if (res.status === 0) {
           throw new Error("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต");
-        } else if (res.status === 502 || res.status === 503) {
+        } else if (res.status === 408) {
+          throw new Error("การอัปโหลดใช้เวลานานเกินไป กรุณาลองใหม่");
+        } else if (res.status === 502) {
+          throw new Error("เซิร์ฟเวอร์ไม่พร้อมใช้งาน กรุณารอสักครู่แล้วลองใหม่");
+        } else if (res.status === 503) {
           throw new Error("เซิร์ฟเวอร์ไม่พร้อมใช้งาน กรุณาลองใหม่ในอีกสักครู่");
         } else if (res.status === 413) {
           throw new Error("ไฟล์รูปใหญ่เกินไป กรุณาเลือกรูปที่เล็กกว่า 2MB");
@@ -377,7 +388,9 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
       // ✅ Check if component is still mounted before showing alert
       if (mountedRef.current) {
         // ✅ Show more specific error messages
-        if (e.name === 'TypeError' && e.message.includes('fetch')) {
+        if (e.name === 'AbortError') {
+          alert("การอัปโหลดใช้เวลานานเกินไป กรุณาลองใหม่");
+        } else if (e.name === 'TypeError' && e.message.includes('fetch')) {
           alert("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต");
         } else {
           alert(e.message || "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ");
