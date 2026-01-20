@@ -1119,11 +1119,15 @@ export default function AdminView({ user, onLogout }) {
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
-                            {app.applicant?.profile?.photoUrl ? (
+                            {getPhotoUrl(app.applicant.profile) ? (
                               <img
                                 src={getPhotoUrl(app.applicant.profile)}
                                 alt={app.applicantName}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  console.log("Image load error, hiding:", e.target.src);
+                                  e.target.style.display = 'none';
+                                }}
                               />
                             ) : app.applicant?.avatar ? (
                               <img
@@ -1303,11 +1307,15 @@ export default function AdminView({ user, onLogout }) {
             {/* ✅ รูปโปรไฟล์ */}
             <div className="flex items-center gap-3 mb-4">
               <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
-                {selectedUserProfile.profile?.photoUrl ? (
+                {getPhotoUrl(selectedUserProfile.profile) ? (
                   <img
                     src={getPhotoUrl(selectedUserProfile.profile)}
                     alt={selectedUserProfile.name || "ผู้ใช้"}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.log("Profile image load error:", e.target.src);
+                      e.target.style.display = 'none';
+                    }}
                   />
                 ) : selectedUserProfile.avatar ? (
                   <img
