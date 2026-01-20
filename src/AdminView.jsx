@@ -1120,7 +1120,9 @@ export default function AdminView({ user, onLogout }) {
                           <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
                             {app.applicant?.profile?.photoUrl ? (
                               <img
-                                src={`${API_BASE.replace(/\/api\/?$/, "")}/uploads/${app.applicant.profile.photoUrl}`}
+                                src={app.applicant.profile.photoUrl.startsWith("http") 
+                                  ? app.applicant.profile.photoUrl 
+                                  : `${API_BASE.replace(/\/api\/?$/, "")}/uploads/${app.applicant.profile.photoUrl}`}
                                 alt={app.applicantName}
                                 className="w-full h-full object-cover"
                               />
@@ -1304,7 +1306,9 @@ export default function AdminView({ user, onLogout }) {
               <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
                 {selectedUserProfile.profile?.photoUrl ? (
                   <img
-                    src={`${API_BASE.replace(/\/api\/?$/, "")}/uploads/${selectedUserProfile.profile.photoUrl}`}
+                    src={selectedUserProfile.profile.photoUrl.startsWith("http") 
+                      ? selectedUserProfile.profile.photoUrl 
+                      : `${API_BASE.replace(/\/api\/?$/, "")}/uploads/${selectedUserProfile.profile.photoUrl}`}
                     alt={selectedUserProfile.name || "ผู้ใช้"}
                     className="w-full h-full object-cover"
                   />

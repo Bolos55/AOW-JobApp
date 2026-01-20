@@ -584,7 +584,9 @@ export default function EmployerView({ user, onLogout }) {
                 const isUpdating = updatingAppId === app._id;
 
                 const applicantPhoto = app.applicant?.profile?.photoUrl 
-                  ? `${API_BASE.replace(/\/api\/?$/, "")}/uploads/${app.applicant.profile.photoUrl}`
+                  ? (app.applicant.profile.photoUrl.startsWith("http") 
+                      ? app.applicant.profile.photoUrl 
+                      : `${API_BASE.replace(/\/api\/?$/, "")}/uploads/${app.applicant.profile.photoUrl}`)
                   : app.applicant?.avatar || "";
 
                 return (
@@ -811,7 +813,9 @@ function ApplicationDetailModal({ open, app, onClose, onUpdateStatus, updatingAp
   const isUpdating = updatingAppId === app._id;
 
   const applicantPhoto = app.applicant?.profile?.photoUrl 
-    ? `${API_BASE.replace(/\/api\/?$/, "")}/uploads/${app.applicant.profile.photoUrl}`
+    ? (app.applicant.profile.photoUrl.startsWith("http") 
+        ? app.applicant.profile.photoUrl 
+        : `${API_BASE.replace(/\/api\/?$/, "")}/uploads/${app.applicant.profile.photoUrl}`)
     : app.applicant?.avatar || "";
 
   return (

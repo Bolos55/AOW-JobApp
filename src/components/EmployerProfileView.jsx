@@ -10,9 +10,13 @@ const resolveFileUrl = (url) => {
   if (!url) return "";
   // ✅ If it's already a full URL (Cloudinary), return as-is
   if (url.startsWith("http")) return url;
-  // ✅ Legacy local files - add /uploads prefix
+  // ✅ Legacy local files - add /uploads prefix (but avoid double /uploads/)
   const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
   const cleanUrl = url.replace(/^\/+/, "");
+  // ✅ Check if URL already starts with uploads/ to avoid duplication
+  if (cleanUrl.startsWith("uploads/")) {
+    return `${FILE_BASE.replace(/\/+$/, "")}/${cleanUrl}`;
+  }
   return `${FILE_BASE.replace(/\/+$/, "")}/uploads/${cleanUrl}`;
 };
 
