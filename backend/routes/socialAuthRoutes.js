@@ -483,4 +483,100 @@ router.post("/github", async (req, res) => {
   }
 });
 
+// ===================== COMPLETE SOCIAL REGISTRATION =====================
+router.post("/complete-social-registration", async (req, res) => {
+  try {
+    const { socialData, role } = req.body;
+    
+    console.log("🔥 Complete social registration:", { socialData, role });
+    
+    if (!socialData || !socialData.uid || !socialData.email || !role) {
+      return res.status(400).json({ 
+        message: "ข้อมูลไม่ครบถ้วน ต้องมี socialData และ role" 
+      });
+    }
+
+    // ✅ ตรวจสอบว่า role ถูกต้อง
+    if (!["jobseeker", "employer"].includes(role)) {
+      return res.status(400).json({ 
+        message: "ประเภทผู้ใช้ไม่ถูกต้อง ต้องเป็น jobseeker หรือ employer" 
+      });
+    }
+
+    // ✅ ตรวจสอบว่ามีผู้ใช้นี้อยู่แล้วหรือไม่
+    let user = await User.findOne({ email: socialData.email });
+
+    if (user) {
+      // ✅ ผู้ใช้มีอยู่แล้ว - อัปเดต role
+      user.role = role;
+      await user.save();
+      
+      console.log(`✅ Updated existing user role: ${socialData.email} -> ${role}`);
+    } else {
+      // ✅ สร้างผู้ใช้ใหม่
+      const emailValidation = await validateEmail(socialData.email.toLowerCase().trim());
+      
+      user = await User.create({
+        name: socialData.name || socialData.email.split('@')[0],
+        email: socialData.email.toLowerCase().trim(),
+        password: "social-oauth", // placeholder password
+        role: role,
+        isActive: true,
+        isEmailVerified: socialData.emailVerified || true, // Social logins are pre-verified
+        socialProvider: "firebase-google",
+        socialId: socialData.uid,
+        avatar: socialData.photoURL,
+        
+        // ✅ เก็บผลการตรวจสอบอีเมล
+        emailValidation: {
+          isDisposable: emailValidation.isDisposable,
+          isSuspicious: emailValidation.isSuspicious,
+          domain: emailValidation.domain,
+          validationScore: emailValidation.score,
+          validationNotes: emailValidation.notes,
+        },
+        
+        // ✅ ตั้งค่าสถานะตามผลการตรวจสอบ
+        requiresReview: emailValidation.requiresReview,
+        isSuspended: emailValidation.score < 40,
+        suspensionReason: emailValidation.score < 40 ? 'Suspicious email pattern detected during social registration' : undefined,
+      });
+      
+      console.log(`✅ Created new user: ${socialData.email} (${role})`);
+    }
+
+    // ✅ ตรวจสอบว่าบัญชีถูกระงับหรือไม่
+    if (user.isSuspended) {
+      return res.status(403).json({ 
+        message: `🚫 บัญชีถูกระงับการใช้งาน\n\nเหตุผล: ${user.suspensionReason}\n\nกรุณาติดต่อแอดมินเพื่อขอความช่วยเหลือ`,
+        suspended: true,
+        suspensionReason: user.suspensionReason
+      });
+    }
+
+    const token = createToken(user);
+
+    res.json({
+      message: `สมัครสมาชิกสำเร็จ! ยินดีต้อนรับสู่ระบบในฐานะ${role === 'employer' ? 'นายจ้าง' : 'ผู้หางาน'}`,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        avatar: user.avatar,
+        isEmailVerified: user.isEmailVerified,
+        requiresReview: user.requiresReview,
+        isSuspended: user.isSuspended,
+      },
+      token,
+      success: true
+    });
+
+  } catch (err) {
+    console.log("Complete social registration error:", err);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการสมัครสมาชิก" });
+  }
+});
+
 export default router;

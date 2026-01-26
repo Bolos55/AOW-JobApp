@@ -45,7 +45,7 @@ export default function RoleSelection() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...socialData,
+          socialData: socialData,
           role: selectedRole,
           provider: provider,
         }),
