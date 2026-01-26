@@ -341,12 +341,12 @@ app.use("/api/auth", firebaseAuthRoutes);
 app.use("/api/auth", socialAuthRoutes);
 
 app.use("/api/jobs", jobRoutes);
-app.use("/api", applicationRoutes);
+app.use("/api", applicationRoutes); // ✅ applicationRoutes มี path /applications อยู่แล้ว
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/employer", employerRoutes);
-app.use("/api/profile", profileRoutes);
+app.use("/api/profile", profileRoutes); // ✅ profileRoutes มี path /me อยู่แล้ว
 app.use("/api/payments", paymentRoutes);
 app.use("/api/pdpa", pdpaRoutes);
 app.use("/api/online", onlineStatusRoutes);
