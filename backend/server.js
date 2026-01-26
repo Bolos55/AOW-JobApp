@@ -216,6 +216,28 @@ app.get("/api", (_req, res) => {
   });
 });
 
+// ✅ Health check endpoints for monitoring services
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || "development"
+  });
+});
+
+app.get("/ping", (_req, res) => {
+  res.status(200).send("pong");
+});
+
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    message: "Job Application API",
+    status: "running",
+    version: "1.0.0"
+  });
+});
+
 // ===============================
 // ✅ COMPREHENSIVE RATE LIMITING
 // ===============================

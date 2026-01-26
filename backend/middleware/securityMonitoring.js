@@ -92,17 +92,35 @@ export const monitorRateLimit = (req, res, next) => {
 
 // Suspicious request pattern detection
 export const detectSuspiciousPatterns = (req, res, next) => {
-  // ✅ Skip security checks for legitimate admin endpoints
-  const adminEndpoints = [
+  // ✅ Skip security checks for legitimate endpoints
+  const skipPatterns = [
     '/api/admin/dashboard',
     '/api/admin/stats', 
     '/api/admin/users',
     '/api/admin/jobs',
     '/api/admin/applications',
-    '/api/online/admin/dashboard'
+    '/api/online/admin/dashboard',
+    '/health',
+    '/ping',
+    '/status',
+    '/' // Skip root endpoint for health checks
   ];
   
-  if (adminEndpoints.some(endpoint => req.originalUrl.startsWith(endpoint))) {
+  // ✅ Skip for legitimate monitoring user agents
+  const legitimateUserAgents = [
+    'Go-http-client',
+    'curl',
+    'wget',
+    'Pingdom',
+    'UptimeRobot',
+    'StatusCake'
+  ];
+  
+  const userAgent = req.get('User-Agent') || '';
+  const isLegitimateBot = legitimateUserAgents.some(agent => userAgent.includes(agent));
+  
+  if (skipPatterns.some(pattern => req.originalUrl === pattern || req.originalUrl.startsWith(pattern)) || 
+      (isLegitimateBot && req.method === 'GET' && req.originalUrl === '/')) {
     return next();
   }
 
@@ -119,8 +137,10 @@ export const detectSuspiciousPatterns = (req, res, next) => {
     /\.\.[\/\\]/g,
     /(\.\.%2f|\.\.%5c)/gi,
     
-    // Command injection (แก้ไขให้ไม่ detect admin URLs)
-    /[;&|`$()]/g, // ✅ เอา {} ออกเพื่อไม่ให้ detect admin endpoints
+    // Command injection (more specific patterns)
+    /;\s*(rm|del|format|shutdown|reboot|kill|ps|ls|cat|grep|find|wget|curl|nc|netcat|telnet|ssh|ftp)/gi,
+    /\|\s*(rm|del|format|shutdown|reboot|kill|ps|ls|cat|grep|find|wget|curl|nc|netcat|telnet|ssh|ftp)/gi,
+    /`[^`]*\b(rm|del|format|shutdown|reboot|kill|ps|ls|cat|grep|find|wget|curl|nc|netcat|telnet|ssh|ftp)\b[^`]*`/gi,
     
     // NoSQL injection
     /\$where|\$ne|\$gt|\$lt|\$regex/gi
