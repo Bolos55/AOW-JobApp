@@ -186,6 +186,22 @@ export default function JobSeekerView({ user, onLogout }) {
     loadJobs();
   }, []);
 
+  // ⭐ ตรวจสอบ URL parameter เพื่อเปิดงานที่แชร์มา
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jobId = params.get('job');
+    
+    if (jobId && jobs.length > 0) {
+      // หางานที่ตรงกับ ID
+      const job = jobs.find(j => j._id === jobId);
+      if (job) {
+        setSelectedJob(job);
+        // ลบ parameter ออกจาก URL (ไม่ให้ซ้ำตอน refresh)
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [jobs]); // รันเมื่อโหลดงานเสร็จ
+
   // ---------- โหลด "งานที่เคยสมัครแล้ว" ----------
   const loadMyApplications = async () => {
     if (!token) return;

@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ChatsPage from "./ChatsPage";
 import LoginPage from "./LoginPage";
 import JobSearchApp from "./JobSearchApp";
+import PublicJobView from "./PublicJobView";
 import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
 import EmailVerification from "./EmailVerification";
@@ -117,6 +118,10 @@ export default function App() {
   // เรียก Hook เสมอ แต่ใช้ condition ภายใน Hook
   useOnlineStatus(user); // ส่ง user เป็น parameter
 
+  // ตรวจสอบว่ามี ?job= parameter หรือไม่
+  const params = new URLSearchParams(window.location.search);
+  const hasJobParam = params.has('job');
+
   // ลบ handleLogout ออกเพราะไม่ได้ใช้ในที่นี่
   // handleLogout จะอยู่ใน component ที่ต้องการใช้จริง
 
@@ -124,13 +129,17 @@ export default function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <Routes>
-          {/* หน้าแรก: ต้องล็อกอินก่อน */}
+          {/* หน้าแรก: ถ้ามี ?job= และไม่ได้ล็อกอิน แสดง PublicJobView */}
           <Route
             path="/"
             element={
-              <RequireAuth>
-                <JobSearchApp user={user} />
-              </RequireAuth>
+              hasJobParam && !user ? (
+                <PublicJobView />
+              ) : (
+                <RequireAuth>
+                  <JobSearchApp user={user} />
+                </RequireAuth>
+              )
             }
           />
 
