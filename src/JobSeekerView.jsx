@@ -412,8 +412,6 @@ export default function JobSeekerView({ user, onLogout }) {
 
         {/* banner ให้กำลังใจ */}
         <div className="relative overflow-hidden rounded-3xl shadow-xl p-6 bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 text-white">
-          <div className="absolute inset-0 opacity-20 bg-gradient-to-br from-blue-900/30 to-cyan-900/30"></div>
-
           <div className="relative z-10 flex items-center gap-4">
             <div className="text-4xl animate-bounce">🤍</div>
             <div>
