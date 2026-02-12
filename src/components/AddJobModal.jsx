@@ -241,7 +241,11 @@ export default function AddJobModal({ open, onClose, onCreated }) {
 
       // ✅ ถ้ามีรูปภาพ ให้อัปโหลดต่อ
       if (selectedPhotos.length > 0) {
-        await uploadPhotos(data._id);
+        const uploadSuccess = await uploadPhotos(data._id);
+        if (!uploadSuccess) {
+          // แม้อัปโหลดรูปไม่สำเร็จ แต่งานก็ถูกสร้างแล้ว
+          alert("งานถูกสร้างเรียบร้อย แต่อัปโหลดรูปไม่สำเร็จ\nคุณสามารถแก้ไขงานและอัปโหลดรูปใหม่ภายหลังได้");
+        }
       }
 
       // ✅ แจ้งให้ parent รู้ว่าเพิ่มงานสำเร็จแล้ว
@@ -260,17 +264,17 @@ export default function AddJobModal({ open, onClose, onCreated }) {
   };
 
   const uploadPhotos = async (jobId) => {
-    if (!jobId || selectedPhotos.length === 0) return;
+    if (!jobId || selectedPhotos.length === 0) return true;
 
     setUploading(true);
     try {
       const formData = new FormData();
       selectedPhotos.forEach(photo => {
-        console.log("Adding photo to FormData:", photo.name, photo.type, photo.size);
+        console.log("📸 Adding photo to FormData:", photo.name, photo.type, photo.size);
         formData.append('photos', photo);
       });
 
-      console.log("Uploading", selectedPhotos.length, "photos to job", jobId);
+      console.log("📤 Uploading", selectedPhotos.length, "photos to job", jobId);
 
       const res = await fetch(`${API_BASE}/api/jobs/${jobId}/photos`, {
         method: "POST",
@@ -283,14 +287,17 @@ export default function AddJobModal({ open, onClose, onCreated }) {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        console.error("Failed to upload photos:", data);
-        setMessage(data.message || "อัปโหลดรูปไม่สำเร็จ");
+        console.error("❌ Failed to upload photos:", res.status, data);
+        setMessage(`อัปโหลดรูปไม่สำเร็จ: ${data.message || data.error || 'Unknown error'}`);
+        return false;
       } else {
-        console.log("Photos uploaded successfully:", data);
+        console.log("✅ Photos uploaded successfully:", data);
+        return true;
       }
     } catch (err) {
-      console.error("Upload photos error:", err);
+      console.error("❌ Upload photos error:", err);
       setMessage("อัปโหลดรูปไม่สำเร็จ: " + err.message);
+      return false;
     } finally {
       setUploading(false);
     }
