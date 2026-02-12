@@ -42,6 +42,10 @@ export const resolveImageUrl = (url) => {
 export const getPhotoUrl = (profile, fieldName = "photoUrl") => {
   try {
     const url = profile?.[fieldName] || profile?.photoUrl;
+    
+    // ถ้าไม่มี URL เลย ให้ return empty เพื่อแสดง default avatar
+    if (!url) return "";
+    
     const resolvedUrl = resolveImageUrl(url);
     
     if (!resolvedUrl && url) {

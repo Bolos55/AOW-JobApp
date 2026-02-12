@@ -806,7 +806,7 @@ export default function AdminView({ user, onLogout }) {
           <div id="dashboard">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <BarChart3 className="w-6 h-6 text-blue-600" />
-              📊 Dashboard & สถิติ
+              Dashboard & สถิติ
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-white p-4 rounded-lg border">
@@ -839,7 +839,7 @@ export default function AdminView({ user, onLogout }) {
           <div id="online-status">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <TrendingUp className="w-6 h-6 text-green-600" />
-              🟢 สถานะออนไลน์
+              สถานะออนไลน์
             </h2>
             <OnlineStatusWidget isAdmin={true} />
           </div>
@@ -1053,7 +1053,7 @@ export default function AdminView({ user, onLogout }) {
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Briefcase className="w-6 h-6 text-green-600" />
-                💼 จัดการงานทั้งหมด
+                จัดการงานทั้งหมด
               </h2>
 
               {/* ✅ ช่องค้นหางาน */}
@@ -1130,7 +1130,7 @@ export default function AdminView({ user, onLogout }) {
               <div>
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <FileText className="w-6 h-6 text-orange-600" />
-                  📄 ใบสมัครงาน & การยืนยันบัตรประชาชน
+                  ใบสมัครงาน & การยืนยันบัตรประชาชน
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">
                   💡 สามารถลบใบสมัครที่ตรวจสอบแล้วได้ | ❌ ปฏิเสธพร้อมแจ้งเตือนผู้สมัครทางอีเมล | 🔄 รีเซ็ตสถานะได้
@@ -1377,7 +1377,7 @@ export default function AdminView({ user, onLogout }) {
         <div className="p-6">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
             <Mail className="w-6 h-6 text-blue-600" />
-            📧 จัดการการตรวจสอบอีเมล
+            จัดการการตรวจสอบอีเมล
           </h2>
           <EmailValidationSection user={user} />
         </div>
