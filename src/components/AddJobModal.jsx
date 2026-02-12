@@ -162,6 +162,14 @@ export default function AddJobModal({ open, onClose, onCreated }) {
       setMessage(`สามารถอัปโหลดได้สูงสุด ${maxPhotos} รูป`);
     }
 
+    // ตรวจสอบขนาดไฟล์ (10MB per file)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const oversizedFiles = filesToAdd.filter(f => f.size > maxSize);
+    if (oversizedFiles.length > 0) {
+      setMessage(`ไฟล์บางไฟล์มีขนาดใหญ่เกิน 10MB: ${oversizedFiles.map(f => f.name).join(', ')}`);
+      return;
+    }
+
     // เพิ่มไฟล์ใหม่
     setSelectedPhotos(prev => [...prev, ...filesToAdd]);
 
@@ -658,7 +666,7 @@ export default function AddJobModal({ open, onClose, onCreated }) {
               รูปภาพสถานที่ทำงาน (ไม่บังคับ)
             </label>
             <p className="text-xs text-gray-500 mb-2">
-              อัปโหลดได้ 1-3 รูป เพื่อดึงดูดผู้สมัครงาน (JPG, PNG, สูงสุด 2MB ต่อรูป)
+              อัปโหลดได้ 1-3 รูป เพื่อดึงดูดผู้สมัครงาน (JPG, PNG, สูงสุด 10MB ต่อรูป)
             </p>
             
             {photoPreview.length < 3 && (

@@ -76,7 +76,7 @@ export const uploadPhoto = photoStorage ? multer({
 export const uploadMultiplePhotos = multer({
   storage: multer.memoryStorage(), // เก็บในหน่วยความจำก่อน
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB per file
+    fileSize: 10 * 1024 * 1024, // 10MB per file (เพิ่มจาก 5MB)
     files: 3 // Allow up to 3 files
   },
   fileFilter: (req, file, cb) => {
