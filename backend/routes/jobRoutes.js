@@ -214,4 +214,84 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/jobs/:id/photos
+ * อัปโหลดรูปภาพสถานที่ทำงาน (1-3 รูป)
+ */
+import { uploadPhoto } from "../config/cloudinary.js";
+
+router.post("/:id/photos", auth, uploadPhoto.array("photos", 3), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ message: "ไม่พบงานนี้" });
+    }
+
+    // ตรวจสอบสิทธิ์ (เฉพาะเจ้าของงาน)
+    if (job.createdBy.toString() !== String(userId)) {
+      return res.status(403).json({ message: "ไม่มีสิทธิ์อัปโหลดรูปงานนี้" });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "ไม่พบไฟล์รูปภาพ" });
+    }
+
+    // ดึง URL จาก Cloudinary
+    const photoUrls = req.files.map(file => file.path);
+    
+    // เพิ่มรูปเข้าไปใน array (สูงสุด 3 รูป)
+    const currentPhotos = job.workplacePhotos || [];
+    const newPhotos = [...currentPhotos, ...photoUrls].slice(0, 3);
+    
+    job.workplacePhotos = newPhotos;
+    await job.save();
+
+    return res.json({ 
+      message: "อัปโหลดรูปสำเร็จ", 
+      workplacePhotos: job.workplacePhotos 
+    });
+  } catch (err) {
+    console.error("POST /api/jobs/:id/photos error:", err);
+    return res.status(500).json({ message: "อัปโหลดรูปไม่สำเร็จ" });
+  }
+});
+
+/**
+ * DELETE /api/jobs/:id/photos/:photoIndex
+ * ลบรูปภาพสถานที่ทำงาน
+ */
+router.delete("/:id/photos/:photoIndex", auth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const photoIndex = parseInt(req.params.photoIndex);
+    
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ message: "ไม่พบงานนี้" });
+    }
+
+    if (job.createdBy.toString() !== String(userId)) {
+      return res.status(403).json({ message: "ไม่มีสิทธิ์ลบรูปงานนี้" });
+    }
+
+    if (!job.workplacePhotos || photoIndex < 0 || photoIndex >= job.workplacePhotos.length) {
+      return res.status(400).json({ message: "ไม่พบรูปที่ต้องการลบ" });
+    }
+
+    // ลบรูปออกจาก array
+    job.workplacePhotos.splice(photoIndex, 1);
+    await job.save();
+
+    return res.json({ 
+      message: "ลบรูปสำเร็จ", 
+      workplacePhotos: job.workplacePhotos 
+    });
+  } catch (err) {
+    console.error("DELETE /api/jobs/:id/photos/:photoIndex error:", err);
+    return res.status(500).json({ message: "ลบรูปไม่สำเร็จ" });
+  }
+});
+
 export default router;

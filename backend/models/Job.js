@@ -62,6 +62,11 @@ const jobSchema = new mongoose.Schema(
     contactPhone: String,
     contactWebsite: String,
     deadline: String,
+    
+    // ✅ Workplace Photos (1-3 images)
+    workplacePhotos: [{
+      type: String, // Cloudinary URL
+    }],
   },
   { timestamps: true }
 );
