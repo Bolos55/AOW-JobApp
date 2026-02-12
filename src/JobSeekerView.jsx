@@ -757,38 +757,42 @@ export default function JobSeekerView({ user, onLogout }) {
                 </p>
               </div>
 
-              {/* ✅ รูปภาพสถานที่ทำงาน */}
-              {selectedJob?.workplacePhotos && selectedJob.workplacePhotos.length > 0 && (
-                <div className="mb-4">
-                  <h3 className="font-semibold mb-2">📸 บรรยากาศสถานที่ทำงาน</h3>
-                  <div className="grid grid-cols-3 gap-2">
-                    {selectedJob.workplacePhotos.map((photo, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={photo}
-                          alt={`สถานที่ทำงาน ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition"
-                          onClick={() => window.open(photo, '_blank')}
-                          onError={(e) => {
-                            console.error("Failed to load image:", photo);
-                            e.target.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    ))}
+              {/* ✅ รูปภาพสถานที่ทำงาน - แสดงเสมอ */}
+              <div className="mb-4">
+                <h3 className="font-semibold mb-2">📸 บรรยากาศสถานที่ทำงาน</h3>
+                
+                {selectedJob?.workplacePhotos && selectedJob.workplacePhotos.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-3 gap-2">
+                      {selectedJob.workplacePhotos.map((photo, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={photo}
+                            alt={`สถานที่ทำงาน ${index + 1}`}
+                            className="w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition"
+                            onClick={() => window.open(photo, '_blank')}
+                            onError={(e) => {
+                              console.error("Failed to load image:", photo);
+                              e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12">ไม่สามารถโหลดรูป</text></svg>';
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">คลิกที่รูปเพื่อดูขนาดเต็ม</p>
+                  </>
+                ) : (
+                  <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
+                    <div className="text-gray-400 mb-2">
+                      <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-500">ไม่มีรูปภาพสถานที่ทำงาน</p>
+                    <p className="text-xs text-gray-400 mt-1">ผู้ว่าจ้างยังไม่ได้อัปโหลดรูปภาพ</p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">คลิกที่รูปเพื่อดูขนาดเต็ม</p>
-                </div>
-              )}
-              
-              {/* Debug: แสดงว่ามีรูปหรือไม่ */}
-              {console.log("📸 Job photos:", selectedJob?.workplacePhotos)}
-              {!selectedJob?.workplacePhotos && (
-                <p className="text-xs text-gray-400 mb-4">ไม่มีรูปภาพสถานที่ทำงาน</p>
-              )}
-              {selectedJob?.workplacePhotos && selectedJob.workplacePhotos.length === 0 && (
-                <p className="text-xs text-gray-400 mb-4">ไม่มีรูปภาพสถานที่ทำงาน (array ว่าง)</p>
-              )}
+                )}
+              </div>
 
               {selectedJob?.skills?.length > 0 && (
                 <div className="mb-4">
