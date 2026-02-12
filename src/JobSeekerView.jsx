@@ -770,6 +770,7 @@ export default function JobSeekerView({ user, onLogout }) {
                           className="w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition"
                           onClick={() => window.open(photo, '_blank')}
                           onError={(e) => {
+                            console.error("Failed to load image:", photo);
                             e.target.style.display = 'none';
                           }}
                         />
@@ -778,6 +779,15 @@ export default function JobSeekerView({ user, onLogout }) {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">คลิกที่รูปเพื่อดูขนาดเต็ม</p>
                 </div>
+              )}
+              
+              {/* Debug: แสดงว่ามีรูปหรือไม่ */}
+              {console.log("📸 Job photos:", selectedJob?.workplacePhotos)}
+              {!selectedJob?.workplacePhotos && (
+                <p className="text-xs text-gray-400 mb-4">ไม่มีรูปภาพสถานที่ทำงาน</p>
+              )}
+              {selectedJob?.workplacePhotos && selectedJob.workplacePhotos.length === 0 && (
+                <p className="text-xs text-gray-400 mb-4">ไม่มีรูปภาพสถานที่ทำงาน (array ว่าง)</p>
               )}
 
               {selectedJob?.skills?.length > 0 && (
