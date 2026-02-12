@@ -583,41 +583,56 @@ export default function JobSeekerView({ user, onLogout }) {
               return (
                 <div
                   key={job._id}
-                  className={`bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition relative ${
+                  className={`bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition relative ${
                     job.isCompleted ? "opacity-80" : ""
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-bold text-gray-800 text-sm mb-1">
-                        {job.title}
-                      </h4>
-                      <p className="text-gray-500 text-xs mb-1">
-                        {job.company} • {job.jobCode}
-                      </p>
-
-                      {job.isCompleted && (
-                        <p className="text-[11px] text-gray-600 mb-1">
-                          ✅ งานนี้ปิดรับแล้ว
-                          {job.completedAt &&
-                            ` (ตั้งแต่ ${new Date(
-                              job.completedAt
-                            ).toLocaleDateString()})`}
-                        </p>
-                      )}
-
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">
-                          {job.salary}
-                        </span>
-                        <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
-                          {job.location}
-                        </span>
-                        <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full">
-                          {job.type}
-                        </span>
-                      </div>
+                  {/* ✅ รูปภาพสถานที่ทำงาน (ถ้ามี) */}
+                  {job.workplacePhotos && job.workplacePhotos.length > 0 && (
+                    <div className="w-full h-40 overflow-hidden bg-gray-100">
+                      <img
+                        src={job.workplacePhotos[0]}
+                        alt={job.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
                     </div>
+                  )}
+                  
+                  <div className="p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-bold text-gray-800 text-sm mb-1">
+                          {job.title}
+                        </h4>
+                        <p className="text-gray-500 text-xs mb-1">
+                          {job.company} • {job.jobCode}
+                        </p>
+
+                        {job.isCompleted && (
+                          <p className="text-[11px] text-gray-600 mb-1">
+                            ✅ งานนี้ปิดรับแล้ว
+                            {job.completedAt &&
+                              ` (ตั้งแต่ ${new Date(
+                                job.completedAt
+                              ).toLocaleDateString()})`}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">
+                            {job.salary}
+                          </span>
+                          <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+                            {job.location}
+                          </span>
+                          <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full">
+                            {job.type}
+                          </span>
+                        </div>
+                      </div>
 
                     <div className="flex flex-col items-end gap-1">
                       {isApplied && (
@@ -642,6 +657,7 @@ export default function JobSeekerView({ user, onLogout }) {
                   >
                     ดูรายละเอียด →
                   </button>
+                  </div>
                 </div>
               );
             })}
@@ -740,6 +756,29 @@ export default function JobSeekerView({ user, onLogout }) {
                   {selectedJob.description || "—"}
                 </p>
               </div>
+
+              {/* ✅ รูปภาพสถานที่ทำงาน */}
+              {selectedJob?.workplacePhotos && selectedJob.workplacePhotos.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="font-semibold mb-2">📸 บรรยากาศสถานที่ทำงาน</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedJob.workplacePhotos.map((photo, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={photo}
+                          alt={`สถานที่ทำงาน ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition"
+                          onClick={() => window.open(photo, '_blank')}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">คลิกที่รูปเพื่อดูขนาดเต็ม</p>
+                </div>
+              )}
 
               {selectedJob?.skills?.length > 0 && (
                 <div className="mb-4">
