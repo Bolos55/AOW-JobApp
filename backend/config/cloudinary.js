@@ -47,10 +47,7 @@ const photoStorage = cloudinaryValid
           if (ext === 'webp') return 'webp';
           return 'jpg'; // default
         },
-        transformation: [
-          { width: 1200, height: 1200, crop: 'limit' },
-          { quality: 'auto:good' }
-        ],
+        // ไม่มี transformation - ใช้รูปต้นฉบับ
       },
     })
   : null; // Will cause multer to fail gracefully
