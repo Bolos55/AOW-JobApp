@@ -6,6 +6,13 @@ const jobSchema = new mongoose.Schema(
     title: { type: String, required: true },
     company: { type: String, required: true },
     salary: String,
+    salaryType: {
+      type: String,
+      enum: ["monthly", "daily", "hourly", "commission", "negotiable", "project"],
+      default: "monthly"
+    },
+    minSalary: Number,
+    maxSalary: Number,
     location: String,
     type: String,
     category: String,

@@ -50,6 +50,7 @@ const emptyForm = {
   title: "",
   company: "",
   description: "",
+  salaryType: "monthly", // monthly, daily, hourly, commission, negotiable, project
   minSalary: "",
   maxSalary: "",
   skills: [],
@@ -67,13 +68,59 @@ const emptyForm = {
   deadline: "",
 };
 
-const salaryText = (min, max) => {
+const salaryText = (type, min, max) => {
   const a = Number(min || 0);
   const b = Number(max || 0);
+  
+  // ถ้าเลือกตามตกลง
+  if (type === "negotiable") return "ตามตกลง";
+  
+  // ถ้าไม่มีตัวเลข
   if (!a && !b) return "ตามตกลง";
-  if (a && b) return `฿${a.toLocaleString()} - ฿${b.toLocaleString()}`;
-  if (a && !b) return `เริ่มต้น ฿${a.toLocaleString()}`;
-  if (!a && b) return `สูงสุด ฿${b.toLocaleString()}`;
+  
+  // สร้างข้อความตามประเภท
+  let prefix = "";
+  let suffix = "";
+  
+  switch(type) {
+    case "monthly":
+      suffix = "/เดือน";
+      break;
+    case "daily":
+      suffix = "/วัน";
+      break;
+    case "hourly":
+      suffix = "/ชั่วโมง";
+      break;
+    case "commission":
+      prefix = "คอมมิชชั่น ";
+      suffix = "%";
+      break;
+    case "project":
+      prefix = "เหมาจ่าย ";
+      break;
+    default:
+      suffix = "";
+  }
+  
+  if (a && b) {
+    if (type === "commission") {
+      return `${prefix}${a}-${b}${suffix}`;
+    }
+    return `${prefix}฿${a.toLocaleString()} - ฿${b.toLocaleString()}${suffix}`;
+  }
+  if (a && !b) {
+    if (type === "commission") {
+      return `${prefix}${a}${suffix} ขึ้นไป`;
+    }
+    return `${prefix}เริ่มต้น ฿${a.toLocaleString()}${suffix}`;
+  }
+  if (!a && b) {
+    if (type === "commission") {
+      return `${prefix}สูงสุด ${b}${suffix}`;
+    }
+    return `${prefix}สูงสุด ฿${b.toLocaleString()}${suffix}`;
+  }
   return "ตามตกลง";
 };
 
@@ -155,7 +202,10 @@ export default function AddJobModal({ open, onClose, onCreated }) {
     const payload = {
       title: form.title,
       company: form.company,
-      salary: salaryText(form.minSalary, form.maxSalary),
+      salary: salaryText(form.salaryType, form.minSalary, form.maxSalary),
+      salaryType: form.salaryType,
+      minSalary: form.minSalary,
+      maxSalary: form.maxSalary,
       location: form.location || "ไม่ระบุ",
       type: form.type,
       category: form.category || "it",
@@ -302,36 +352,61 @@ export default function AddJobModal({ open, onClose, onCreated }) {
           {/* เงินเดือน */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              ช่วงเงินเดือน
+              รูปแบบค่าตอบแทน
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                id="minSalary"
-                type="number"
-                min="0"
-                className="w-full border rounded-xl px-3 py-2 text-sm"
-                value={form.minSalary}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, minSalary: e.target.value }))
-                }
-                placeholder="ขั้นต่ำ (บาท)"
-                autoComplete="off"
-              />
-              <input
-                id="maxSalary"
-                type="number"
-                min="0"
-                className="w-full border rounded-xl px-3 py-2 text-sm"
-                value={form.maxSalary}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, maxSalary: e.target.value }))
-                }
-                placeholder="สูงสุด (บาท)"
-                autoComplete="off"
-              />
-            </div>
+            <select
+              className="w-full border rounded-xl px-3 py-2 text-sm mb-3"
+              value={form.salaryType}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, salaryType: e.target.value }))
+              }
+            >
+              <option value="monthly">รายเดือน (฿/เดือน)</option>
+              <option value="daily">รายวัน (฿/วัน)</option>
+              <option value="hourly">รายชั่วโมง (฿/ชั่วโมง)</option>
+              <option value="commission">คอมมิชชั่น (%)</option>
+              <option value="project">เหมาจ่าย (฿/โปรเจกต์)</option>
+              <option value="negotiable">ตามตกลง</option>
+            </select>
+
+            {form.salaryType !== "negotiable" && (
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  id="minSalary"
+                  type="number"
+                  min="0"
+                  className="w-full border rounded-xl px-3 py-2 text-sm"
+                  value={form.minSalary}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, minSalary: e.target.value }))
+                  }
+                  placeholder={
+                    form.salaryType === "commission"
+                      ? "ขั้นต่ำ (%)"
+                      : "ขั้นต่ำ (บาท)"
+                  }
+                  autoComplete="off"
+                />
+                <input
+                  id="maxSalary"
+                  type="number"
+                  min="0"
+                  className="w-full border rounded-xl px-3 py-2 text-sm"
+                  value={form.maxSalary}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, maxSalary: e.target.value }))
+                  }
+                  placeholder={
+                    form.salaryType === "commission"
+                      ? "สูงสุด (%)"
+                      : "สูงสุด (บาท)"
+                  }
+                  autoComplete="off"
+                />
+              </div>
+            )}
             <p className="text-xs text-gray-500 mt-1">
-              แสดงผลเป็น: {salaryText(form.minSalary, form.maxSalary)}
+              แสดงผลเป็น: {salaryText(form.salaryType, form.minSalary, form.maxSalary)}
             </p>
           </div>
 
