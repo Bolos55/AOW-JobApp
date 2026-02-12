@@ -5,9 +5,6 @@ import { API_BASE, authHeader } from "../api";
 import { getPhotoUrl, getResumeUrl } from "../utils/imageUtils";
 import { updateProfileInStorage } from "../utils/authUtils";
 
-/* ========= helper แปลง path จาก backend -> URL เต็ม ========= */
-const FILE_BASE = API_BASE.replace(/\/api\/?$/, "");
-
 export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

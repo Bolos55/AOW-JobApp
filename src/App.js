@@ -72,21 +72,38 @@ function RequireAuth({ children }) {
   //   userEmail: user ? JSON.parse(user)?.email : 'No email'
   // });
   
+  // ⭐ ถ้าไม่มี token ให้ redirect ทันที
+  if (!token) {
+    // console.log('❌ No token, redirecting to login');
+    return <Navigate to="/login" replace />;
+  }
+  
   // ⭐ ถ้ามี token แต่ไม่มี user ให้รอสักครู่
-  if (token && !user) {
+  if (!user) {
     // console.log('⏳ Has token but no user, waiting...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-sm text-gray-600">กำลังโหลด...</p>
+          <p className="text-sm text-gray-600">กำลังโหลดข้อมูลผู้ใช้...</p>
         </div>
       </div>
     );
   }
   
-  if (!token) {
-    // console.log('❌ No token, redirecting to login');
+  // ⭐ ตรวจสอบว่า user data ถูกต้อง
+  try {
+    const userData = JSON.parse(user);
+    if (!userData || !userData.email) {
+      console.log('❌ Invalid user data, clearing and redirecting');
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      return <Navigate to="/login" replace />;
+    }
+  } catch (e) {
+    console.log('❌ Cannot parse user data, clearing and redirecting');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     return <Navigate to="/login" replace />;
   }
   

@@ -68,6 +68,9 @@ export default function RoleSelection() {
       // ✅ Dispatch event เพื่อให้ App.js อัปเดต auth state
       window.dispatchEvent(new Event("auth-change"));
 
+      // ✅ รอให้ event ถูกประมวลผลก่อน navigate
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // ✅ แสดงข้อความต้อนรับ
       alert(`🎉 ยินดีต้อนรับ ${data.user.name}!
 
