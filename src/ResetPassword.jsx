@@ -34,10 +34,20 @@ export default function ResetPassword() {
         setMessage("ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กำลังพากลับไปหน้าล็อกอิน...");
         setTimeout(() => navigate("/"), 2000);
       } else {
-        setMessage(data.message || "ตั้งรหัสผ่านไม่ได้");
+        // ✅ แสดงรายละเอียด error ที่ชัดเจน
+        if (data.errors && Array.isArray(data.errors)) {
+          // ถ้ามี errors array (จากการตรวจสอบรหัสผ่าน)
+          const errorList = data.errors.map((err, idx) => `${idx + 1}. ${err}`).join('\n');
+          setMessage(`รหัสผ่านไม่ปลอดภัย:\n${errorList}`);
+        } else if (data.message) {
+          // ถ้ามีแค่ message เดียว
+          setMessage(data.message);
+        } else {
+          setMessage("ไม่สามารถตั้งรหัสผ่านได้ กรุณาลองใหม่อีกครั้ง");
+        }
       }
     } catch (err) {
-      setMessage("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
+      setMessage("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ต");
     } finally {
       setLoading(false);
     }
@@ -89,7 +99,7 @@ export default function ResetPassword() {
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            รหัสผ่านควรมีความยาวอย่างน้อย 8 ตัวอักษร
+            รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร ประกอบด้วยตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก ตัวเลข และอักขระพิเศษ
           </p>
         </div>
 
@@ -104,13 +114,17 @@ export default function ResetPassword() {
         </button>
 
         {message && (
-          <p className={`text-sm text-center px-4 py-3 rounded-lg ${
+          <div className={`text-sm px-4 py-3 rounded-lg ${
             message.includes("เรียบร้อย") 
               ? "text-green-600 bg-green-50" 
               : "text-red-500 bg-red-50"
           }`}>
-            {message}
-          </p>
+            {message.split('\n').map((line, idx) => (
+              <div key={idx} className={idx > 0 ? "mt-1" : ""}>
+                {line}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
