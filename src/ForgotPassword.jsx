@@ -8,11 +8,18 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
+  const [cooldown, setCooldown] = useState(0);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setMsg("");
     setError("");
+
+    // ป้องกันการกดซ้ำในช่วง cooldown
+    if (cooldown > 0) {
+      setError(`กรุณารออีก ${cooldown} วินาที ก่อนส่งคำขออีกครั้ง`);
+      return;
+    }
 
     // ตรวจสอบรูปแบบอีเมล
     const emailTrimmed = email.trim();
@@ -41,7 +48,27 @@ export default function ForgotPassword() {
       const data = ct.includes("application/json") ? await res.json() : null;
 
       if (!res.ok) {
-        setError((data && data.message) || `เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง`);
+        // ✅ จัดการ error แต่ละประเภทให้ชัดเจน
+        if (res.status === 429) {
+          setError("คุณส่งคำขอบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่อีกครั้ง (ประมาณ 1-2 นาที)");
+          // ตั้ง cooldown 60 วินาที
+          setCooldown(60);
+          const timer = setInterval(() => {
+            setCooldown((prev) => {
+              if (prev <= 1) {
+                clearInterval(timer);
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+        } else if (res.status === 400) {
+          setError(data?.message || "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีเมลของคุณ");
+        } else if (res.status === 500) {
+          setError("เกิดข้อผิดพลาดที่เซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้งในภายหลัง");
+        } else {
+          setError((data && data.message) || `เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง`);
+        }
         return;
       }
 
@@ -49,6 +76,19 @@ export default function ForgotPassword() {
         "ส่งลิงก์รีเซ็ตรหัสผ่านไปที่อีเมลของคุณแล้ว กรุณาตรวจสอบกล่องจดหมาย"
       );
       setEmail(""); // ล้างช่องอีเมล
+      
+      // ตั้ง cooldown 30 วินาทีหลังส่งสำเร็จ
+      setCooldown(30);
+      const timer = setInterval(() => {
+        setCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
     } catch {
       setError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ต");
     } finally {
@@ -97,12 +137,12 @@ export default function ForgotPassword() {
           )}
 
           <button
-            disabled={loading}
+            disabled={loading || cooldown > 0}
             className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2.5 rounded-xl text-sm font-medium ${
-              loading ? "opacity-70 cursor-not-allowed" : ""
+              loading || cooldown > 0 ? "opacity-70 cursor-not-allowed" : ""
             }`}
           >
-            {loading ? "กำลังส่ง..." : "ส่งลิงก์รีเซ็ตรหัสผ่าน"}
+            {loading ? "กำลังส่ง..." : cooldown > 0 ? `รออีก ${cooldown} วินาที` : "ส่งลิงก์รีเซ็ตรหัสผ่าน"}
           </button>
 
           <button
