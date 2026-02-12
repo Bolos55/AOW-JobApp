@@ -410,23 +410,6 @@ export default function JobSeekerView({ user, onLogout }) {
           <TrendingUp className="w-16 h-16 opacity-50" />
         </div>
 
-        {/* banner ให้กำลังใจ */}
-        <div className="relative overflow-hidden rounded-3xl shadow-xl p-6 bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 text-white">
-          <div className="relative z-10 flex items-center gap-4">
-            <div className="text-4xl animate-bounce">🤍</div>
-            <div>
-              <h2 className="text-2xl font-extrabold drop-shadow">
-                ขอเป็นกำลังใจให้พี่น้องชาวภาคใต้ทุกพื้นที่
-              </h2>
-              <p className="text-sm mt-2 text-blue-50 leading-relaxed">
-                เราขอส่งพลังใจและความห่วงใยให้ทุกคนที่กำลังเผชิญเหตุการณ์น้ำท่วม
-                <br />
-                ขอให้ผ่านวิกฤตครั้งนี้ไปได้อย่างปลอดภัย แข็งแรง และมีกำลังใจต่อสู้ในทุกวัน 💙
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* งานที่เคยสมัครแล้ว */}
         <div>
           <div className="flex items-center justify-between mb-2">
