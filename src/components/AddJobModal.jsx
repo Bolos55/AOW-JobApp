@@ -266,8 +266,11 @@ export default function AddJobModal({ open, onClose, onCreated }) {
     try {
       const formData = new FormData();
       selectedPhotos.forEach(photo => {
+        console.log("Adding photo to FormData:", photo.name, photo.type, photo.size);
         formData.append('photos', photo);
       });
+
+      console.log("Uploading", selectedPhotos.length, "photos to job", jobId);
 
       const res = await fetch(`${API_BASE}/api/jobs/${jobId}/photos`, {
         method: "POST",
@@ -277,11 +280,17 @@ export default function AddJobModal({ open, onClose, onCreated }) {
         body: formData,
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        console.error("Failed to upload photos");
+        console.error("Failed to upload photos:", data);
+        setMessage(data.message || "อัปโหลดรูปไม่สำเร็จ");
+      } else {
+        console.log("Photos uploaded successfully:", data);
       }
     } catch (err) {
       console.error("Upload photos error:", err);
+      setMessage("อัปโหลดรูปไม่สำเร็จ: " + err.message);
     } finally {
       setUploading(false);
     }

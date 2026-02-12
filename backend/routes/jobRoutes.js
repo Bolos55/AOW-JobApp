@@ -244,6 +244,14 @@ router.post("/:id/photos", auth, uploadMultiplePhotos.array("photos", 3), async 
       return res.status(400).json({ message: "ไม่พบไฟล์รูปภาพ" });
     }
 
+    console.log("📸 Uploading photos:", req.files.length, "files");
+    console.log("📸 Files info:", req.files.map(f => ({ 
+      name: f.originalname, 
+      size: f.size, 
+      mimetype: f.mimetype,
+      path: f.path 
+    })));
+
     // ดึง URL จาก Cloudinary
     const photoUrls = req.files.map(file => file.path);
     
@@ -254,13 +262,18 @@ router.post("/:id/photos", auth, uploadMultiplePhotos.array("photos", 3), async 
     job.workplacePhotos = newPhotos;
     await job.save();
 
+    console.log("✅ Photos uploaded successfully:", newPhotos);
+
     return res.json({ 
       message: "อัปโหลดรูปสำเร็จ", 
       workplacePhotos: job.workplacePhotos 
     });
   } catch (err) {
     console.error("POST /api/jobs/:id/photos error:", err);
-    return res.status(500).json({ message: "อัปโหลดรูปไม่สำเร็จ" });
+    return res.status(500).json({ 
+      message: "อัปโหลดรูปไม่สำเร็จ",
+      error: err.message 
+    });
   }
 });
 

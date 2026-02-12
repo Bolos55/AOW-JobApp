@@ -37,10 +37,19 @@ const photoStorage = cloudinaryValid
       cloudinary: cloudinary,
       params: {
         folder: 'aow-jobapp/photos',
-        allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+        format: async (req, file) => {
+          // Auto-detect format from file
+          const ext = file.originalname.split('.').pop().toLowerCase();
+          if (['jpg', 'jpeg'].includes(ext)) return 'jpg';
+          if (ext === 'png') return 'png';
+          if (ext === 'gif') return 'gif';
+          if (ext === 'webp') return 'webp';
+          return 'jpg'; // default
+        },
         transformation: [
-          { width: 500, height: 500, crop: 'limit' },
-          { quality: 'auto' }
+          { width: 1200, height: 1200, crop: 'limit' },
+          { quality: 'auto:good' }
         ],
       },
     })
@@ -79,16 +88,23 @@ export const uploadPhoto = photoStorage ? multer({
 export const uploadMultiplePhotos = photoStorage ? multer({
   storage: photoStorage,
   limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB per file
+    fileSize: 5 * 1024 * 1024, // 5MB per file (increased from 2MB)
     files: 3 // Allow up to 3 files
   },
   fileFilter: (req, file, cb) => {
-    // ✅ Strict file type validation
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-    if (allowedTypes.includes(file.mimetype)) {
+    // ✅ More lenient file type validation
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    
+    const hasValidMimetype = allowedTypes.includes(file.mimetype);
+    const hasValidExtension = allowedExtensions.some(ext => 
+      file.originalname.toLowerCase().endsWith(ext)
+    );
+    
+    if (hasValidMimetype || hasValidExtension) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPG, PNG, GIF allowed.'), false);
+      cb(new Error(`Invalid file type: ${file.mimetype}. Only JPG, PNG, GIF, WEBP allowed.`), false);
     }
   }
 }) : multer(); // Empty multer that will fail
