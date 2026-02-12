@@ -224,9 +224,29 @@ router.delete("/:id", auth, async (req, res) => {
  * POST /api/jobs/:id/photos
  * อัปโหลดรูปภาพสถานที่ทำงาน (1-3 รูป)
  */
-import { uploadMultiplePhotos } from "../config/cloudinary.js";
+import { uploadMultiplePhotos, isCloudinaryConfigured } from "../config/cloudinary.js";
 
-router.post("/:id/photos", auth, uploadMultiplePhotos.array("photos", 3), async (req, res) => {
+router.post("/:id/photos", auth, (req, res, next) => {
+  // ตรวจสอบว่า Cloudinary พร้อมใช้งานไหม
+  if (!isCloudinaryConfigured) {
+    console.error("❌ Cloudinary not configured");
+    return res.status(503).json({ 
+      message: "ระบบอัปโหลดรูปยังไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ",
+      error: "Cloudinary credentials missing"
+    });
+  }
+  next();
+}, uploadMultiplePhotos.array("photos", 3), (err, req, res, next) => {
+  // Multer error handler
+  if (err) {
+    console.error("❌ Multer error:", err);
+    return res.status(400).json({ 
+      message: "อัปโหลดรูปไม่สำเร็จ",
+      error: err.message 
+    });
+  }
+  next();
+}, async (req, res) => {
   try {
     const userId = getUserId(req);
     
@@ -245,15 +265,39 @@ router.post("/:id/photos", auth, uploadMultiplePhotos.array("photos", 3), async 
     }
 
     console.log("📸 Uploading photos:", req.files.length, "files");
-    console.log("📸 Files info:", req.files.map(f => ({ 
-      name: f.originalname, 
-      size: f.size, 
-      mimetype: f.mimetype,
-      path: f.path 
-    })));
 
-    // ดึง URL จาก Cloudinary
-    const photoUrls = req.files.map(file => file.path);
+    // อัปโหลดแต่ละไฟล์ไปยัง Cloudinary
+    const { cloudinary } = await import("../config/cloudinary.js");
+    const photoUrls = [];
+
+    for (const file of req.files) {
+      try {
+        console.log("📤 Uploading:", file.originalname, file.mimetype, file.size);
+        
+        // แปลง buffer เป็น base64
+        const b64 = Buffer.from(file.buffer).toString('base64');
+        const dataURI = `data:${file.mimetype};base64,${b64}`;
+        
+        // อัปโหลดไปยัง Cloudinary
+        const result = await cloudinary.uploader.upload(dataURI, {
+          folder: 'aow-jobapp/photos',
+          resource_type: 'image',
+        });
+        
+        console.log("✅ Uploaded:", result.secure_url);
+        photoUrls.push(result.secure_url);
+      } catch (uploadErr) {
+        console.error("❌ Failed to upload file:", file.originalname, uploadErr);
+        // ข้ามไฟล์ที่อัปโหลดไม่สำเร็จ
+      }
+    }
+
+    if (photoUrls.length === 0) {
+      return res.status(500).json({ 
+        message: "อัปโหลดรูปไม่สำเร็จทั้งหมด",
+        error: "All uploads failed"
+      });
+    }
     
     // เพิ่มรูปเข้าไปใน array (สูงสุด 3 รูป)
     const currentPhotos = job.workplacePhotos || [];
@@ -262,10 +306,10 @@ router.post("/:id/photos", auth, uploadMultiplePhotos.array("photos", 3), async 
     job.workplacePhotos = newPhotos;
     await job.save();
 
-    console.log("✅ Photos uploaded successfully:", newPhotos);
+    console.log("✅ Photos saved to job:", newPhotos);
 
     return res.json({ 
-      message: "อัปโหลดรูปสำเร็จ", 
+      message: `อัปโหลดรูปสำเร็จ ${photoUrls.length} รูป`, 
       workplacePhotos: job.workplacePhotos 
     });
   } catch (err) {

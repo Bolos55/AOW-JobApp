@@ -38,16 +38,7 @@ const photoStorage = cloudinaryValid
       params: {
         folder: 'aow-jobapp/photos',
         allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-        format: async (req, file) => {
-          // Auto-detect format from file
-          const ext = file.originalname.split('.').pop().toLowerCase();
-          if (['jpg', 'jpeg'].includes(ext)) return 'jpg';
-          if (ext === 'png') return 'png';
-          if (ext === 'gif') return 'gif';
-          if (ext === 'webp') return 'webp';
-          return 'jpg'; // default
-        },
-        // ไม่มี transformation - ใช้รูปต้นฉบับ
+        // ไม่มี transformation และไม่มี format function - ให้ Cloudinary จัดการเอง
       },
     })
   : null; // Will cause multer to fail gracefully
@@ -81,11 +72,11 @@ export const uploadPhoto = photoStorage ? multer({
   }
 }) : multer(); // Empty multer that will fail
 
-// ✅ Multer for multiple photos (workplace photos)
-export const uploadMultiplePhotos = photoStorage ? multer({
-  storage: photoStorage,
+// ✅ Multer for multiple photos (workplace photos) - ใช้ memory storage
+export const uploadMultiplePhotos = multer({
+  storage: multer.memoryStorage(), // เก็บในหน่วยความจำก่อน
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB per file (increased from 2MB)
+    fileSize: 5 * 1024 * 1024, // 5MB per file
     files: 3 // Allow up to 3 files
   },
   fileFilter: (req, file, cb) => {
@@ -104,7 +95,7 @@ export const uploadMultiplePhotos = photoStorage ? multer({
       cb(new Error(`Invalid file type: ${file.mimetype}. Only JPG, PNG, GIF, WEBP allowed.`), false);
     }
   }
-}) : multer(); // Empty multer that will fail
+});
 
 export const uploadResume = resumeStorage ? multer({
   storage: resumeStorage,
