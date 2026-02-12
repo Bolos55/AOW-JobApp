@@ -81,6 +81,9 @@ export default function AddJobModal({ open, onClose, onCreated }) {
   const [form, setForm] = useState(emptyForm);
   const [skillInput, setSkillInput] = useState("");
   const [message, setMessage] = useState("");
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [photoPreview, setPhotoPreview] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   if (!open) return null;
 
@@ -97,6 +100,37 @@ export default function AddJobModal({ open, onClose, onCreated }) {
 
   const removeSkill = (s) => {
     setForm((p) => ({ ...p, skills: p.skills.filter((x) => x !== s) }));
+  };
+
+  const handlePhotoSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // จำกัดไม่เกิน 3 รูป
+    const maxPhotos = 3;
+    const remainingSlots = maxPhotos - selectedPhotos.length;
+    const filesToAdd = files.slice(0, remainingSlots);
+
+    if (files.length > remainingSlots) {
+      setMessage(`สามารถอัปโหลดได้สูงสุด ${maxPhotos} รูป`);
+    }
+
+    // เพิ่มไฟล์ใหม่
+    setSelectedPhotos(prev => [...prev, ...filesToAdd]);
+
+    // สร้าง preview
+    filesToAdd.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(prev => [...prev, reader.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removePhoto = (index) => {
+    setSelectedPhotos(prev => prev.filter((_, i) => i !== index));
+    setPhotoPreview(prev => prev.filter((_, i) => i !== index));
   };
 
   const validateForm = () => {
@@ -155,16 +189,51 @@ export default function AddJobModal({ open, onClose, onCreated }) {
         return;
       }
 
+      // ✅ ถ้ามีรูปภาพ ให้อัปโหลดต่อ
+      if (selectedPhotos.length > 0) {
+        await uploadPhotos(data._id);
+      }
+
       // ✅ แจ้งให้ parent รู้ว่าเพิ่มงานสำเร็จแล้ว
       onCreated?.(data);
 
       // เคลียร์ฟอร์ม + ปิด modal
       setForm(emptyForm);
       setSkillInput("");
+      setSelectedPhotos([]);
+      setPhotoPreview([]);
       onClose?.();
     } catch (err) {
       console.error("POST /api/jobs error:", err);
       setMessage("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
+    }
+  };
+
+  const uploadPhotos = async (jobId) => {
+    if (!jobId || selectedPhotos.length === 0) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      selectedPhotos.forEach(photo => {
+        formData.append('photos', photo);
+      });
+
+      const res = await fetch(`${API_BASE}/api/jobs/${jobId}/photos`, {
+        method: "POST",
+        headers: {
+          ...authHeader(),
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        console.error("Failed to upload photos");
+      }
+    } catch (err) {
+      console.error("Upload photos error:", err);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -492,6 +561,60 @@ export default function AddJobModal({ open, onClose, onCreated }) {
             />
           </div>
 
+          {/* ✅ รูปภาพสถานที่ทำงาน */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              รูปภาพสถานที่ทำงาน (ไม่บังคับ)
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              อัปโหลดได้ 1-3 รูป เพื่อดึงดูดผู้สมัครงาน (JPG, PNG, สูงสุด 2MB ต่อรูป)
+            </p>
+            
+            {photoPreview.length < 3 && (
+              <div className="mb-3">
+                <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="text-sm font-medium">เลือกรูปภาพ</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png"
+                    multiple
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-xs text-gray-500 ml-2">
+                  ({photoPreview.length}/3 รูป)
+                </span>
+              </div>
+            )}
+
+            {photoPreview.length > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                {photoPreview.map((preview, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={preview}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(index)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* ติดต่อ */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -549,13 +672,20 @@ export default function AddJobModal({ open, onClose, onCreated }) {
           <button
             type="button"
             onClick={handleSubmit}
-            className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium text-center"
+            disabled={uploading}
+            className={`flex-1 bg-blue-600 text-white py-3 rounded-xl font-medium text-center ${
+              uploading ? "opacity-70 cursor-not-allowed" : ""
+            }`}
           >
-            บันทึกงาน
+            {uploading ? "กำลังอัปโหลดรูป..." : "บันทึกงาน"}
           </button>
           <button
             type="button"
-            onClick={() => setForm(emptyForm)}
+            onClick={() => {
+              setForm(emptyForm);
+              setSelectedPhotos([]);
+              setPhotoPreview([]);
+            }}
             className="px-4 py-3 rounded-xl border text-gray-600"
           >
             ล้างฟอร์ม
