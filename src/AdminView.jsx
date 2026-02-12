@@ -383,6 +383,75 @@ export default function AdminView({ user, onLogout }) {
     }
   };
 
+  // ✅ ลบผู้ใช้ (ยืนยัน 2 รอบ)
+  const handleDeleteUser = async (targetUser) => {
+    if (!targetUser || !targetUser._id) return;
+    
+    const myId = user?._id || user?.id || user?.userId;
+    const isMe = targetUser._id === myId;
+
+    if (isMe) {
+      alert("ไม่สามารถลบบัญชีของตัวเองได้");
+      return;
+    }
+
+    // ✅ การยืนยันรอบที่ 1
+    const confirm1 = window.confirm(
+      `⚠️ คุณต้องการลบผู้ใช้ "${targetUser.name}" (${targetUser.email}) หรือไม่?\n\n` +
+      `Role: ${targetUser.role}\n\n` +
+      `การลบนี้จะลบข้อมูลทั้งหมดของผู้ใช้รวมถึง:\n` +
+      `- โปรไฟล์และข้อมูลส่วนตัว\n` +
+      `- ใบสมัครงานทั้งหมด\n` +
+      `- งานที่โพสต์ (ถ้าเป็น employer)\n` +
+      `- ข้อความแชท\n\n` +
+      `กดตกลงเพื่อดำเนินการต่อ`
+    );
+
+    if (!confirm1) return;
+
+    // ✅ การยืนยันรอบที่ 2
+    const confirm2 = window.confirm(
+      `🚨 ยืนยันอีกครั้ง!\n\n` +
+      `คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้ "${targetUser.name}"?\n\n` +
+      `⚠️ การกระทำนี้ไม่สามารถย้อนกลับได้!\n\n` +
+      `กดตกลงเพื่อลบผู้ใช้อย่างถาวร`
+    );
+
+    if (!confirm2) return;
+
+    try {
+      setUpdatingUserId(targetUser._id);
+      
+      const res = await fetch(`${API_BASE}/api/admin/users/${targetUser._id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
+      });
+
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok) {
+        throw new Error(data.message || "ลบผู้ใช้ไม่สำเร็จ");
+      }
+
+      // ✅ ลบผู้ใช้ออกจาก state
+      setUsers((prev) => prev.filter((u) => u._id !== targetUser._id));
+      
+      alert(`✅ ลบผู้ใช้ "${targetUser.name}" เรียบร้อยแล้ว`);
+    } catch (e) {
+      alert(e.message || "ลบผู้ใช้ไม่สำเร็จ");
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
   // ✅ ดึงโปรไฟล์ผู้ใช้แล้วเปิดป็อปอัพ
   const openUserProfile = async (u) => {
     if (!u || !u._id) return;
@@ -781,7 +850,7 @@ export default function AdminView({ user, onLogout }) {
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Users className="w-6 h-6 text-purple-600" />
-                  👥 จัดการผู้ใช้ทั้งหมด
+                  จัดการผู้ใช้ทั้งหมด
                 </h2>
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -939,6 +1008,22 @@ export default function AdminView({ user, onLogout }) {
                             >
                               ตั้งเป็น Admin
                             </button>
+                            
+                            {/* ✅ ปุ่มลบผู้ใช้ */}
+                            {!isMe && (
+                              <button
+                                type="button"
+                                disabled={updatingUserId === u._id}
+                                onClick={() => handleDeleteUser(u)}
+                                className="px-2 py-1 text-xs rounded border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 flex items-center gap-1"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                ลบ
+                              </button>
+                            )}
+                            
                             {isMe && (
                               <span className="text-[10px] text-gray-400">
                                 (บัญชีของคุณเอง)
@@ -1125,8 +1210,9 @@ export default function AdminView({ user, onLogout }) {
                                 alt={app.applicantName}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                  console.log("Image load error, hiding:", e.target.src);
+                                  console.log("Image load error:", e.target.src);
                                   e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = '<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
                                 }}
                               />
                             ) : app.applicant?.avatar ? (
@@ -1134,6 +1220,11 @@ export default function AdminView({ user, onLogout }) {
                                 src={app.applicant.avatar}
                                 alt={app.applicantName}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  console.log("Avatar load error:", e.target.src);
+                                  e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = '<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                                }}
                               />
                             ) : (
                               <UserIcon className="w-4 h-4 text-gray-400" />
