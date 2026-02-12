@@ -13,29 +13,44 @@ export default function ForgotPassword() {
     e.preventDefault();
     setMsg("");
     setError("");
+
+    // ตรวจสอบรูปแบบอีเมล
+    const emailTrimmed = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailTrimmed) {
+      setError("กรุณากรอกอีเมล");
+      return;
+    }
+    
+    if (!emailRegex.test(emailTrimmed)) {
+      setError("รูปแบบอีเมลไม่ถูกต้อง กรุณากรอกอีเมลให้ถูกต้อง เช่น example@gmail.com");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: emailTrimmed }),
       });
 
       const ct = res.headers.get("content-type") || "";
       const data = ct.includes("application/json") ? await res.json() : null;
 
       if (!res.ok) {
-        setError((data && data.message) || `เกิดข้อผิดพลาด (${res.status})`);
+        setError((data && data.message) || `เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง`);
         return;
       }
 
       setMsg(
-        (data && data.message) ||
-          "ส่งลิงก์รีเซ็ตรหัสผ่านไปที่อีเมลแล้ว (ถ้าอีเมลมีอยู่ในระบบ)"
+        "ส่งลิงก์รีเซ็ตรหัสผ่านไปที่อีเมลของคุณแล้ว กรุณาตรวจสอบกล่องจดหมาย"
       );
+      setEmail(""); // ล้างช่องอีเมล
     } catch {
-      setError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
+      setError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ต");
     } finally {
       setLoading(false);
     }
@@ -53,17 +68,21 @@ export default function ForgotPassword() {
 
         <form onSubmit={onSubmit} className="space-y-4 mt-6">
           <div>
-            <label htmlFor="forgotEmail" className="block text-sm mb-1">อีเมล</label>
+            <label htmlFor="forgotEmail" className="block text-sm font-medium text-gray-700 mb-2">
+              อีเมลที่ใช้สมัครสมาชิก
+            </label>
             <input
               id="forgotEmail"
-              type="email"
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              type="text"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
               autoComplete="email"
-              placeholder="กรอกอีเมลที่ใช้สมัครสมาชิก"
+              placeholder="example@gmail.com"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              กรอกอีเมลที่คุณใช้สมัครสมาชิก เราจะส่งลิงก์รีเซ็ตรหัสผ่านไปให้
+            </p>
           </div>
 
           {error && (
