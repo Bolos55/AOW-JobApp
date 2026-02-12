@@ -10,6 +10,11 @@ export const resolveImageUrl = (url) => {
     return url;
   }
   
+  // ✅ Cloudinary public_id format (e.g., "aow-jobapp/photos/abc123")
+  if (url.includes("aow-jobapp/")) {
+    return `https://res.cloudinary.com/dorfwjgzl/image/upload/${url}`;
+  }
+  
   // ✅ Local paths - convert to full backend URL
   if (url.startsWith("uploads/") || url.startsWith("/uploads/")) {
     const cleanPath = url.startsWith("/") ? url.substring(1) : url;
@@ -18,12 +23,12 @@ export const resolveImageUrl = (url) => {
   }
   
   // ✅ Legacy paths without uploads prefix
-  if (url.includes("/") && !url.startsWith("http")) {
+  if (url.includes("/") && !url.startsWith("http") && !url.includes("aow-jobapp")) {
     const backendBase = API_BASE.replace(/\/api\/?$/, "");
     return `${backendBase}/uploads/${url}`;
   }
   
-  // ✅ Handle relative paths
+  // ✅ Handle relative paths or filenames
   if (!url.includes("/") && url.length > 0) {
     const backendBase = API_BASE.replace(/\/api\/?$/, "");
     return `${backendBase}/uploads/photos/${url}`;
