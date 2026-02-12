@@ -307,6 +307,44 @@ export default function JobSeekerView({ user, onLogout }) {
     return app ? app.status || "pending" : null;
   }, [myApps, selectedJob]);
 
+  // ⭐ อัปเดต meta tags เมื่อเปิดงาน (สำหรับการแชร์)
+  useEffect(() => {
+    if (selectedJob) {
+      // อัปเดต title
+      document.title = `${selectedJob.title} - ${selectedJob.company} | AOW`;
+      
+      // อัปเดต/สร้าง Open Graph meta tags
+      const updateMetaTag = (property, content) => {
+        let tag = document.querySelector(`meta[property="${property}"]`);
+        if (!tag) {
+          tag = document.createElement('meta');
+          tag.setAttribute('property', property);
+          document.head.appendChild(tag);
+        }
+        tag.setAttribute('content', content);
+      };
+
+      const url = `${window.location.origin}?job=${selectedJob._id}`;
+      const description = selectedJob.description?.substring(0, 200) || `${selectedJob.title} ที่ ${selectedJob.company}`;
+      const image = selectedJob.workplacePhotos?.[0] || `${window.location.origin}/logo512.png`;
+
+      updateMetaTag('og:title', `${selectedJob.title} - ${selectedJob.company}`);
+      updateMetaTag('og:description', description);
+      updateMetaTag('og:image', image);
+      updateMetaTag('og:url', url);
+      updateMetaTag('og:type', 'website');
+      
+      // Twitter Card
+      updateMetaTag('twitter:card', 'summary_large_image');
+      updateMetaTag('twitter:title', `${selectedJob.title} - ${selectedJob.company}`);
+      updateMetaTag('twitter:description', description);
+      updateMetaTag('twitter:image', image);
+    } else {
+      // รีเซ็ต title เมื่อปิด modal
+      document.title = 'AOW-All Of Works';
+    }
+  }, [selectedJob]);
+
   // ⭐ handler สมัครงาน: ถ้าโปรไฟล์ไม่ครบ → เปิด modal โปรไฟล์แทน
   const handleClickApply = () => {
     if (isSelectedJobApplied) return;
@@ -735,6 +773,67 @@ export default function JobSeekerView({ user, onLogout }) {
                 </button>
               )}
 
+              {/* ✅ ปุ่มแชร์งาน */}
+              <div className="mb-4 pb-4 border-b">
+                <button
+                  onClick={async () => {
+                    const url = `${window.location.origin}?job=${selectedJob._id}`;
+                    const title = `${selectedJob.title} - ${selectedJob.company}`;
+                    const text = `${selectedJob.title}\n${selectedJob.company}\n💰 ${selectedJob.salary}\n📍 ${selectedJob.location}`;
+                    
+                    const shareData = {
+                      title: title,
+                      text: text,
+                      url: url
+                    };
+
+                    // ถ้ามีรูปภาพ พยายามแชร์พร้อมรูป
+                    if (selectedJob.workplacePhotos && selectedJob.workplacePhotos.length > 0) {
+                      try {
+                        // ดึงรูปแรกมาเป็น blob
+                        const imageUrl = selectedJob.workplacePhotos[0];
+                        const response = await fetch(imageUrl);
+                        const blob = await response.blob();
+                        const file = new File([blob], 'workplace.jpg', { type: blob.type });
+                        
+                        // ตรวจสอบว่ารองรับการแชร์ไฟล์หรือไม่
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                          shareData.files = [file];
+                        }
+                      } catch (err) {
+                        console.log('Cannot fetch image for sharing:', err);
+                        // ไม่เป็นไร แชร์แบบไม่มีรูปก็ได้
+                      }
+                    }
+
+                    // ตรวจสอบว่าเบราว์เซอร์รองรับ Web Share API หรือไม่
+                    if (navigator.share) {
+                      try {
+                        await navigator.share(shareData);
+                      } catch (err) {
+                        // ถ้ายกเลิกการแชร์ ไม่ต้องทำอะไร
+                        if (err.name !== 'AbortError') {
+                          console.error('Share error:', err);
+                        }
+                      }
+                    } else {
+                      // Fallback: คัดลอกลิงก์
+                      navigator.clipboard.writeText(url);
+                      alert("เบราว์เซอร์ไม่รองรับการแชร์\nคัดลอกลิงก์แล้ว!");
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-xl font-medium transition shadow-sm hover:shadow-md"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  แชร์งานนี้
+                  {selectedJob.workplacePhotos && selectedJob.workplacePhotos.length > 0 && (
+                    <span className="text-xs opacity-75">(พร้อมรูป)</span>
+                  )}
+                </button>
+              </div>
+
               <div className="space-y-2 mb-4 text-sm">
                 <p className="flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-green-500" />
@@ -759,7 +858,7 @@ export default function JobSeekerView({ user, onLogout }) {
 
               {/* ✅ รูปภาพสถานที่ทำงาน - แสดงเสมอ */}
               <div className="mb-4">
-                <h3 className="font-semibold mb-2">📸 บรรยากาศสถานที่ทำงาน</h3>
+                <h3 className="font-semibold mb-2">🏢 ภาพงานเบื้อต้น</h3>
                 
                 {selectedJob?.workplacePhotos && selectedJob.workplacePhotos.length > 0 ? (
                   <>
@@ -788,7 +887,7 @@ export default function JobSeekerView({ user, onLogout }) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <p className="text-sm text-gray-500">ไม่มีรูปภาพสถานที่ทำงาน</p>
+                    <p className="text-sm text-gray-500">ไม่มีภาพงานเบื้อต้น</p>
                     <p className="text-xs text-gray-400 mt-1">ผู้ว่าจ้างยังไม่ได้อัปโหลดรูปภาพ</p>
                   </div>
                 )}

@@ -833,6 +833,37 @@ function JobDetailModal({ open, job, onClose }) {
           )}
         </div>
 
+        {/* ✅ ภาพงานเบื้อต้น */}
+        <div className="mt-4">
+          <p className="font-semibold text-gray-700 mb-2">🏢 ภาพงานเบื้อต้น</p>
+          
+          {job?.workplacePhotos && job.workplacePhotos.length > 0 ? (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                {job.workplacePhotos.map((photo, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={photo}
+                      alt={`ภาพงาน ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition"
+                      onClick={() => window.open(photo, '_blank')}
+                      onError={(e) => {
+                        console.error("Failed to load image:", photo);
+                        e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="10">โหลดไม่ได้</text></svg>';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">คลิกเพื่อดูขนาดเต็ม</p>
+            </>
+          ) : (
+            <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-4 text-center">
+              <p className="text-xs text-gray-500">ไม่มีภาพงานเบื้อต้น</p>
+            </div>
+          )}
+        </div>
+
         <hr className="my-4" />
         <div className="text-sm">
           <p className="font-semibold mb-2">รีวิวจากผู้สมัคร / ผู้ที่เคยเข้าทำงาน</p>

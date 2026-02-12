@@ -663,7 +663,7 @@ export default function AddJobModal({ open, onClose, onCreated }) {
           {/* ✅ รูปภาพสถานที่ทำงาน */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              รูปภาพสถานที่ทำงาน (ไม่บังคับ)
+              ภาพงานเบื้อต้น (ไม่บังคับ)
             </label>
             <p className="text-xs text-gray-500 mb-2">
               อัปโหลดได้ 1-3 รูป เพื่อดึงดูดผู้สมัครงาน (JPG, PNG, สูงสุด 10MB ต่อรูป)
