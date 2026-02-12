@@ -224,9 +224,9 @@ router.delete("/:id", auth, async (req, res) => {
  * POST /api/jobs/:id/photos
  * อัปโหลดรูปภาพสถานที่ทำงาน (1-3 รูป)
  */
-import { uploadPhoto } from "../config/cloudinary.js";
+import { uploadMultiplePhotos } from "../config/cloudinary.js";
 
-router.post("/:id/photos", auth, uploadPhoto.array("photos", 3), async (req, res) => {
+router.post("/:id/photos", auth, uploadMultiplePhotos.array("photos", 3), async (req, res) => {
   try {
     const userId = getUserId(req);
     

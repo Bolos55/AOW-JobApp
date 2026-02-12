@@ -75,6 +75,24 @@ export const uploadPhoto = photoStorage ? multer({
   }
 }) : multer(); // Empty multer that will fail
 
+// ✅ Multer for multiple photos (workplace photos)
+export const uploadMultiplePhotos = photoStorage ? multer({
+  storage: photoStorage,
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB per file
+    files: 3 // Allow up to 3 files
+  },
+  fileFilter: (req, file, cb) => {
+    // ✅ Strict file type validation
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPG, PNG, GIF allowed.'), false);
+    }
+  }
+}) : multer(); // Empty multer that will fail
+
 export const uploadResume = resumeStorage ? multer({
   storage: resumeStorage,
   limits: {
