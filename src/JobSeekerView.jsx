@@ -513,9 +513,23 @@ export default function JobSeekerView({ user, onLogout }) {
               {myApps.map((app) => (
                 <div
                   key={app._id}
-                  className="bg-white rounded-xl border p-3 flex justify-between items-start"
+                  className="bg-white rounded-xl border p-3 flex gap-3 items-start"
                 >
-                  <div>
+                  {/* ✅ เพิ่มรูปภาพงาน */}
+                  {app.job?.workplacePhotos && app.job.workplacePhotos.length > 0 && (
+                    <div className="flex-shrink-0">
+                      <img
+                        src={app.job.workplacePhotos[0]}
+                        alt={app.job.title}
+                        className="w-20 h-20 object-cover rounded-lg border"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="flex-1">
                     <p className="text-sm font-semibold">
                       {app.job?.title || "งานถูกลบไปแล้ว"}
                     </p>
@@ -535,7 +549,8 @@ export default function JobSeekerView({ user, onLogout }) {
                       </p>
                     )}
                   </div>
-                  <div className="text-right">
+                  
+                  <div className="text-right flex-shrink-0">
                     <span
                       className={
                         "text-xs px-2 py-1 rounded-full " +

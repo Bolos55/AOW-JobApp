@@ -205,7 +205,7 @@ router.get("/my-applications", auth, async (req, res) => {
     }
 
     const apps = await Application.find({ applicant: userId })
-      .populate("job", "title company jobCode salary location type")
+      .populate("job", "title company jobCode salary location type workplacePhotos")
       .sort({ createdAt: -1 })
       .lean();
 
