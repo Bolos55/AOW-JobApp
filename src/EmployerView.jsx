@@ -1,4 +1,4 @@
-// src/EmployerView.jsx
+﻿// src/EmployerView.jsx
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   User as UserIcon,
@@ -1233,7 +1233,7 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
         </div>
 
         <div className="text-sm text-gray-500">
-          ✅ ตรงนี้ให้คุณ “วางโค้ด logic แชทเดิมของคุณ” ได้เลย (messages / sendMessage ฯลฯ)
+          <p className="text-sm text-gray-500">ระบบแชทกำลังพัฒนา กรุณาใช้ปุ่ม "ติดต่อแอดมิน" ด้านบนเพื่อสื่อสารกับผู้สมัคร</p>
         </div>
 
         <div className="mt-4">
