@@ -123,7 +123,7 @@ export default function ChatWidget({ open, onClose, user, token, onUnreadChange 
         // อัปเดต local state
         setThreads(prev => prev.map(t => 
           t._id === thread._id 
-            ? { ...t, unreadCount: { ...t.unreadCount, [currentUser?._id]: 0 } }
+            ? { ...t, unreadCount: { ...t.unreadCount, [meId]: 0 } }
             : t
         ));
       } catch (err) {
@@ -289,7 +289,7 @@ export default function ChatWidget({ open, onClose, user, token, onUnreadChange 
                     </span>
                     {(() => {
                       // ✅ ดึง unread count สำหรับ user ปัจจุบัน
-                      const unread = t.unreadCount?.[currentUser?._id] || 0;
+                      const unread = t.unreadCount?.[meId] || 0;
                       return unread > 0 ? (
                         <span className="text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
                           {unread > 9 ? "9+" : unread}
