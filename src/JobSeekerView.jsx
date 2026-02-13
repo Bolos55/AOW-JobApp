@@ -143,11 +143,28 @@ export default function JobSeekerView({ user, onLogout }) {
 
   const CATEGORIES = [
     { id: "all", name: "ทั้งหมด", icon: "⭐" },
-    { id: "it", name: "IT & Tech", icon: "💻" },
-    { id: "sale", name: "งานขาย", icon: "📊" },
-    { id: "service", name: "บริการ", icon: "🤝" },
+    { id: "it", name: "IT & เทคโนโลยี", icon: "💻" },
+    { id: "sale", name: "งานขาย/เซลส์", icon: "📊" },
+    { id: "mkt", name: "การตลาด/โฆษณา", icon: "📢" },
+    { id: "service", name: "บริการ/ต้อนรับ", icon: "🤝" },
+    { id: "admin", name: "ธุรการ/เลขา", icon: "📋" },
+    { id: "acc", name: "บัญชี/การเงิน", icon: "💰" },
+    { id: "hr", name: "HR/ทรัพยากรบุคคล", icon: "👥" },
+    { id: "design", name: "ออกแบบ/กราฟิก", icon: "🎨" },
+    { id: "content", name: "คอนเทนต์/โซเชียล", icon: "📱" },
+    { id: "eng", name: "วิศวกร/ช่างเทคนิค", icon: "🔧" },
+    { id: "factory", name: "โรงงาน/ผลิต", icon: "🏭" },
+    { id: "logistic", name: "ขนส่ง/โลจิสติกส์", icon: "🚚" },
+    { id: "driver", name: "พนักงานขับรถ", icon: "🚗" },
+    { id: "health", name: "สุขภาพ/แพทย์", icon: "⚕️" },
+    { id: "beauty", name: "ความงาม/สปา", icon: "💅" },
+    { id: "hotel", name: "โรงแรม/ท่องเที่ยว", icon: "🏨" },
+    { id: "food", name: "ร้านอาหาร/เชฟ", icon: "🍳" },
+    { id: "teacher", name: "ครู/ติวเตอร์", icon: "📚" },
+    { id: "house", name: "แม่บ้าน/ทำความสะอาด", icon: "🧹" },
+    { id: "security", name: "รักษาความปลอดภัย", icon: "🛡️" },
     { id: "pt", name: "พาร์ทไทม์", icon: "⏰" },
-    { id: "remote", name: "รีโมต", icon: "🏠" },
+    { id: "remote", name: "ทำงานจากบ้าน", icon: "🏠" },
     { id: "other", name: "อื่นๆ", icon: "📂" },
   ];
 
@@ -545,19 +562,19 @@ export default function JobSeekerView({ user, onLogout }) {
         {/* หมวดหมู่งาน */}
         <div>
           <h3 className="text-lg font-bold text-gray-800 mb-4">หมวดหมู่งาน</h3>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
                 className={`flex flex-col items-center p-3 rounded-2xl shadow-sm transition ${
-                  activeCategory === cat.id ? "bg-blue-50" : "bg-white"
+                  activeCategory === cat.id ? "bg-blue-50 ring-2 ring-blue-500" : "bg-white hover:bg-gray-50"
                 }`}
               >
                 <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-2xl mb-2">
                   {cat.icon}
                 </div>
-                <span className="text-xs text-gray-600 text-center font-medium">
+                <span className="text-xs text-gray-600 text-center font-medium leading-tight">
                   {cat.name}
                 </span>
               </button>
