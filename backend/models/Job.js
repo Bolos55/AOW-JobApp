@@ -38,6 +38,16 @@ const jobSchema = new mongoose.Schema(
     paidAt: Date,
     paymentId: String,
     
+    // ✅ Trial Period (24 hours free chat)
+    trialEndsAt: {
+      type: Date,
+      default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from creation
+    },
+    isTrialActive: {
+      type: Boolean,
+      default: true
+    },
+    
     // ✅ Package Information
     packageType: {
       type: String,

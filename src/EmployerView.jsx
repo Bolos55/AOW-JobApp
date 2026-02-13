@@ -1203,170 +1203,332 @@ function ApplicationDetailModal({ open, app, onClose, onUpdateStatus, updatingAp
 }
 
 /* ===== Modal แชทกับผู้สมัคร (มีปุ่มติดต่อแอดมินข้างใน) ===== */
-function ChatModal({ open, app, user, onClose, onContactAdmin }) {
-  const [thread, setThread] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const messagesEndRef = useRef(null);
-
-  // Load or create thread when modal opens
-  useEffect(() => {
-    if (open && app?.jobId && app?.applicant?._id) {
-      initializeChat();
-    }
-  }, [open, app]);
-
-  // Auto scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const initializeChat = async () => {
-    setLoading(true);
-    try {
-      // Import chat API
-      const { ensureThread, fetchMessages } = await import("./api/chat");
-      
-      // Create or get existing thread
-      const threadData = await ensureThread({
-        jobId: app.jobId,
-        participantId: app.applicant._id,
-        token: localStorage.getItem("token")
-      });
-      
-      setThread(threadData);
-      
-      // Load messages
-      if (threadData._id) {
-        const msgs = await fetchMessages({
-          threadId: threadData._id,
-          token: localStorage.getItem("token")
-        });
-        setMessages(msgs || []);
-      }
-    } catch (err) {
-      console.error("Initialize chat error:", err);
-      alert("ไม่สามารถเริ่มการแชทได้: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || sending || !thread?._id) return;
-
-    setSending(true);
-    try {
-      const { sendMessage } = await import("./api/chat");
-      
-      const result = await sendMessage({
-        threadId: thread._id,
-        text: newMessage.trim(),
-        token: localStorage.getItem("token")
-      });
-      
-      // Add new message to list
-      setMessages([...messages, result]);
-      setNewMessage("");
-    } catch (err) {
-      console.error("Send message error:", err);
-      alert("ส่งข้อความไม่สำเร็จ: " + err.message);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  if (!open || !app) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-lg flex flex-col max-h-[80vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 text-purple-600" />
-            <h3 className="font-bold">แชทกับ {app.applicant?.name || "ผู้สมัคร"}</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onContactAdmin}
-              className="text-xs px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
-            >
-              ติดต่อแอดมิน
-            </button>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-              <p className="text-sm text-gray-500 mt-2">กำลังโหลดข้อความ...</p>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="text-center py-8">
-              <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">ยังไม่มีข้อความ</p>
-              <p className="text-xs text-gray-400 mt-1">เริ่มต้นการสนทนาได้เลย</p>
-            </div>
-          ) : (
-            messages.map((msg, idx) => {
-              const isMe = msg.senderId === user._id || msg.senderId?._id === user._id;
-              return (
-                <div key={idx} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[70%] rounded-lg px-3 py-2 ${
-                    isMe 
-                      ? "bg-purple-600 text-white" 
-                      : "bg-gray-100 text-gray-800"
-                  }`}>
-                    <p className="text-sm">{msg.text}</p>
-                    <p className={`text-xs mt-1 ${isMe ? "text-purple-200" : "text-gray-500"}`}>
-                      {new Date(msg.createdAt).toLocaleTimeString('th-TH', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <form onSubmit={handleSendMessage} className="p-4 border-t">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="พิมพ์ข้อความ..."
-              className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              disabled={sending || loading}
-            />
-            <button
-              type="submit"
-              disabled={!newMessage.trim() || sending || loading}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {sending ? "..." : "ส่ง"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+function ChatModal({ open, app, user, onClose, onContactAdmin }) {
+
+  const [thread, setThread] = useState(null);
+
+  const [messages, setMessages] = useState([]);
+
+  const [newMessage, setNewMessage] = useState("");
+
+  const [loading, setLoading] = useState(false);
+
+  const [sending, setSending] = useState(false);
+
+  const messagesEndRef = useRef(null);
+
+
+
+  // Load or create thread when modal opens
+
+  useEffect(() => {
+
+    if (open && app?.jobId && app?.applicant?._id) {
+
+      initializeChat();
+
+    }
+
+  }, [open, app]);
+
+
+
+  // Auto scroll to bottom
+
+  useEffect(() => {
+
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+
+  }, [messages]);
+
+
+
+  const initializeChat = async () => {
+
+    setLoading(true);
+
+    try {
+
+      // Import chat API
+
+      const { ensureThread, fetchMessages } = await import("./api/chat");
+
+      
+
+      // Create or get existing thread
+
+      const threadData = await ensureThread({
+
+        jobId: app.jobId,
+
+        participantId: app.applicant._id,
+
+        token: localStorage.getItem("token")
+
+      });
+
+      
+
+      setThread(threadData);
+
+      
+
+      // Load messages
+
+      if (threadData._id) {
+
+        const msgs = await fetchMessages({
+
+          threadId: threadData._id,
+
+          token: localStorage.getItem("token")
+
+        });
+
+        setMessages(msgs || []);
+
+      }
+
+    } catch (err) {
+
+      console.error("Initialize chat error:", err);
+
+      alert("ไม่สามารถเริ่มการแชทได้: " + err.message);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  };
+
+
+
+  const handleSendMessage = async (e) => {
+
+    e.preventDefault();
+
+    if (!newMessage.trim() || sending || !thread?._id) return;
+
+
+
+    setSending(true);
+
+    try {
+
+      const { sendMessage } = await import("./api/chat");
+
+      
+
+      const result = await sendMessage({
+
+        threadId: thread._id,
+
+        text: newMessage.trim(),
+
+        token: localStorage.getItem("token")
+
+      });
+
+      
+
+      // Add new message to list
+
+      setMessages([...messages, result]);
+
+      setNewMessage("");
+
+    } catch (err) {
+
+      console.error("Send message error:", err);
+
+      alert("ส่งข้อความไม่สำเร็จ: " + err.message);
+
+    } finally {
+
+      setSending(false);
+
+    }
+
+  };
+
+
+
+  if (!open || !app) return null;
+
+
+
+  return (
+
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-lg flex flex-col max-h-[80vh]">
+
+        {/* Header */}
+
+        <div className="flex items-center justify-between p-4 border-b">
+
+          <div className="flex items-center gap-2">
+
+            <MessageCircle className="w-5 h-5 text-purple-600" />
+
+            <h3 className="font-bold">แชทกับ {app.applicant?.name || "ผู้สมัคร"}</h3>
+
+          </div>
+
+          <div className="flex items-center gap-2">
+
+            <button
+
+              onClick={onContactAdmin}
+
+              className="text-xs px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+
+            >
+
+              ติดต่อแอดมิน
+
+            </button>
+
+            <button
+
+              onClick={onClose}
+
+              className="text-gray-400 hover:text-gray-600"
+
+            >
+
+              <X className="w-5 h-5" />
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+
+        {/* Messages */}
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+
+          {loading ? (
+
+            <div className="text-center py-8">
+
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+
+              <p className="text-sm text-gray-500 mt-2">กำลังโหลดข้อความ...</p>
+
+            </div>
+
+          ) : messages.length === 0 ? (
+
+            <div className="text-center py-8">
+
+              <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+
+              <p className="text-sm text-gray-500">ยังไม่มีข้อความ</p>
+
+              <p className="text-xs text-gray-400 mt-1">เริ่มต้นการสนทนาได้เลย</p>
+
+            </div>
+
+          ) : (
+
+            messages.map((msg, idx) => {
+
+              const isMe = msg.senderId === user._id || msg.senderId?._id === user._id;
+
+              return (
+
+                <div key={idx} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+
+                  <div className={`max-w-[70%] rounded-lg px-3 py-2 ${
+
+                    isMe 
+
+                      ? "bg-purple-600 text-white" 
+
+                      : "bg-gray-100 text-gray-800"
+
+                  }`}>
+
+                    <p className="text-sm">{msg.text}</p>
+
+                    <p className={`text-xs mt-1 ${isMe ? "text-purple-200" : "text-gray-500"}`}>
+
+                      {new Date(msg.createdAt).toLocaleTimeString('th-TH', { 
+
+                        hour: '2-digit', 
+
+                        minute: '2-digit' 
+
+                      })}
+
+                    </p>
+
+                  </div>
+
+                </div>
+
+              );
+
+            })
+
+          )}
+
+          <div ref={messagesEndRef} />
+
+        </div>
+
+
+
+        {/* Input */}
+
+        <form onSubmit={handleSendMessage} className="p-4 border-t">
+
+          <div className="flex gap-2">
+
+            <input
+
+              type="text"
+
+              value={newMessage}
+
+              onChange={(e) => setNewMessage(e.target.value)}
+
+              placeholder="พิมพ์ข้อความ..."
+
+              className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+
+              disabled={sending || loading}
+
+            />
+
+            <button
+
+              type="submit"
+
+              disabled={!newMessage.trim() || sending || loading}
+
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+
+            >
+
+              {sending ? "..." : "ส่ง"}
+
+            </button>
+
+          </div>
+
+        </form>
+
+      </div>
+
+    </div>
+
+  );
 
 }
