@@ -302,11 +302,15 @@ export default function AdminPaymentManagement() {
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          {["failed", "expired", "cancelled", "pending"].includes(payment.status) && (
+                          {/* แสดงปุ่มลบสำหรับรายการที่ไม่สำเร็จและรอชำระ */}
+                          {(payment.status === "failed" || 
+                            payment.status === "expired" || 
+                            payment.status === "cancelled" || 
+                            payment.status === "pending") && (
                             <button
                               onClick={() => deletePayment(payment.paymentId, payment.status)}
-                              className="p-1 text-red-600 hover:bg-red-50 rounded"
-                              title="ลบรายการ"
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="ลบรายการ (ไม่สามารถกู้คืนได้)"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
