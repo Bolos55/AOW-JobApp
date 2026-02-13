@@ -751,38 +751,48 @@ export default function EmployerView({ user, onLogout }) {
                         {status}
                       </span>
 
-                      <div className="flex gap-2">
-                        {status !== "hired" && (
-                          <button
-                            disabled={isUpdating || !app.idVerified}
-                            onClick={() => updateApplicationStatus(app, "hired")}
-                            className={`text-xs px-3 py-1 rounded-lg text-white hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed ${
-                              app.idVerified ? "bg-green-500" : "bg-gray-400"
-                            }`}
-                            title={
-                              !app.idVerified 
-                                ? "ต้องรอแอดมินตรวจสอบบัตรประชาชนก่อน" 
-                                : "รับเข้าทำงาน"
-                            }
-                          >
-                            {isUpdating && status !== "hired" 
-                              ? "กำลังบันทึก..." 
-                              : app.idVerified 
-                                ? "รับเข้าทำงาน" 
-                                : "รอตรวจสอบบัตร"
-                            }
-                          </button>
-                        )}
-                        {status !== "rejected" && (
-                          <button
-                            disabled={isUpdating}
-                            onClick={() => updateApplicationStatus(app, "rejected")}
-                            className="text-xs px-3 py-1 rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
-                          >
-                            {isUpdating && status !== "rejected" ? "กำลังบันทึก..." : "ปฏิเสธ"}
-                          </button>
-                        )}
-                      </div>
+                      {/* ✅ ซ่อนปุ่มถ้างานปิดรับสมัครแล้ว */}
+                      {!isClosed && (
+                        <div className="flex gap-2">
+                          {status !== "hired" && (
+                            <button
+                              disabled={isUpdating || !app.idVerified}
+                              onClick={() => updateApplicationStatus(app, "hired")}
+                              className={`text-xs px-3 py-1 rounded-lg text-white hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                app.idVerified ? "bg-green-500" : "bg-gray-400"
+                              }`}
+                              title={
+                                !app.idVerified 
+                                  ? "ต้องรอแอดมินตรวจสอบบัตรประชาชนก่อน" 
+                                  : "รับเข้าทำงาน"
+                              }
+                            >
+                              {isUpdating && status !== "hired" 
+                                ? "กำลังบันทึก..." 
+                                : app.idVerified 
+                                  ? "รับเข้าทำงาน" 
+                                  : "รอตรวจสอบบัตร"
+                              }
+                            </button>
+                          )}
+                          {status !== "rejected" && (
+                            <button
+                              disabled={isUpdating}
+                              onClick={() => updateApplicationStatus(app, "rejected")}
+                              className="text-xs px-3 py-1 rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                            >
+                              {isUpdating && status !== "rejected" ? "กำลังบันทึก..." : "ปฏิเสธ"}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* ✅ แสดงข้อความถ้างานปิดแล้ว */}
+                      {isClosed && (
+                        <p className="text-xs text-gray-500 italic">
+                          งานปิดรับสมัครแล้ว
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
