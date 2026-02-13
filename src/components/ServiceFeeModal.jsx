@@ -1,7 +1,7 @@
 // src/components/ServiceFeeModal.jsx
 // ✅ Platform Service Fee Modal - ไม่ใช่ payment gateway หรือ escrow
 import { useState, useEffect } from "react";
-import { X, Smartphone, Building2, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { X, Smartphone, Building2, Clock, CheckCircle, AlertTriangle, Upload, FileText } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
 
 export default function ServiceFeeModal({ open, onClose, job, onServiceFeeSuccess }) {
@@ -15,6 +15,11 @@ export default function ServiceFeeModal({ open, onClose, job, onServiceFeeSucces
   const [error, setError] = useState("");
   const [serviceFeeStatus, setServiceFeeStatus] = useState("pending");
   const [timeLeft, setTimeLeft] = useState(24 * 60 * 60); // 24 hours in seconds
+  
+  // ✅ State สำหรับอัปโหลดสลิป
+  const [paymentSlip, setPaymentSlip] = useState(null);
+  const [slipPreview, setSlipPreview] = useState("");
+  const [uploadingSlip, setUploadingSlip] = useState(false);
 
   // ✅ Platform Service Packages - Phase 0-1: ค่าบริการรวมภาษีแล้ว
   const servicePackages = {
@@ -431,6 +436,94 @@ export default function ServiceFeeModal({ open, onClose, job, onServiceFeeSucces
                 </div>
               )}
 
+              {/* ✅ ข้อมูลบัญชีธนาคาร */}
+              {paymentMethod === 'bank_transfer' && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
+                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    🏦 ข้อมูลบัญชีสำหรับโอนเงิน
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center bg-white rounded p-2">
+                      <span className="text-gray-600">ธนาคาร:</span>
+                      <span className="font-semibold">ธนาคารกสิกรไทย</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-white rounded p-2">
+                      <span className="text-gray-600">ชื่อบัญชี:</span>
+                      <span className="font-semibold">นาย ภูริวัฒน์ โภคสวัสดิ์</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-white rounded p-2">
+                      <span className="text-gray-600">เลขที่บัญชี:</span>
+                      <span className="font-mono font-bold text-blue-600">137-1-84567-0</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-white rounded p-2">
+                      <span className="text-gray-600">ประเภทบัญชี:</span>
+                      <span className="font-semibold">ออมทรัพย์</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <p className="text-xs text-yellow-800">
+                      ⚠️ <strong>สำคัญ:</strong> โปรดระบุรหัสอ้างอิง <span className="font-mono font-bold">{serviceFeeData.paymentId}</span> ในช่องหมายเหตุเมื่อโอนเงิน
+                    </p>
+                  </div>
+                  
+                  {/* ✅ อัปโหลดสลิปการโอนเงิน */}
+                  <div className="mt-4">
+                    <label className="block text-sm font-semibold text-blue-900 mb-2">
+                      📎 แนบสลิปการโอนเงิน
+                    </label>
+                    
+                    {!paymentSlip ? (
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer bg-white hover:bg-blue-50 transition">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <Upload className="w-8 h-8 text-blue-500 mb-2" />
+                          <p className="text-sm text-blue-700 font-medium">คลิกเพื่ออัปโหลดสลิป</p>
+                          <p className="text-xs text-gray-500 mt-1">รองรับ JPG, PNG (ไม่เกิน 5MB)</p>
+                        </div>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/jpeg,image/png"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            if (file.size > 5 * 1024 * 1024) {
+                              alert("ไฟล์ต้องไม่เกิน 5MB");
+                              return;
+                            }
+                            
+                            setPaymentSlip(file);
+                            setSlipPreview(URL.createObjectURL(file));
+                          }}
+                        />
+                      </label>
+                    ) : (
+                      <div className="relative">
+                        <img
+                          src={slipPreview}
+                          alt="สลิปการโอนเงิน"
+                          className="w-full h-48 object-contain bg-gray-50 rounded-lg border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentSlip(null);
+                            setSlipPreview("");
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                        <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+                          <CheckCircle className="w-4 h-4" />
+                          <span>อัปโหลดสลิปแล้ว - รอแอดมินตรวจสอบ 5-10 นาที</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <h4 className="font-semibold mb-2">รายละเอียดการชำระค่าบริการ</h4>
                 <div className="space-y-1 text-sm">
@@ -451,8 +544,27 @@ export default function ServiceFeeModal({ open, onClose, job, onServiceFeeSucces
 
               {serviceFeeStatus === "pending" && (
                 <div className="text-center mb-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                  <p className="text-sm text-gray-600">กำลังตรวจสอบการชำระค่าบริการ...</p>
+                  {paymentSlip ? (
+                    <>
+                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
+                      <p className="text-sm font-semibold text-green-600">ได้รับสลิปการโอนเงินแล้ว</p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        แอดมินจะตรวจสอบภายใน 5-10 นาที
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        คุณสามารถปิดหน้าต่างนี้ได้ เราจะแจ้งเตือนเมื่อการชำระเงินสำเร็จ
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">
+                        {paymentMethod === 'promptpay' 
+                          ? 'กำลังตรวจสอบการชำระค่าบริการ...' 
+                          : 'รอการแนบสลิปการโอนเงิน...'}
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
 
