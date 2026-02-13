@@ -770,9 +770,9 @@ export default function AdminView({ user, onLogout }) {
               </div>
             </div>
             <div className="flex items-center gap-1 md:gap-3 flex-wrap">
-              {/* ปุ่มไปกล่องแชทใหญ่ */}
+              {/* ปุ่มเปิดกล่องแชท */}
               <button
-                onClick={() => navigate("/chats")}
+                onClick={() => setChatOpen(true)}
                 className="bg-white/10 hover:bg-white/20 px-2 md:px-3 py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm"
                 title="กล่องแชท"
               >

@@ -246,16 +246,18 @@ export default function ChatWidget({ open, onClose, user, token, onUnreadChange 
               </div>
             </div>
 
-            {/* ปุ่ม: ติดต่อแอดมิน */}
-            <button
-              type="button"
-              onClick={handleContactAdmin}
-              disabled={loadingContactAdmin}
-              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-60"
-            >
-              <Mail className="w-3 h-3" />
-              {loadingContactAdmin ? "กำลังเปิด..." : "ติดต่อแอดมิน"}
-            </button>
+            {/* ปุ่ม: ติดต่อแอดมิน - ซ่อนถ้าเป็น admin */}
+            {user?.role !== "admin" && (
+              <button
+                type="button"
+                onClick={handleContactAdmin}
+                disabled={loadingContactAdmin}
+                className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-60"
+              >
+                <Mail className="w-3 h-3" />
+                {loadingContactAdmin ? "กำลังเปิด..." : "ติดต่อแอดมิน"}
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto text-sm">
