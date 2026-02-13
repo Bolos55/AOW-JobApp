@@ -1223,7 +1223,7 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
 
   useEffect(() => {
 
-    if (open && app?.jobId && app?.applicant?._id) {
+    if (open && (app?.job?._id || app?.jobId) && (app?.applicant?._id || app?.applicant)) {
 
       initializeChat();
 
@@ -1255,13 +1255,29 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
 
       
 
+      // ✅ แก้ไข: ใช้ app.job._id แทน app.jobId
+
+      const jobId = app.job?._id || app.jobId;
+
+      const applicantId = app.applicant?._id || app.applicant;
+
+      
+
+      if (!jobId || !applicantId) {
+
+        throw new Error("ไม่พบข้อมูลงานหรือผู้สมัคร");
+
+      }
+
+      
+
       // Create or get existing thread
 
       const threadData = await ensureThread({
 
-        jobId: app.jobId,
+        jobId,
 
-        participantId: app.applicant._id,
+        participantId: applicantId,
 
         token: localStorage.getItem("token")
 
