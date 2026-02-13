@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
 
-export default function ReviewSection({ jobId, readOnly = false }) {
+export default function ReviewSection({ jobId, readOnly = false, isJobOwner = false }) {
   const [reviews, setReviews] = useState([]);
   const [canReview, setCanReview] = useState(false);
   const [checkReason, setCheckReason] = useState("");
@@ -13,6 +13,11 @@ export default function ReviewSection({ jobId, readOnly = false }) {
   const [loadingCheck, setLoadingCheck] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  
+  // State สำหรับการตอบกลับ
+  const [replyingTo, setReplyingTo] = useState(null); // review ID ที่กำลังตอบกลับ
+  const [replyText, setReplyText] = useState("");
+  const [submittingReply, setSubmittingReply] = useState(false);
 
   // โหลดรีวิวทั้งหมดของงานนี้
   const loadReviews = async () => {
@@ -116,6 +121,40 @@ useEffect(() => {
     }
   };
 
+  // ✅ ฟังก์ชันตอบกลับรีวิว (สำหรับเจ้าของงาน)
+  const handleReplySubmit = async (reviewId) => {
+    if (!replyText.trim()) return;
+    
+    setSubmittingReply(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/reviews/${reviewId}/reply`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader(),
+        },
+        body: JSON.stringify({ replyText }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "ตอบกลับไม่สำเร็จ");
+      }
+
+      // รีเฟรชรีวิว
+      await loadReviews();
+      setReplyingTo(null);
+      setReplyText("");
+    } catch (e) {
+      console.error(e);
+      setError(e.message || "ตอบกลับไม่สำเร็จ");
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
       {/* สถานะโหลด / error */}
@@ -149,6 +188,63 @@ useEffect(() => {
           <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">
             {r.comment}
           </p>
+
+          {/* ✅ การตอบกลับจากผู้ว่าจ้าง */}
+          {r.employerReply && r.employerReply.text && (
+            <div className="mt-2 ml-4 pl-3 border-l-2 border-blue-300 bg-blue-50 rounded-r-lg p-2">
+              <p className="text-xs font-semibold text-blue-900 mb-1">
+                💼 ตอบกลับจากผู้ว่าจ้าง
+              </p>
+              <p className="text-xs text-blue-800 whitespace-pre-line">
+                {r.employerReply.text}
+              </p>
+              <p className="text-[10px] text-blue-600 mt-1">
+                {r.employerReply.repliedAt && new Date(r.employerReply.repliedAt).toLocaleString()}
+              </p>
+            </div>
+          )}
+
+          {/* ✅ ปุ่มตอบกลับ (แสดงเฉพาะเจ้าของงาน และยังไม่มีการตอบกลับ) */}
+          {isJobOwner && !r.employerReply?.text && (
+            <div className="mt-2">
+              {replyingTo === r._id ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    rows={2}
+                    placeholder="เขียนข้อความตอบกลับ..."
+                    className="w-full border rounded-lg text-xs px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleReplySubmit(r._id)}
+                      disabled={submittingReply || !replyText.trim()}
+                      className="px-3 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {submittingReply ? "กำลังส่ง..." : "ส่งคำตอบ"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setReplyingTo(null);
+                        setReplyText("");
+                      }}
+                      className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300"
+                    >
+                      ยกเลิก
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setReplyingTo(r._id)}
+                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  💬 ตอบกลับรีวิวนี้
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ))}
 

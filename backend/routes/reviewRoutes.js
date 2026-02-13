@@ -173,4 +173,53 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/reviews/:reviewId/reply
+ * ผู้ว่าจ้างตอบกลับรีวิว
+ * body: { replyText }
+ */
+router.post("/:reviewId/reply", auth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) {
+      return res.status(401).json({ message: "ยังไม่ได้เข้าสู่ระบบ" });
+    }
+
+    const { reviewId } = req.params;
+    const { replyText } = req.body;
+
+    if (!replyText || !replyText.trim()) {
+      return res.status(400).json({ message: "กรุณากรอกข้อความตอบกลับ" });
+    }
+
+    const review = await Review.findById(reviewId).populate("job");
+    if (!review) {
+      return res.status(404).json({ message: "ไม่พบรีวิวนี้" });
+    }
+
+    // ตรวจสอบว่าเป็นเจ้าของงานหรือไม่
+    if (review.job.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "คุณไม่มีสิทธิ์ตอบกลับรีวิวนี้" });
+    }
+
+    // บันทึกการตอบกลับ
+    review.employerReply = {
+      text: replyText.trim(),
+      repliedAt: new Date(),
+      repliedBy: userId
+    };
+
+    await review.save();
+
+    const populated = await Review.findById(review._id)
+      .populate("user", "name")
+      .populate("employerReply.repliedBy", "name");
+
+    res.json(populated);
+  } catch (err) {
+    console.error("POST /reviews/:reviewId/reply error:", err);
+    res.status(500).json({ message: "ไม่สามารถตอบกลับรีวิวได้" });
+  }
+});
+
 export default router;

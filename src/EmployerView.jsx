@@ -996,7 +996,7 @@ function JobDetailModal({ open, job, onClose }) {
         <hr className="my-4" />
         <div className="text-sm">
           <p className="font-semibold mb-2">รีวิวจากผู้สมัคร / ผู้ที่เคยเข้าทำงาน</p>
-          <ReviewSection jobId={job._id} />
+          <ReviewSection jobId={job._id} isJobOwner={true} />
         </div>
       </div>
     </div>
