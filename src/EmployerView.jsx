@@ -335,14 +335,14 @@ export default function EmployerView({ user, onLogout }) {
               <span className="hidden sm:inline">ประวัติการชำระเงิน</span>
             </button>
 
-            {/* ✅ ปุ่มติดต่อแอดมิน */}
+            {/* ✅ ปุ่มหน้าแชท */}
             <button
               onClick={() => setAdminChatOpen(true)}
               className="relative bg-white/20 hover:bg-white/30 px-2 md:px-4 py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm"
-              title="ติดต่อแอดมิน"
+              title="หน้าแชท"
             >
               <MessageCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">ติดต่อแอดมิน</span>
+              <span className="hidden sm:inline">หน้าแชท</span>
               {adminUnread > 0 && (
                 <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] bg-red-500 text-white rounded-full px-1">
                   {adminUnread > 9 ? "9+" : adminUnread}
