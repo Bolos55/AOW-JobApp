@@ -199,9 +199,6 @@ export async function contactAdmin(arg) {
     throw new Error(data.message || "ไม่สามารถติดต่อแอดมินได้");
   }
 
-  if (!data.thread) {
-    throw new Error("ไม่พบข้อมูลห้องแชทแอดมินจากเซิร์ฟเวอร์");
-  }
-
-  return data.thread;
+  // Backend ส่งมาเป็น { thread: {...} }
+  return data;
 }

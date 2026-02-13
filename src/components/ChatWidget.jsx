@@ -85,7 +85,10 @@ export default function ChatWidget({ open, onClose, user, token, onUnreadChange 
     if (!token) return;
     setLoadingThreads(true);
     try {
+      console.log("🔵 Loading threads...");
       const data = await listMyThreads({ token });
+      console.log("✅ Threads loaded:", data);
+      
       const arr = Array.isArray(data) ? data : [];
       setThreads(arr);
 
@@ -94,7 +97,7 @@ export default function ChatWidget({ open, onClose, user, token, onUnreadChange 
         onUnreadChange(totalUnread);
       }
     } catch (e) {
-      console.error("loadThreads error:", e);
+      console.error("❌ loadThreads error:", e);
       setThreads([]);
       if (onUnreadChange) onUnreadChange(0);
     } finally {
@@ -194,12 +197,18 @@ export default function ChatWidget({ open, onClose, user, token, onUnreadChange 
     try {
       setLoadingContactAdmin(true);
 
+      console.log("🔵 Calling contactAdmin API...");
       const resp = await contactAdmin({ token });
+      console.log("✅ contactAdmin response:", resp);
+      
       const thread = resp?.thread || resp; // รองรับทั้ง {thread: {...}} หรือ {...}
 
       if (!thread?._id) {
+        console.error("❌ No thread._id in response:", resp);
         throw new Error("ไม่พบข้อมูลห้องแชทแอดมินจากเซิร์ฟเวอร์");
       }
+
+      console.log("✅ Got admin thread:", thread._id);
 
       setThreads((prev) => {
         const exists = prev.find((t) => t._id === thread._id);
@@ -212,7 +221,7 @@ export default function ChatWidget({ open, onClose, user, token, onUnreadChange 
       setSelectedThread(thread);
       await loadMessages(thread);
     } catch (e) {
-      console.error("handleContactAdmin error:", e);
+      console.error("❌ handleContactAdmin error:", e);
       alert(e?.message || "ไม่สามารถเปิดห้องแชทแอดมินได้");
     } finally {
       setLoadingContactAdmin(false);
