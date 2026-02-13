@@ -103,19 +103,10 @@ export default function ApplyJobModal({ open, onClose, job }) {
       return;
     }
 
-    // ✅ ตรวจสอบขนาดรูปภาพ (ควรมีความละเอียดพอสมควร)
-    const img = new Image();
-    img.onload = function() {
-      if (this.width < 800 || this.height < 500) {
-        setMsg("⚠️ รูปบัตรประชาชนควรมีความละเอียดอย่างน้อย 800x500 พิกเซล เพื่อให้แอดมินตรวจสอบได้ชัดเจน");
-        return;
-      }
-      
-      setIdCard(file);
-      setIdCardName(file.name);
-      setMsg("");
-    };
-    img.src = URL.createObjectURL(file);
+    // ✅ ไม่ตรวจสอบขนาดรูปภาพ - รับทุกขนาด
+    setIdCard(file);
+    setIdCardName(file.name);
+    setMsg("");
   };
 
   const onSubmit = async (e) => {
