@@ -18,7 +18,10 @@ export default function PaymentHistory({ open, onClose }) {
     try {
       console.log("🔍 Loading payments with filter:", filter);
       
-      const res = await fetch(`${API_BASE}/api/payments/my-payments?status=${filter === "all" ? "" : filter}`, {
+      // ✅ สำหรับ filter "failed" ให้โหลดทั้งหมดแล้ว filter ฝั่ง client
+      const apiFilter = filter === "failed" ? "" : (filter === "all" ? "" : filter);
+      
+      const res = await fetch(`${API_BASE}/api/payments/my-payments?status=${apiFilter}`, {
         headers: authHeader()
       });
 
@@ -48,7 +51,16 @@ export default function PaymentHistory({ open, onClose }) {
         throw new Error("ข้อมูลที่ได้รับไม่ถูกต้อง");
       }
       
-      setPayments(Array.isArray(data.payments) ? data.payments : []);
+      let allPayments = Array.isArray(data.payments) ? data.payments : [];
+      
+      // ✅ Filter ฝั่ง client สำหรับ "failed" (รวม failed, expired, cancelled)
+      if (filter === "failed") {
+        allPayments = allPayments.filter(p => 
+          p.status === "failed" || p.status === "expired" || p.status === "cancelled"
+        );
+      }
+      
+      setPayments(allPayments);
 
     } catch (err) {
       console.error("🔍 Payment loading error:", err);
@@ -81,7 +93,8 @@ export default function PaymentHistory({ open, onClose }) {
       pending: { label: "รอชำระเงิน", color: "yellow", icon: Clock },
       paid: { label: "ชำระแล้ว", color: "green", icon: CheckCircle },
       failed: { label: "ชำระไม่สำเร็จ", color: "red", icon: XCircle },
-      expired: { label: "หมดเวลา", color: "gray", icon: XCircle }
+      expired: { label: "หมดเวลา", color: "gray", icon: XCircle },
+      cancelled: { label: "ยกเลิกแล้ว", color: "red", icon: XCircle }
     };
     return statusMap[status] || statusMap.pending;
   };
@@ -275,7 +288,8 @@ function PaymentDetailModal({ payment, onClose }) {
     pending: { label: "รอชำระเงิน", color: "yellow", icon: Clock },
     paid: { label: "ชำระแล้ว", color: "green", icon: CheckCircle },
     failed: { label: "ชำระไม่สำเร็จ", color: "red", icon: XCircle },
-    expired: { label: "หมดเวลา", color: "gray", icon: XCircle }
+    expired: { label: "หมดเวลา", color: "gray", icon: XCircle },
+    cancelled: { label: "ยกเลิกแล้ว", color: "red", icon: XCircle }
   }[payment.status];
 
   const StatusIcon = statusInfo.icon;
