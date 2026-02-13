@@ -435,3 +435,178 @@ router.get("/my-payments", authMiddleware, async (req, res) => {
 // Use secure implementations from paymentUtils.js instead
 
 export default router;
+
+/**
+ * GET /api/payments/admin/all-payments
+ * แอดมินดูรายการชำระเงินทั้งหมด
+ */
+router.get("/admin/all-payments", authMiddleware, async (req, res) => {
+  try {
+    console.log("🔍 GET /api/payments/admin/all-payments - Start");
+    
+    const userId = getUserId(req);
+    const user = await import("../models/User.js").then(m => m.default.findById(userId));
+    
+    // ตรวจสอบว่าเป็น admin
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ message: "ไม่มีสิทธิ์เข้าถึง - เฉพาะแอดมินเท่านั้น" });
+    }
+    
+    const { page = 1, limit = 20, status, search } = req.query;
+    console.log("🔍 Query params:", { page, limit, status, search });
+
+    const filter = {};
+    if (status && status !== "all") {
+      // ถ้าเป็น failed ให้รวม failed, expired, cancelled
+      if (status === "failed") {
+        filter.status = { $in: ["failed", "expired", "cancelled"] };
+      } else {
+        filter.status = status;
+      }
+    }
+    
+    // ค้นหาจาก paymentId หรือ jobId
+    if (search) {
+      filter.$or = [
+        { paymentId: { $regex: search, $options: "i" } }
+      ];
+    }
+    
+    console.log("🔍 Filter:", filter);
+
+    const payments = await Payment.find(filter)
+      .populate('jobId', 'title company jobCode')
+      .populate('employerId', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    console.log("🔍 Found payments:", payments.length);
+
+    const total = await Payment.countDocuments(filter);
+    console.log("🔍 Total payments:", total);
+
+    // สถิติ
+    const stats = {
+      total: await Payment.countDocuments(),
+      pending: await Payment.countDocuments({ status: "pending" }),
+      paid: await Payment.countDocuments({ status: "paid" }),
+      failed: await Payment.countDocuments({ status: { $in: ["failed", "expired", "cancelled"] } }),
+      totalRevenue: await Payment.aggregate([
+        { $match: { status: "paid" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } }
+      ]).then(result => result[0]?.total || 0)
+    };
+
+    const response = {
+      payments: payments.map(p => ({
+        _id: p._id,
+        paymentId: p.paymentId,
+        amount: p.amount,
+        status: p.status,
+        paymentMethod: p.paymentMethod,
+        packageType: p.packageType,
+        boostFeatures: p.boostFeatures,
+        paidAt: p.paidAt,
+        createdAt: p.createdAt,
+        expiresAt: p.expiresAt,
+        job: p.jobId ? {
+          id: p.jobId._id,
+          title: p.jobId.title,
+          company: p.jobId.company,
+          jobCode: p.jobId.jobCode
+        } : null,
+        employer: p.employerId ? {
+          id: p.employerId._id,
+          name: p.employerId.name,
+          email: p.employerId.email
+        } : null
+      })),
+      stats,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    };
+
+    console.log("🔍 Response stats:", stats);
+    res.json(response);
+
+  } catch (err) {
+    console.error("❌ Get all payments error:", err);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงรายการชำระเงิน" });
+  }
+});
+
+/**
+ * PATCH /api/payments/admin/:paymentId/status
+ * แอดมินอัปเดตสถานะการชำระเงิน
+ */
+router.patch("/admin/:paymentId/status", authMiddleware, auditLogMiddleware("PAYMENT_STATUS_UPDATE", "PAYMENT"), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const user = await import("../models/User.js").then(m => m.default.findById(userId));
+    
+    // ตรวจสอบว่าเป็น admin
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ message: "ไม่มีสิทธิ์เข้าถึง - เฉพาะแอดมินเท่านั้น" });
+    }
+    
+    const { paymentId } = req.params;
+    const { status, note } = req.body;
+    
+    if (!["pending", "paid", "failed", "expired", "cancelled"].includes(status)) {
+      return res.status(400).json({ message: "สถานะไม่ถูกต้อง" });
+    }
+    
+    const payment = await Payment.findOne({ paymentId });
+    if (!payment) {
+      return res.status(404).json({ message: "ไม่พบรายการชำระเงิน" });
+    }
+    
+    const oldStatus = payment.status;
+    payment.status = status;
+    
+    if (status === "paid" && !payment.paidAt) {
+      payment.paidAt = new Date();
+      
+      // อัปเดตงานให้เป็น paid
+      if (payment.jobId) {
+        await Job.findByIdAndUpdate(payment.jobId, {
+          isPaid: true,
+          packageType: payment.packageType,
+          boostFeatures: payment.boostFeatures
+        });
+      }
+    }
+    
+    // เพิ่ม note ถ้ามี
+    if (note) {
+      if (!payment.adminNotes) payment.adminNotes = [];
+      payment.adminNotes.push({
+        note,
+        by: userId,
+        at: new Date()
+      });
+    }
+    
+    await payment.save();
+    
+    console.log(`✅ Admin updated payment ${paymentId} from ${oldStatus} to ${status}`);
+    
+    res.json({
+      message: "อัปเดตสถานะสำเร็จ",
+      payment: {
+        paymentId: payment.paymentId,
+        status: payment.status,
+        paidAt: payment.paidAt
+      }
+    });
+    
+  } catch (err) {
+    console.error("❌ Update payment status error:", err);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปเดตสถานะ" });
+  }
+});

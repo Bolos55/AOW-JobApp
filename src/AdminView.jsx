@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Mail,
   ChevronUp,
+  CreditCard,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE, authHeader } from "./api";
@@ -26,6 +27,7 @@ import { getPhotoUrl } from "./utils/imageUtils";
 import ChatWidget from "./components/ChatWidget";
 import ChatDockButton from "./components/ChatDockButton";
 import OnlineStatusWidget from "./components/OnlineStatusWidget";
+import AdminPaymentManagement from "./components/AdminPaymentManagement";
 
 // ✅ Static menu items (ย้ายออกนอก component เพื่อป้องกัน re-render)
 const MENU_ITEMS = [
@@ -58,6 +60,12 @@ const MENU_ITEMS = [
     title: "ใบสมัครงาน",
     icon: FileText,
     description: "ใบสมัครและการยืนยันบัตร ปชช."
+  },
+  {
+    id: "payments",
+    title: "รายการชำระเงิน",
+    icon: CreditCard,
+    description: "จัดการรายการชำระเงินทั้งหมด"
   },
   {
     id: "email-validation",
@@ -1376,6 +1384,14 @@ export default function AdminView({ user, onLogout }) {
           </div>
         </div>
       </div>
+      
+      {/* ✅ Payment Management Section */}
+      <div id="payments">
+        <div className="p-6">
+          <AdminPaymentManagement />
+        </div>
+      </div>
+      
       {/* ✅ Email Validation Management Section */}
       <div id="email-validation">
         <div className="p-6">
