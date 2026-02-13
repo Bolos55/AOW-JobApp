@@ -434,6 +434,51 @@ router.get("/my-payments", authMiddleware, async (req, res) => {
 // ✅ REMOVED INSECURE HELPER FUNCTIONS
 // Use secure implementations from paymentUtils.js instead
 
+/**
+ * DELETE /api/payments/admin/:paymentId
+ * แอดมินลบรายการชำระเงินที่ไม่สำเร็จ
+ */
+router.delete("/admin/:paymentId", authMiddleware, auditLogMiddleware("PAYMENT_DELETE", "PAYMENT"), async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const user = await import("../models/User.js").then(m => m.default.findById(userId));
+    
+    // ตรวจสอบว่าเป็น admin
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ message: "ไม่มีสิทธิ์เข้าถึง - เฉพาะแอดมินเท่านั้น" });
+    }
+    
+    const { paymentId } = req.params;
+    
+    const payment = await Payment.findOne({ paymentId });
+    if (!payment) {
+      return res.status(404).json({ message: "ไม่พบรายการชำระเงิน" });
+    }
+    
+    // ตรวจสอบว่าสามารถลบได้หรือไม่ (เฉพาะรายการที่ไม่สำเร็จ)
+    if (!["failed", "expired", "cancelled", "pending"].includes(payment.status)) {
+      return res.status(400).json({ 
+        message: "ไม่สามารถลบรายการที่ชำระแล้วได้",
+        status: payment.status
+      });
+    }
+    
+    // ลบรายการ
+    await Payment.deleteOne({ paymentId });
+    
+    console.log(`🗑️ Admin deleted payment ${paymentId} (status: ${payment.status})`);
+    
+    res.json({
+      message: "ลบรายการชำระเงินสำเร็จ",
+      paymentId
+    });
+    
+  } catch (err) {
+    console.error("❌ Delete payment error:", err);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการลบรายการ" });
+  }
+});
+
 export default router;
 
 /**

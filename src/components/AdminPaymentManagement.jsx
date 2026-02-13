@@ -1,6 +1,6 @@
 // src/components/AdminPaymentManagement.jsx
 import { useState, useEffect } from "react";
-import { CreditCard, Clock, CheckCircle, XCircle, Search, RefreshCw, Eye, Edit } from "lucide-react";
+import { CreditCard, Clock, CheckCircle, XCircle, Search, RefreshCw, Eye, Edit, Trash2 } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
 
 export default function AdminPaymentManagement() {
@@ -73,6 +73,40 @@ export default function AdminPaymentManagement() {
       alert("❌ " + err.message);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  // Delete payment (only failed/expired/cancelled)
+  const deletePayment = async (paymentId, status) => {
+    // ตรวจสอบว่าเป็นรายการที่ลบได้หรือไม่
+    if (!["failed", "expired", "cancelled", "pending"].includes(status)) {
+      alert("❌ ไม่สามารถลบรายการที่ชำระแล้วได้");
+      return;
+    }
+
+    if (!window.confirm(`ยืนยันการลบรายการชำระเงิน ${paymentId}?\n\nการลบจะไม่สามารถกู้คืนได้`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/payments/admin/${paymentId}`,
+        {
+          method: "DELETE",
+          headers: authHeader()
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "ลบรายการไม่สำเร็จ");
+      }
+
+      alert("✅ ลบรายการสำเร็จ");
+      loadPayments();
+    } catch (err) {
+      console.error("Delete payment error:", err);
+      alert("❌ " + err.message);
     }
   };
 
@@ -268,6 +302,15 @@ export default function AdminPaymentManagement() {
                           >
                             <Edit className="w-4 h-4" />
                           </button>
+                          {["failed", "expired", "cancelled", "pending"].includes(payment.status) && (
+                            <button
+                              onClick={() => deletePayment(payment.paymentId, payment.status)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                              title="ลบรายการ"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
