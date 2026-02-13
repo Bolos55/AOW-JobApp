@@ -144,8 +144,8 @@ export default function JobSeekerView({ user, onLogout }) {
   const CATEGORIES = [
     { id: "all", name: "ทั้งหมด", icon: "⭐" },
     { id: "it", name: "IT & Tech", icon: "💻" },
-    { id: "mkt", name: "การตลาด", icon: "📊" },
-    { id: "acc", name: "บัญชี", icon: "💰" },
+    { id: "sale", name: "งานขาย", icon: "📊" },
+    { id: "service", name: "บริการ", icon: "🤝" },
     { id: "pt", name: "พาร์ทไทม์", icon: "⏰" },
     { id: "remote", name: "รีโมต", icon: "🏠" },
     { id: "other", name: "อื่นๆ", icon: "📂" },

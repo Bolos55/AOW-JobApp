@@ -5,44 +5,28 @@ import { API_BASE, authHeader } from "../api";
 
 // ✅ หมวดหมู่งาน (Job Categories)
 const CATEGORIES = [
-  { id: "it", name: "IT & Tech" },
-  { id: "mkt", name: "การตลาด" },
-  { id: "acc", name: "บัญชี" },
-  { id: "pt", name: "พาร์ทไทม์ (ทั่วไป)" },
-  { id: "remote", name: "รีโมต (ทั่วไป)" },
-
-  { id: "law", name: "งานกฎหมาย" },
-  { id: "arch", name: "งานสถาปัตย์/เขียนแบบ" },
-  { id: "fin", name: "งานการเงิน/ธนาคาร" },
+  { id: "it", name: "IT & เทคโนโลยี" },
   { id: "sale", name: "งานขาย/เซลส์" },
-  { id: "cs", name: "งานบริการลูกค้า/คอลเซ็นเตอร์" },
-  { id: "hr", name: "งานทรัพยากรบุคคล (HR)" },
-  { id: "admin", name: "งานธุรการ/ประสานงาน/เลขา" },
-  { id: "logistic", name: "งานขนส่ง/โลจิสติกส์/คลังสินค้า" },
-  { id: "driver", name: "งานขับรถ" },
-
-  { id: "design", name: "งานออกแบบ/กราฟิก/สื่อสร้างสรรค์" },
-  { id: "content", name: "งานคอนเทนต์/โซเชียลมีเดีย" },
-  { id: "media", name: "งานสื่อ/โฆษณา/ประชาสัมพันธ์" },
-
-  { id: "eng", name: "งานวิศวกรรม/ช่างเทคนิค" },
-  { id: "factory", name: "งานผลิต/ควบคุมคุณภาพ/โรงงาน" },
-
-  { id: "health", name: "งานการแพทย์/พยาบาล/เภสัช" },
-  { id: "beauty", name: "งานความงาม/สปา/ฟิตเนส" },
-
-  { id: "hotel", name: "งานโรงแรม/ท่องเที่ยว/ร้านอาหาร" },
-  { id: "service", name: "งานบริการทั่วไป" },
-
-  { id: "teacher", name: "งานสอน/ติวเตอร์/การศึกษา" },
-  { id: "research", name: "งานวิจัย/วิเคราะห์ข้อมูล" },
-
-  { id: "house", name: "งานแม่บ้าน/ทำความสะอาด/ซักรีด" },
-  { id: "security", name: "งานรักษาความปลอดภัย" },
-
-  { id: "agri", name: "งานเกษตร/ปศุสัตว์/ประมง" },
-  { id: "pet", name: "งานดูแลสัตว์เลี้ยง" },
-
+  { id: "mkt", name: "การตลาด/โฆษณา" },
+  { id: "service", name: "บริการ/ต้อนรับ" },
+  { id: "admin", name: "ธุรการ/เลขา" },
+  { id: "acc", name: "บัญชี/การเงิน" },
+  { id: "hr", name: "HR/ทรัพยากรบุคคล" },
+  { id: "design", name: "ออกแบบ/กราฟิก" },
+  { id: "content", name: "คอนเทนต์/โซเชียล" },
+  { id: "eng", name: "วิศวกร/ช่างเทคนิค" },
+  { id: "factory", name: "โรงงาน/ผลิต" },
+  { id: "logistic", name: "ขนส่ง/โลจิสติกส์" },
+  { id: "driver", name: "พนักงานขับรถ" },
+  { id: "health", name: "สุขภาพ/แพทย์" },
+  { id: "beauty", name: "ความงาม/สปา" },
+  { id: "hotel", name: "โรงแรม/ท่องเที่ยว" },
+  { id: "food", name: "ร้านอาหาร/เชฟ" },
+  { id: "teacher", name: "ครู/ติวเตอร์" },
+  { id: "house", name: "แม่บ้าน/ทำความสะอาด" },
+  { id: "security", name: "รักษาความปลอดภัย" },
+  { id: "pt", name: "พาร์ทไทม์" },
+  { id: "remote", name: "ทำงานจากบ้าน" },
   { id: "other", name: "อื่นๆ" },
 ];
 
