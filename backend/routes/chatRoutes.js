@@ -71,6 +71,20 @@ router.post("/start", auth, async (req, res) => {
         .json({ message: "งานนี้ไม่มีข้อมูลผู้ประกาศ (createdBy)" });
     }
 
+    // ✅ เช็ค trial period หรือชำระเงินแล้ว
+    const now = new Date();
+    const isInTrial = job.trialEndsAt && now < new Date(job.trialEndsAt);
+    const hasPaid = job.isPaid;
+    
+    if (!isInTrial && !hasPaid) {
+      return res.status(403).json({ 
+        message: "ระยะทดลองใช้ฟรี 24 ชม. หมดแล้ว กรุณาชำระค่าบริการเพื่อแชทต่อ",
+        trialExpired: true,
+        trialEndsAt: job.trialEndsAt,
+        requiresPayment: true
+      });
+    }
+
     const employerId = job.createdBy.toString();
     const workerId = participantIdFinal.toString();
 
@@ -94,12 +108,21 @@ router.post("/start", auth, async (req, res) => {
     }
 
     thread = await ChatThread.populate(thread, [
-      { path: "job", select: "title company jobCode" },
+      { path: "job", select: "title company jobCode isPaid trialEndsAt" },
       { path: "employer", select: "name email role" },
       { path: "worker", select: "name email role" },
     ]);
 
-    return res.json(thread);
+    // ✅ เพิ่มข้อมูล trial status
+    const response = thread.toObject();
+    response.trialInfo = {
+      isInTrial,
+      hasPaid,
+      trialEndsAt: job.trialEndsAt,
+      timeRemaining: isInTrial ? new Date(job.trialEndsAt) - now : 0
+    };
+
+    return res.json(response);
   } catch (err) {
     console.error("ensure thread error:", err);
     return res.status(500).json({

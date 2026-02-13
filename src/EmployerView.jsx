@@ -1293,7 +1293,21 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
 
       console.error("Initialize chat error:", err);
 
-      alert("ไม่สามารถเริ่มการแชทได้: " + err.message);
+      
+
+      // ✅ เช็คว่าเป็น trial expired หรือไม่
+
+      if (err.message && err.message.includes("ระยะทดลอง")) {
+
+        // แสดง error แต่ไม่ปิด modal เพื่อให้เห็นปุ่มชำระเงิน
+
+        setThread({ trialExpired: true });
+
+      } else {
+
+        alert("ไม่สามารถเริ่มการแชทได้: " + err.message);
+
+      }
 
     } finally {
 
@@ -1413,6 +1427,72 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
 
+          {/* ✅ Trial Expired Warning */}
+
+          {thread?.trialExpired && (
+
+            <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 text-center">
+
+              <Lock className="w-12 h-12 text-orange-500 mx-auto mb-2" />
+
+              <h4 className="font-bold text-orange-900 mb-1">ระยะทดลองใช้ฟรี 24 ชม. หมดแล้ว</h4>
+
+              <p className="text-sm text-orange-700 mb-3">
+
+                กรุณาชำระค่าบริการเพื่อแชทต่อกับผู้สมัคร
+
+              </p>
+
+              <button
+
+                onClick={() => {
+
+                  // เปิด ServiceFeeModal
+
+                  onClose();
+
+                  // TODO: เปิด payment modal
+
+                }}
+
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium"
+
+              >
+
+                ชำระค่าบริการตอนนี้
+
+              </button>
+
+            </div>
+
+          )}
+
+          
+
+          {/* ✅ Trial Warning (เหลือเวลาน้อยกว่า 6 ชม.) */}
+
+          {thread?.trialInfo && thread.trialInfo.isInTrial && thread.trialInfo.timeRemaining < 6 * 60 * 60 * 1000 && (
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
+
+              <p className="text-xs text-yellow-800">
+
+                ⚠️ ระยะทดลองใช้ฟรีจะหมดในอีก {Math.floor(thread.trialInfo.timeRemaining / (60 * 60 * 1000))} ชม.
+
+              </p>
+
+              <p className="text-xs text-yellow-700 mt-1">
+
+                ชำระค่าบริการเพื่อแชทต่อได้ไม่จำกัด
+
+              </p>
+
+            </div>
+
+          )}
+
+
+
           {loading ? (
 
             <div className="text-center py-8">
@@ -1423,7 +1503,7 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
 
             </div>
 
-          ) : messages.length === 0 ? (
+          ) : messages.length === 0 && !thread?.trialExpired ? (
 
             <div className="text-center py-8">
 
@@ -1487,43 +1567,47 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
 
         {/* Input */}
 
-        <form onSubmit={handleSendMessage} className="p-4 border-t">
+        {!thread?.trialExpired && (
 
-          <div className="flex gap-2">
+          <form onSubmit={handleSendMessage} className="p-4 border-t">
 
-            <input
+            <div className="flex gap-2">
 
-              type="text"
+              <input
 
-              value={newMessage}
+                type="text"
 
-              onChange={(e) => setNewMessage(e.target.value)}
+                value={newMessage}
 
-              placeholder="พิมพ์ข้อความ..."
+                onChange={(e) => setNewMessage(e.target.value)}
 
-              className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="พิมพ์ข้อความ..."
 
-              disabled={sending || loading}
+                className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
 
-            />
+                disabled={sending || loading}
 
-            <button
+              />
 
-              type="submit"
+              <button
 
-              disabled={!newMessage.trim() || sending || loading}
+                type="submit"
 
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!newMessage.trim() || sending || loading}
 
-            >
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
 
-              {sending ? "..." : "ส่ง"}
+              >
+
+                {sending ? "..." : "ส่ง"}
 
             </button>
 
           </div>
 
         </form>
+
+        )}
 
       </div>
 
