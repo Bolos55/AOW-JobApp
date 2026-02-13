@@ -48,6 +48,9 @@ export default function EmployerView({ user, onLogout }) {
 
   // ✅ แชทติดต่อแอดมิน (ใช้ ChatWidget เหมือน JobSeeker)
   const [adminChatOpen, setAdminChatOpen] = useState(false);
+
+  // ✅ State สำหรับ modal คำอธิบายการชำระเงิน
+  const [showPaymentInfo, setShowPaymentInfo] = useState(false);
   const [adminUnread, setAdminUnread] = useState(0);
 
   // ✅ Service Fee Modal state
@@ -145,6 +148,10 @@ export default function EmployerView({ user, onLogout }) {
   const handleJobCreated = () => {
     setOpenAddJob(false);
     loadDashboard();
+    // ✅ เปิด modal ข้อมูลการโพสต์งานทันที
+    setTimeout(() => {
+      setShowPaymentInfo(true);
+    }, 300); // รอให้ modal เพิ่มงานปิดก่อน
   };
 
   // คำนวณสถิติจาก applications
@@ -447,10 +454,36 @@ export default function EmployerView({ user, onLogout }) {
         {/* งานของฉัน */}
         <div>
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-purple-600" />
-              งานที่ฉันโพสต์
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-purple-600" />
+                งานที่ฉันโพสต์
+              </h2>
+              {/* ปุ่ม info */}
+              <button
+                onClick={() => setShowPaymentInfo(true)}
+                className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 transition animate-pulse hover:animate-none"
+                title="ข้อมูลเกี่ยวกับการโพสต์งาน"
+                style={{
+                  animation: 'heartbeat 1.5s ease-in-out infinite'
+                }}
+              >
+                <span className="text-sm font-bold">i</span>
+              </button>
+              <style>{`
+                @keyframes heartbeat {
+                  0%, 100% {
+                    transform: scale(1);
+                  }
+                  10%, 30% {
+                    transform: scale(1.1);
+                  }
+                  20%, 40% {
+                    transform: scale(1);
+                  }
+                }
+              `}</style>
+            </div>
             <p className="text-xs text-gray-500">
               เคล็ดลับ: คลิก "ดูผู้สมัครงานนี้" เพื่อ filter ด้านล่าง
             </p>
@@ -477,15 +510,15 @@ export default function EmployerView({ user, onLogout }) {
                               ปิดรับสมัครแล้ว
                             </span>
                           )}
-                          {/* ✅ Payment Status */}
-                          {!job.isPaid && !isClosed && (
-                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 border border-yellow-200">
-                              💰 รอชำระเงิน
+                          {/* ✅ Boost Status - แสดงเฉพาะถ้าจ่ายเงินเพื่อ boost */}
+                          {!isClosed && job.isPaid && job.boostFeatures && job.boostFeatures.length > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-yellow-100 to-orange-100 text-orange-700 border border-orange-200">
+                              ⭐ โดดเด่น
                             </span>
                           )}
-                          {job.isPaid && (
-                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
-                              ✅ ชำระแล้ว
+                          {!isClosed && (!job.isPaid || !job.boostFeatures || job.boostFeatures.length === 0) && (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                              📢 ปกติ
                             </span>
                           )}
                         </div>
@@ -762,6 +795,102 @@ export default function EmployerView({ user, onLogout }) {
         token={token}
         onUnreadChange={setAdminUnread}
       />
+
+      {/* ✅ Modal ข้อมูลการโพสต์งาน */}
+      {showPaymentInfo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative">
+            <button
+              onClick={() => setShowPaymentInfo(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h2 className="text-xl font-bold text-gray-800 mb-4">
+              📢 ข้อมูลการโพสต์งาน
+            </h2>
+
+            <div className="space-y-4 text-sm">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-2">✅ โพสต์งานฟรี!</h3>
+                <p className="text-blue-800">
+                  คุณสามารถโพสต์งานได้ฟรีโดยไม่ต้องชำระเงิน งานของคุณจะแสดงในระบบทันที
+                  และผู้สมัครงานสามารถเห็นและสมัครได้เลย
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-orange-200 rounded-lg p-4">
+                <h3 className="font-semibold text-orange-900 mb-2">⭐ ต้องการให้งานโดดเด่น?</h3>
+                <p className="text-orange-800 mb-3">
+                  หากต้องการให้งานของคุณโดดเด่นกว่างานอื่นๆ สามารถเติมเงินเพื่อใช้ฟีเจอร์พิเศษ:
+                </p>
+                <ul className="space-y-2 text-orange-800">
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-500">•</span>
+                    <span><strong>Featured:</strong> แสดงงานของคุณในตำแหน่งบนสุด</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-500">•</span>
+                    <span><strong>Highlighted:</strong> ไฮไลท์งานด้วยสีพิเศษ</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-500">•</span>
+                    <span><strong>Urgent:</strong> แสดงป้าย "รับด่วน"</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-orange-500">•</span>
+                    <span><strong>Extended:</strong> ขยายระยะเวลาแสดงงาน</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 mb-2">💡 สถานะงาน</h3>
+                <div className="space-y-2 text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                      📢 ปกติ
+                    </span>
+                    <span>= งานฟรี แสดงตามปกติ</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-yellow-100 to-orange-100 text-orange-700 border border-orange-200">
+                      ⭐ โดดเด่น
+                    </span>
+                    <span>= จ่ายเงินเพื่อ boost แล้ว</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center pt-2">
+                <p className="text-xs text-gray-500 mb-3">
+                  ต้องการเติมเงินเพื่อ boost งาน?
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={() => {
+                      setShowPaymentInfo(false);
+                    }}
+                    className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition"
+                  >
+                    ข้ามไปก่อน
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowPaymentInfo(false);
+                      // TODO: เปิด modal เติมเงิน/boost
+                    }}
+                    className="px-6 py-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg font-medium hover:shadow-lg transition"
+                  >
+                    เติมเงินเพื่อ Boost งาน
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ✅ Service Fee Modal */}
       <ServiceFeeModal

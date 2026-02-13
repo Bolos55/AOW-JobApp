@@ -117,6 +117,8 @@ router.post("/", auth, async (req, res) => {
       category: finalCategory,
       jobCode: genJobCode(), // ⭐ สำคัญ: เติม jobCode ที่ schema require
       createdBy: userId, // เจ้าของโพสต์งาน
+      isActive: true, // ✅ โพสต์งานฟรี - active ทันที
+      isPaid: false, // ยังไม่ได้จ่ายเงิน (สำหรับ boost features)
       description,
       skills: Array.isArray(skills) ? skills : [],
       workMode,
