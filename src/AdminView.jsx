@@ -820,7 +820,7 @@ export default function AdminView({ user, onLogout }) {
               <BarChart3 className="w-6 h-6 text-blue-600" />
               Dashboard & สถิติ
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="bg-white p-4 rounded-lg border">
                 <Users className="w-8 h-8 text-blue-600 mb-2" />
                 <p className="text-2xl font-bold">{stats.totalUsers}</p>
@@ -844,6 +844,20 @@ export default function AdminView({ user, onLogout }) {
                 <BarChart3 className="w-8 h-8 text-orange-600 mb-2" />
                 <p className="text-2xl font-bold">{stats.activeJobs}</p>
                 <p className="text-sm text-gray-600">งานที่เปิดอยู่</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border-2 border-purple-200">
+                <div className="flex items-center justify-between mb-2">
+                  <CreditCard className="w-8 h-8 text-purple-600" />
+                  <a
+                    href="#payments"
+                    className="text-xs text-purple-600 hover:text-purple-800 hover:underline"
+                  >
+                    ดูทั้งหมด →
+                  </a>
+                </div>
+                <p className="text-2xl font-bold text-purple-700">💰</p>
+                <p className="text-sm text-purple-600 font-medium">รายการชำระเงิน</p>
+                <p className="text-xs text-purple-500 mt-1">คลิกเพื่อจัดการ</p>
               </div>
             </div>
           </div>
@@ -1386,8 +1400,23 @@ export default function AdminView({ user, onLogout }) {
       </div>
       
       {/* ✅ Payment Management Section */}
-      <div id="payments">
+      <div id="payments" className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200 shadow-lg">
         <div className="p-6">
+          <div className="mb-6 pb-4 border-b-2 border-purple-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-purple-900 flex items-center gap-3">
+                  <div className="bg-purple-600 p-2 rounded-lg">
+                    <CreditCard className="w-6 h-6 text-white" />
+                  </div>
+                  💰 จัดการรายการชำระเงิน
+                </h2>
+                <p className="text-sm text-purple-600 mt-2">
+                  ตรวจสอบและอนุมัติรายการชำระเงินจากนายจ้าง - ระบบจะรอแอดมินอนุมัติภายใน 5-10 นาที
+                </p>
+              </div>
+            </div>
+          </div>
           <AdminPaymentManagement />
         </div>
       </div>
