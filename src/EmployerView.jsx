@@ -297,15 +297,22 @@ export default function EmployerView({ user, onLogout }) {
       }
 
       const updated = await res.json().catch(() => null);
+      console.log("✅ Close job response:", updated);
+      
       if (!updated || !mountedRef.current) return;
 
+      // ✅ อัปเดต state ให้แน่ใจว่า isCompleted = true
+      const updatedJob = { ...job, ...updated, isCompleted: true };
+      
       setMyJobs((prev) =>
-        prev.map((j) => (j._id === job._id ? { ...j, ...updated } : j))
+        prev.map((j) => (j._id === job._id ? updatedJob : j))
       );
 
       setSelectedJob((prev) =>
-        prev && prev._id === job._id ? { ...prev, ...updated } : prev
+        prev && prev._id === job._id ? updatedJob : prev
       );
+      
+      alert("ปิดงานเรียบร้อยแล้ว");
     } catch (err) {
       console.error("closeJob error:", err);
       if (mountedRef.current) {
