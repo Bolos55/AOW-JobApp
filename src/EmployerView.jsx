@@ -317,31 +317,34 @@ export default function EmployerView({ user, onLogout }) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6">
-        <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 md:p-6">
+        <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold">🏢 สวัสดี, {user?.name || "นายจ้าง"}</h1>
-            <p className="text-sm opacity-90">นายจ้าง - จัดการงานและผู้สมัคร</p>
+            <h1 className="text-xl md:text-2xl font-bold">🏢 สวัสดี, {user?.name || "นายจ้าง"}</h1>
+            <p className="text-xs md:text-sm opacity-90">นายจ้าง - จัดการงานและผู้สมัคร</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2 flex-wrap">
             {/* ✅ ปุ่มประวัติการชำระเงิน */}
             <button
               onClick={() => setPaymentHistoryOpen(true)}
-              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+              className="bg-white/20 hover:bg-white/30 px-2 md:px-4 py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm"
+              title="ประวัติการชำระเงิน"
             >
-              💳 ประวัติการชำระเงิน
+              <span className="text-base md:text-lg">💳</span>
+              <span className="hidden sm:inline">ประวัติการชำระเงิน</span>
             </button>
 
             {/* ✅ ปุ่มติดต่อแอดมิน */}
             <button
               onClick={() => setAdminChatOpen(true)}
-              className="relative bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+              className="relative bg-white/20 hover:bg-white/30 px-2 md:px-4 py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm"
+              title="ติดต่อแอดมิน"
             >
               <MessageCircle className="w-4 h-4" />
-              ติดต่อแอดมิน
+              <span className="hidden sm:inline">ติดต่อแอดมิน</span>
               {adminUnread > 0 && (
-                <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 text-xs bg-red-500 text-white rounded-full px-1">
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] bg-red-500 text-white rounded-full px-1">
                   {adminUnread > 9 ? "9+" : adminUnread}
                 </span>
               )}
@@ -350,19 +353,21 @@ export default function EmployerView({ user, onLogout }) {
             {/* ปุ่ม Refresh */}
             <button
               onClick={loadDashboard}
-              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+              className="bg-white/20 hover:bg-white/30 px-2 md:px-4 py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm"
               disabled={loading}
+              title="รีโหลดข้อมูล"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              รีโหลดข้อมูล
+              <span className="hidden sm:inline">รีโหลดข้อมูล</span>
             </button>
 
             <button
               onClick={onLogout}
-              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+              className="bg-white/20 hover:bg-white/30 px-2 md:px-4 py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm"
+              title="ออกจากระบบ"
             >
               <UserIcon className="w-4 h-4" />
-              ออกจากระบบ
+              <span className="hidden sm:inline">ออกจากระบบ</span>
             </button>
           </div>
         </div>
@@ -370,9 +375,9 @@ export default function EmployerView({ user, onLogout }) {
         {/* ปุ่มเปิด AddJobModal */}
         <button
           onClick={() => setOpenAddJob(true)}
-          className="bg-white text-purple-600 px-6 py-3 rounded-lg font-medium flex items-center gap-2 hover:bg-purple-50"
+          className="bg-white text-purple-600 px-4 md:px-6 py-2 md:py-3 rounded-lg font-medium flex items-center gap-2 hover:bg-purple-50 text-sm md:text-base w-full sm:w-auto justify-center"
         >
-          <Plus className="w-5 h-5" /> ประกาศงานใหม่
+          <Plus className="w-4 h-4 md:w-5 md:h-5" /> ประกาศงานใหม่
         </button>
 
         {/* แถบแจ้งสถานะโหลด / error */}
@@ -721,7 +726,7 @@ export default function EmployerView({ user, onLogout }) {
                         </button>
 
                         <button
-                          className="mt-1 inline-flex items-center gap-1 text-xs text-purple-600 hover:underline"
+                          className="mt-4 inline-flex items-center gap-1 text-xs text-purple-600 hover:underline"
                           onClick={() => {
                             setChatTarget(app);
                             setOpenChat(true);

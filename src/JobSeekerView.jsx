@@ -397,22 +397,23 @@ export default function JobSeekerView({ user, onLogout }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white pb-24">
       {/* top bar */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-b-3xl shadow-lg">
-        <div className="flex justify-between items-center mb-6">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 md:p-6 rounded-b-3xl shadow-lg">
+        <div className="flex justify-between items-center mb-4 md:mb-6 gap-2">
           <div>
-            <h1 className="text-2xl font-bold">สวัสดี, {userName} 👋</h1>
-            <p className="text-blue-100 text-sm mt-1">
+            <h1 className="text-xl md:text-2xl font-bold">สวัสดี, {userName} 👋</h1>
+            <p className="text-blue-100 text-xs md:text-sm mt-1">
               มาหางานที่ใช่สำหรับคุณกันเถอะ
             </p>
           </div>
 
           {/* ปุ่มโปรไฟล์ + กล่องแชท + ออกจากระบบ */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 md:gap-3">
             <button
               onClick={() => setProfileOpen(true)}
-              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-4 py-2 rounded-xl shadow-md transition"
+              className="flex items-center gap-1 md:gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-2 md:px-4 py-2 rounded-xl shadow-md transition text-xs md:text-sm"
+              title="โปรไฟล์ของฉัน"
             >
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+              <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -420,20 +421,21 @@ export default function JobSeekerView({ user, onLogout }) {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <UserIcon className="w-4 h-4" />
+                  <UserIcon className="w-3 h-3 md:w-4 md:h-4" />
                 )}
               </div>
-              <span>โปรไฟล์ของฉัน</span>
+              <span className="hidden sm:inline">โปรไฟล์ของฉัน</span>
             </button>
 
             <button
               onClick={() => setChatOpen(true)}
-              className="relative flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-4 py-2 rounded-xl shadow-md transition"
+              className="relative flex items-center gap-1 md:gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-2 md:px-4 py-2 rounded-xl shadow-md transition text-xs md:text-sm"
+              title="กล่องแชท"
             >
-              <MessageCircle className="w-5 h-5" />
-              <span>กล่องแชท</span>
+              <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="hidden sm:inline">กล่องแชท</span>
               {unread > 0 && (
-                <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 text-xs bg-red-500 text-white rounded-full px-1">
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] bg-red-500 text-white rounded-full px-1">
                   {unread > 9 ? "9+" : unread}
                 </span>
               )}
@@ -441,24 +443,26 @@ export default function JobSeekerView({ user, onLogout }) {
 
             <button
               onClick={onLogout}
-              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-4 py-2 rounded-xl shadow-md transition"
+              className="flex items-center gap-1 md:gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-2 md:px-4 py-2 rounded-xl shadow-md transition text-xs md:text-sm"
+              title="ออกจากระบบ"
             >
-              ออกจากระบบ
+              <span className="hidden sm:inline">ออกจากระบบ</span>
+              <span className="sm:hidden">ออก</span>
             </button>
           </div>
         </div>
 
         {/* แถว search */}
         <div className="flex gap-3">
-          <div className="flex-1 bg-white rounded-2xl shadow-md flex items-center px-4 py-3">
-            <Search className="w-5 h-5 text-gray-400 mr-3" />
+          <div className="flex-1 bg-white rounded-2xl shadow-md flex items-center px-3 md:px-4 py-2 md:py-3">
+            <Search className="w-4 h-4 md:w-5 md:h-5 text-gray-400 mr-2 md:mr-3" />
             <input
               id="jobSearch"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ค้นหาตำแหน่งงาน หรือบริษัท..."
-              className="flex-1 outline-none text-gray-700 text-sm"
+              className="flex-1 outline-none text-gray-700 text-xs md:text-sm"
               autoComplete="off"
             />
           </div>

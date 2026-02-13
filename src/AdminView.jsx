@@ -740,61 +740,65 @@ export default function AdminView({ user, onLogout }) {
         </div>
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-6">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-4">
+        <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4 md:p-6">
+          <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
+            <div className="flex items-center gap-2 md:gap-4">
               {/* Hamburger Menu Button */}
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="bg-white/10 hover:bg-white/20 p-2 rounded-lg flex items-center gap-2"
+                className="bg-white/10 hover:bg-white/20 p-2 rounded-lg flex items-center gap-1 md:gap-2"
               >
-                <Menu className="w-5 h-5" />
-                <span className="text-sm">เมนู</span>
+                <Menu className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="text-xs md:text-sm">เมนู</span>
               </button>
               
               <div>
-                <h1 className="text-2xl font-bold">
+                <h1 className="text-lg md:text-2xl font-bold">
                   ⚙️ สวัสดี, Admin {user?.name || ""}
                 </h1>
-                <p className="text-sm opacity-90">
+                <p className="text-xs md:text-sm opacity-90">
                   แอดมิน - จัดการระบบทั้งหมด และกำหนดสิทธิ์ผู้ใช้งาน
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 md:gap-3 flex-wrap">
               {/* ปุ่มไปกล่องแชทใหญ่ */}
               <button
                 onClick={() => navigate("/chats")}
-                className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg flex items-center gap-2 text-sm"
+                className="bg-white/10 hover:bg-white/20 px-2 md:px-3 py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm"
+                title="กล่องแชท"
               >
-                💬 กล่องแชท
+                <span className="text-base md:text-lg">💬</span>
+                <span className="hidden sm:inline">กล่องแชท</span>
                 {unread > 0 && (
-                  <span className="ml-1 text-xs bg-red-500 text-white rounded-full px-2 py-[1px]">
+                  <span className="text-[10px] bg-red-500 text-white rounded-full px-1.5 py-[1px]">
                     {unread > 9 ? "9+" : unread}
                   </span>
                 )}
               </button>
               <button
                 onClick={loadAllData}
-                className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg flex items-center gap-2 text-sm"
+                className="bg-white/10 hover:bg-white/20 px-2 md:px-3 py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm"
+                title="รีเฟรชข้อมูล"
               >
                 <RefreshCw
                   className={`w-4 h-4 ${loadingAll ? "animate-spin" : ""}`}
                 />
-                {loadingAll ? "กำลังโหลด..." : "รีเฟรชข้อมูล"}
+                <span className="hidden sm:inline">{loadingAll ? "กำลังโหลด..." : "รีเฟรชข้อมูล"}</span>
               </button>
               <button
                 onClick={onLogout}
-                className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2"
+                className="bg-white/20 hover:bg-white/30 px-2 md:px-4 py-2 rounded-lg flex items-center gap-1 md:gap-2 text-xs md:text-sm"
+                title="ออกจากระบบ"
               >
                 <UserIcon className="w-4 h-4" />
-                ออกจากระบบ
+                <span className="hidden sm:inline">ออกจากระบบ</span>
               </button>
             </div>
           </div>
           {/* ✅ แสดง error รวม ถ้ามีปัญหาดึงข้อมูล */}
           {loadError && (
-            <div className="mt-2 bg-red-600/20 border border-red-300/70 text-sm px-4 py-2 rounded-xl flex items-center gap-2">
+            <div className="mt-2 bg-red-600/20 border border-red-300/70 text-xs md:text-sm px-3 md:px-4 py-2 rounded-xl flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
               <span>{loadError}</span>
             </div>
