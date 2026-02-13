@@ -244,15 +244,33 @@ paymentSchema.methods.markAsCancelled = function(reason = '', userId = null) {
   return this.save();
 };
 
-paymentSchema.methods.generateQRCode = function() {
-  // Generate PromptPay QR Code data สำหรับชำระค่าบริการ
-  const amount = this.serviceFee.toFixed(2);
-  const reference = this.paymentId;
-  
-  // PromptPay QR Code format (simplified)
-  this.qrCodeData = `promptpay://${process.env.PAYMENT_PROMPTPAY_NUMBER}?amount=${amount}&ref=${reference}`;
-  
-  return this.save();
+paymentSchema.methods.generateQRCode = async function() {
+  try {
+    // Import PromptPay QR generator
+    const { generatePromptPayQR } = await import('../utils/paymentUtils.js');
+    
+    // ใช้เบอร์โทรศัพท์หรือเลขบัตรประชาชนจาก environment variable
+    const promptpayId = process.env.PAYMENT_PROMPTPAY_NUMBER || process.env.PAYMENT_PROMPTPAY_ID;
+    
+    if (!promptpayId) {
+      console.error('❌ PAYMENT_PROMPTPAY_NUMBER or PAYMENT_PROMPTPAY_ID not configured');
+      throw new Error('PromptPay ID not configured');
+    }
+    
+    // สร้าง PromptPay QR Code (Data URL format)
+    const qrCodeDataURL = await generatePromptPayQR(promptpayId, this.serviceFee);
+    
+    // เก็บ QR Code Data URL
+    this.qrCodeImage = qrCodeDataURL;
+    this.qrCodeData = qrCodeDataURL; // เก็บทั้ง 2 field เพื่อ backward compatibility
+    
+    console.log(`✅ Generated PromptPay QR Code for payment ${this.paymentId}`);
+    
+    return this.save();
+  } catch (err) {
+    console.error('❌ QR Code generation error:', err);
+    throw err;
+  }
 };
 
 // Static methods

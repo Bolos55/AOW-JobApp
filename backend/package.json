@@ -33,6 +33,7 @@
     "passport": "^0.7.0",
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
+    "promptpay-qr": "^0.5.0",
     "qrcode": "^1.5.4",
     "xss-clean": "^0.1.4"
   },

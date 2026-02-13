@@ -1,6 +1,7 @@
 // backend/utils/paymentUtils.js
 import QRCode from 'qrcode';
 import crypto from 'crypto';
+import generatePayload from 'promptpay-qr';
 
 /**
  * ✅ Platform Service Fee Payment Utilities
@@ -30,16 +31,30 @@ export const generateQRCode = async (data) => {
 
 /**
  * สร้าง PromptPay QR Code สำหรับชำระค่าบริการแพลตฟอร์ม
+ * @param {string} mobileNumberOrId - เบอร์โทรศัพท์ (0812345678) หรือเลขบัตรประชาชน (13 หลัก)
+ * @param {number} serviceFee - จำนวนเงินค่าบริการ
+ * @returns {Promise<string>} - QR Code Data URL (base64)
  */
-export const generatePromptPayQR = (phoneNumber, serviceFee, reference) => {
-  // PromptPay QR Code format (simplified version)
-  // ในการใช้งานจริงต้องใช้ library ที่รองรับ EMV QR Code standard
-  
-  const formattedPhone = phoneNumber.replace(/[^0-9]/g, '');
-  const formattedAmount = parseFloat(serviceFee).toFixed(2);
-  
-  // Basic PromptPay format (ต้องปรับให้ตรงตาม EMV standard)
-  return `00020101021129370016A000000677010111011300${formattedPhone.length}${formattedPhone}5204000053037645802TH5913${process.env.PAYMENT_PROMPTPAY_NAME || 'Platform Service'}6304${reference}`;
+export const generatePromptPayQR = async (mobileNumberOrId, serviceFee) => {
+  try {
+    // สร้าง PromptPay payload ด้วย promptpay-qr library
+    const payload = generatePayload(mobileNumberOrId, { amount: serviceFee });
+    
+    // สร้าง QR Code จาก payload
+    const qrCodeDataURL = await QRCode.toDataURL(payload, {
+      width: 300,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+    
+    return qrCodeDataURL;
+  } catch (err) {
+    console.error('PromptPay QR Code generation error:', err);
+    throw new Error('ไม่สามารถสร้าง PromptPay QR Code ได้');
+  }
 };
 
 /**

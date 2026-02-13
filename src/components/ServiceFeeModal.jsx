@@ -423,16 +423,17 @@ export default function ServiceFeeModal({ open, onClose, job, onServiceFeeSucces
                 </div>
               </div>
 
-              {paymentMethod === 'promptpay' && serviceFeeData.qrCodeData && (
+              {paymentMethod === 'promptpay' && (serviceFeeData.qrCodeImage || serviceFeeData.qrCodeData) && (
                 <div className="text-center mb-6">
                   <div className="bg-white border-2 border-gray-200 rounded-lg p-4 inline-block">
                     <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(serviceFeeData.qrCodeData)}`}
-                      alt="QR Code สำหรับชำระค่าบริการ"
+                      src={serviceFeeData.qrCodeImage || serviceFeeData.qrCodeData}
+                      alt="PromptPay QR Code สำหรับชำระค่าบริการ"
                       className="w-48 h-48"
                     />
                   </div>
                   <p className="text-sm text-gray-600 mt-2">สแกน QR Code ด้วยแอปธนาคารของคุณ</p>
+                  <p className="text-xs text-gray-500 mt-1">จำนวนเงิน: {serviceFeeData.serviceFee} บาท</p>
                 </div>
               )}
 
