@@ -291,12 +291,21 @@ router.post("/:threadId/messages", auth, async (req, res) => {
       text,
     });
 
+    // ✅ อัปเดต unread count สำหรับคนอื่นๆ ในห้อง
+    const otherParticipants = thread.participants.filter(p => p.toString() !== me.toString());
+    const unreadUpdate = {};
+    otherParticipants.forEach(participantId => {
+      const key = `unreadCount.${participantId}`;
+      unreadUpdate[key] = 1; // เพิ่ม 1
+    });
+
     await ChatThread.findByIdAndUpdate(threadId, {
       $set: {
         lastMessage: text,
         lastMessageAt: new Date(),
         lastSenderName: senderName,
       },
+      $inc: unreadUpdate
     });
 
     const populated = await msg.populate("sender", "name email role");
@@ -306,6 +315,38 @@ router.post("/:threadId/messages", auth, async (req, res) => {
     return res
       .status(500)
       .json({ message: "ส่งข้อความไม่สำเร็จ" });
+  }
+});
+
+/**
+ * POST /api/chats/:threadId/mark-read
+ * Mark messages as read
+ */
+router.post("/:threadId/mark-read", auth, async (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const me = getMyId(req);
+
+    if (!me) {
+      return res.status(401).json({ message: "ไม่พบข้อมูลผู้ใช้" });
+    }
+
+    const thread = await ChatThread.findById(threadId);
+    if (!thread) {
+      return res.status(404).json({ message: "ไม่พบห้องแชท" });
+    }
+
+    // Reset unread count for this user
+    await ChatThread.findByIdAndUpdate(threadId, {
+      $set: {
+        [`unreadCount.${me}`]: 0
+      }
+    });
+
+    return res.json({ message: "Mark as read successfully" });
+  } catch (err) {
+    console.error("mark read error:", err);
+    return res.status(500).json({ message: "เกิดข้อผิดพลาด" });
   }
 });
 

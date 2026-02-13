@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { X, MessageCircle, Mail } from "lucide-react";
 import { listMyThreads, fetchMessages, sendMessage, contactAdmin } from "../api/chat";
+import { API_BASE } from "../api";
 
 // helper แปลง id เป็น string แบบชัวร์
 const idStr = (v) => {
@@ -108,6 +109,26 @@ export default function ChatWidget({ open, onClose, user, token, onUnreadChange 
     try {
       const data = await fetchMessages({ threadId: thread._id, token });
       setMessages(Array.isArray(data) ? data : []);
+      
+      // ✅ Mark as read
+      try {
+        await fetch(`${API_BASE}/api/chats/${thread._id}/mark-read`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+        
+        // อัปเดต local state
+        setThreads(prev => prev.map(t => 
+          t._id === thread._id 
+            ? { ...t, unreadCount: { ...t.unreadCount, [currentUser?._id]: 0 } }
+            : t
+        ));
+      } catch (err) {
+        console.error("Mark as read error:", err);
+      }
     } catch (e) {
       console.error("loadMessages error:", e);
       setMessages([]);
@@ -266,11 +287,15 @@ export default function ChatWidget({ open, onClose, user, token, onUnreadChange 
                     <span className="text-xs font-semibold text-gray-800">
                       {getThreadTitle(t)}
                     </span>
-                    {Number(t.unreadCount) > 0 && (
-                      <span className="text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0.5">
-                        {t.unreadCount > 9 ? "9+" : t.unreadCount}
-                      </span>
-                    )}
+                    {(() => {
+                      // ✅ ดึง unread count สำหรับ user ปัจจุบัน
+                      const unread = t.unreadCount?.[currentUser?._id] || 0;
+                      return unread > 0 ? (
+                        <span className="text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                          {unread > 9 ? "9+" : unread}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                   {last && (
                     <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">

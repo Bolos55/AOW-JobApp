@@ -40,6 +40,18 @@ const chatThreadSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    
+    lastSenderName: {
+      type: String,
+      default: "",
+    },
+
+    // ✅ Unread count for each participant
+    unreadCount: {
+      type: Map,
+      of: Number,
+      default: {}
+    },
 
     // ✅ ใช้แยกว่าเป็นห้องแอดมิน
     isAdminThread: {
