@@ -662,6 +662,7 @@ export default function EmployerView({ user, onLogout }) {
               {filteredApplications.slice(0, 50).map((app) => {
                 const status = app.status || "pending";
                 const isUpdating = updatingAppId === app._id;
+                const isClosed = !!app.job?.isCompleted; // ✅ เช็คว่างานปิดรับสมัครแล้วหรือยัง
 
                 const applicantPhoto = getPhotoUrl(app.applicant?.profile) || app.applicant?.avatar || "";
 
