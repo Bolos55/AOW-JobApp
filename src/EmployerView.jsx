@@ -1323,7 +1323,21 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
 
     e.preventDefault();
 
-    if (!newMessage.trim() || sending || !thread?._id) return;
+    if (!newMessage.trim() || sending) return;
+
+    
+
+    // ✅ ถ้ายังไม่มี thread ให้ลอง initialize ก่อน
+
+    if (!thread?._id) {
+
+      console.log("No thread ID, trying to initialize...");
+
+      await initializeChat();
+
+      return;
+
+    }
 
 
 

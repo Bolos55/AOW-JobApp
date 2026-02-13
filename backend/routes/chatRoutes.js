@@ -71,19 +71,12 @@ router.post("/start", auth, async (req, res) => {
         .json({ message: "งานนี้ไม่มีข้อมูลผู้ประกาศ (createdBy)" });
     }
 
-    // ✅ เช็ค trial period หรือชำระเงินแล้ว
+    // ✅ เช็ค trial period หรือชำระเงินแล้ว (แต่ยังให้สร้าง thread ได้)
     const now = new Date();
     const isInTrial = job.trialEndsAt && now < new Date(job.trialEndsAt);
     const hasPaid = job.isPaid;
     
-    if (!isInTrial && !hasPaid) {
-      return res.status(403).json({ 
-        message: "ระยะทดลองใช้ฟรี 24 ชม. หมดแล้ว กรุณาชำระค่าบริการเพื่อแชทต่อ",
-        trialExpired: true,
-        trialEndsAt: job.trialEndsAt,
-        requiresPayment: true
-      });
-    }
+    const canChat = isInTrial || hasPaid;
 
     const employerId = job.createdBy.toString();
     const workerId = participantIdFinal.toString();
@@ -118,6 +111,7 @@ router.post("/start", auth, async (req, res) => {
     response.trialInfo = {
       isInTrial,
       hasPaid,
+      canChat,
       trialEndsAt: job.trialEndsAt,
       timeRemaining: isInTrial ? new Date(job.trialEndsAt) - now : 0
     };
@@ -255,7 +249,7 @@ router.post("/:threadId/messages", auth, async (req, res) => {
       return res.status(400).json({ message: "ข้อความว่าง" });
     }
 
-    const thread = await ChatThread.findById(threadId).select("participants");
+    const thread = await ChatThread.findById(threadId).populate('job').select("participants job");
     if (!thread) {
       return res.status(404).json({ message: "ไม่พบห้องแชท" });
     }
@@ -268,6 +262,23 @@ router.post("/:threadId/messages", auth, async (req, res) => {
       return res
         .status(403)
         .json({ message: "คุณไม่มีสิทธิ์ส่งข้อความในห้องนี้" });
+    }
+
+    // ✅ เช็ค trial period สำหรับ employer เท่านั้น
+    if (thread.job && !thread.isAdminThread) {
+      const job = thread.job;
+      const now = new Date();
+      const isInTrial = job.trialEndsAt && now < new Date(job.trialEndsAt);
+      const hasPaid = job.isPaid;
+      
+      // ถ้าเป็น employer และไม่อยู่ใน trial และยังไม่จ่ายเงิน
+      if (job.createdBy.toString() === me.toString() && !isInTrial && !hasPaid) {
+        return res.status(403).json({ 
+          message: "ระยะทดลองใช้ฟรี 24 ชม. หมดแล้ว กรุณาชำระค่าบริการเพื่อแชทต่อ",
+          trialExpired: true,
+          requiresPayment: true
+        });
+      }
     }
 
     const senderUser = await User.findById(me).select("name");
