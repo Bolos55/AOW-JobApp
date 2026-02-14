@@ -947,6 +947,8 @@ export default function EmployerView({ user, onLogout }) {
 function JobDetailModal({ open, job, onClose }) {
   if (!open || !job) return null;
 
+  const isClosed = !!job.isCompleted;
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-lg p-6 relative">
@@ -957,7 +959,15 @@ function JobDetailModal({ open, job, onClose }) {
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="text-xl font-bold mb-2">{job.title}</h3>
+        <div className="flex items-center gap-2 mb-2">
+          <h3 className="text-xl font-bold">{job.title}</h3>
+          {isClosed && (
+            <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+              <Lock className="w-3 h-3" />
+              ปิดรับสมัครแล้ว
+            </span>
+          )}
+        </div>
         <p className="text-sm text-gray-600 mb-1">{job.company || "บริษัทของคุณ"}</p>
 
         {job.location && (
