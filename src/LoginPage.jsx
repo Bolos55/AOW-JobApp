@@ -382,9 +382,14 @@ export default function LoginPage({ onAuth }) {
       <div className="relative z-10 w-full max-w-md">
       <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl w-full p-8">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-extrabold text-gray-800 tracking-wide">
-            AOW <span className="font-semibold text-gray-700">all of works</span>
-          </h1>
+          {/* AOW Logo */}
+          <div className="flex justify-center mb-3">
+            <img 
+              src="/aow-logo.svg" 
+              alt="AOW Logo" 
+              className="h-20 w-auto"
+            />
+          </div>
           <p className="text-sm text-gray-500 mt-1">เริ่มใช้งานกันเลย!!</p>
         </div>
 
