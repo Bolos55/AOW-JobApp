@@ -42,7 +42,7 @@ export default function AdminPaymentManagement() {
 
   useEffect(() => {
     loadPayments();
-  }, [filter]);
+  }, [filter, loadPayments]);
 
   // Update payment status
   const updatePaymentStatus = async (paymentId, newStatus, note) => {

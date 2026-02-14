@@ -132,9 +132,6 @@ export default function LoginPage({ onAuth }) {
 
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
-      
-      const savedToken = localStorage.getItem("token");
-      const savedUser = localStorage.getItem("user");
 
       if (typeof onAuth === "function") {
         onAuth(user, token);
@@ -143,8 +140,6 @@ export default function LoginPage({ onAuth }) {
       window.dispatchEvent(new Event("auth-change"));
       
       await new Promise(resolve => setTimeout(resolve, 200));
-      
-      const currentUser = JSON.parse(localStorage.getItem("user") || "null");
       
       navigate("/", { replace: true });
       

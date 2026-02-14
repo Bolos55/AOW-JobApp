@@ -1,7 +1,7 @@
 // src/components/ServiceFeeModal.jsx
 // ✅ Platform Service Fee Modal - ไม่ใช่ payment gateway หรือ escrow
 import { useState, useEffect } from "react";
-import { X, Smartphone, Building2, Clock, CheckCircle, AlertTriangle, Upload, FileText } from "lucide-react";
+import { X, Smartphone, Building2, Clock, CheckCircle, AlertTriangle, Upload } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
 
 export default function ServiceFeeModal({ open, onClose, job, onServiceFeeSuccess }) {
@@ -19,7 +19,6 @@ export default function ServiceFeeModal({ open, onClose, job, onServiceFeeSucces
   // ✅ State สำหรับอัปโหลดสลิป
   const [paymentSlip, setPaymentSlip] = useState(null);
   const [slipPreview, setSlipPreview] = useState("");
-  const [uploadingSlip, setUploadingSlip] = useState(false);
 
   // ✅ Platform Service Packages - Phase 0-1: ค่าบริการรวมภาษีแล้ว
   const servicePackages = {
