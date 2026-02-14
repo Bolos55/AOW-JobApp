@@ -369,8 +369,18 @@ export default function LoginPage({ onAuth }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center px-4">
-      <div className="bg-white/95 rounded-3xl shadow-2xl max-w-md w-full p-8">
+    <div className="min-h-screen relative flex items-center justify-center px-4" style={{
+      backgroundImage: 'url(/login-bg.jpg)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    }}>
+      {/* Overlay สำหรับทำให้อ่านง่ายขึ้น */}
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+      
+      {/* Content wrapper */}
+      <div className="relative z-10 w-full max-w-md">
+      <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl w-full p-8">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-extrabold text-gray-800 tracking-wide">
             AOW <span className="font-semibold text-gray-700">all of works</span>
@@ -681,6 +691,7 @@ export default function LoginPage({ onAuth }) {
             onError={handleSocialError}
           />
         </div>
+      </div>
       </div>
     </div>
   );
