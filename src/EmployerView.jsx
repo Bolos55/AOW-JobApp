@@ -970,6 +970,42 @@ function JobDetailModal({ open, job, onClose }) {
         </div>
         <p className="text-sm text-gray-600 mb-1">{job.company || "บริษัทของคุณ"}</p>
 
+        {/* ✅ ปุ่มแชร์ - ซ่อนเมื่องานปิดรับสมัคร */}
+        {!isClosed && (
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={async () => {
+                const url = `${window.location.origin}/jobs/${job._id}`;
+                const shareData = {
+                  title: job.title,
+                  text: `${job.title} - ${job.company || 'บริษัท'}`,
+                  url: url
+                };
+
+                if (navigator.share) {
+                  try {
+                    await navigator.share(shareData);
+                  } catch (err) {
+                    if (err.name !== 'AbortError') {
+                      navigator.clipboard.writeText(url);
+                      alert("คัดลอกลิงก์แล้ว!");
+                    }
+                  }
+                } else {
+                  navigator.clipboard.writeText(url);
+                  alert("คัดลอกลิงก์แล้ว!");
+                }
+              }}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg text-sm font-medium transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              แชร์ลิงก์ (ทั่วไป)
+            </button>
+          </div>
+        )}
+
         {job.location && (
           <p className="text-sm text-gray-500 mb-2">สถานที่ทำงาน: {job.location}</p>
         )}
