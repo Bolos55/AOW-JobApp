@@ -385,7 +385,7 @@ export default function LoginPage({ onAuth }) {
           {/* AOW Logo */}
           <div className="flex justify-center mb-3">
             <img 
-              src="/aow-logo.svg" 
+              src="/AOW.svg" 
               alt="AOW - All of Works" 
               className="h-24 w-auto"
             />
