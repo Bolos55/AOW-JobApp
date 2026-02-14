@@ -1,5 +1,5 @@
 // src/components/AdminPaymentManagement.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { CreditCard, Clock, CheckCircle, XCircle, Search, RefreshCw, Eye, Edit, Trash2 } from "lucide-react";
 import { API_BASE, authHeader } from "../api";
 
@@ -14,7 +14,7 @@ export default function AdminPaymentManagement() {
   const [updating, setUpdating] = useState(false);
 
   // Load payments
-  const loadPayments = async () => {
+  const loadPayments = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -33,12 +33,11 @@ export default function AdminPaymentManagement() {
       setPayments(data.payments || []);
       setStats(data.stats || {});
     } catch (err) {
-      console.error("Load payments error:", err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, searchQuery]);
 
   useEffect(() => {
     loadPayments();
