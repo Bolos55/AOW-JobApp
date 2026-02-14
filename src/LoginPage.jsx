@@ -387,7 +387,7 @@ export default function LoginPage({ onAuth }) {
             <img 
               src="/AOW.svg" 
               alt="AOW - All of Works" 
-              className="h-24 w-auto"
+              className="h-32 w-auto"
             />
           </div>
           <p className="text-sm text-gray-500 mt-1">เริ่มใช้งานกันเลย!!</p>
