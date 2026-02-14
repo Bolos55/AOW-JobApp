@@ -1236,7 +1236,6 @@ export default function AdminView({ user, onLogout }) {
                                 alt={app.applicantName}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                  console.log("Image load error:", e.target.src);
                                   e.target.style.display = 'none';
                                   e.target.parentElement.innerHTML = '<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
                                 }}
@@ -1247,7 +1246,6 @@ export default function AdminView({ user, onLogout }) {
                                 alt={app.applicantName}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                  console.log("Avatar load error:", e.target.src);
                                   e.target.style.display = 'none';
                                   e.target.parentElement.innerHTML = '<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
                                 }}
@@ -1453,7 +1451,6 @@ export default function AdminView({ user, onLogout }) {
                     alt={selectedUserProfile.name || "ผู้ใช้"}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      console.log("Profile image load error:", e.target.src);
                       e.target.style.display = 'none';
                     }}
                   />
@@ -1635,7 +1632,6 @@ export default function AdminView({ user, onLogout }) {
                           className="w-full h-24 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition"
                           onClick={() => window.open(photo, '_blank')}
                           onError={(e) => {
-                            console.error("Failed to load image:", photo);
                             e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="10">โหลดไม่ได้</text></svg>';
                           }}
                         />

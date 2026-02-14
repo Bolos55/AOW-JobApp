@@ -9,7 +9,6 @@ import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
 import EmailVerification from "./EmailVerification";
 import RoleSelection from "./RoleSelection";
-import PaymentStatusDemo from "./components/PaymentStatusDemo";
 import CookieConsent from "./components/CookieConsent";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
@@ -18,10 +17,8 @@ function useAuthUser() {
   const read = () => {
     try {
       const userData = JSON.parse(localStorage.getItem("user") || "null");
-      // console.log('👤 useAuthUser read:', userData ? `${userData.name} (${userData.email})` : 'No user');
       return userData;
     } catch (e) {
-      console.log('❌ useAuthUser read error:', e.message);
       return null;
     }
   };
@@ -30,34 +27,18 @@ function useAuthUser() {
 
   useEffect(() => {
     const onChange = () => {
-      console.log('🔄 Auth change event triggered, re-reading user...');
       const newUser = read();
-      console.log('📝 Setting new user state:', newUser ? `${newUser.name}` : 'null');
       setUser(newUser);
     };
     
-    // ⭐ เพิ่ม event listeners หลายตัว
     window.addEventListener("storage", onChange);
     window.addEventListener("auth-change", onChange);
-    
-    // ⭐ ลบ manual check ที่ทำให้ช้า - ใช้ event listeners แทน
-    // const interval = setInterval(() => {
-    //   const currentUser = read();
-    //   if (currentUser && !user) {
-    //     console.log('🔄 Manual check found user, updating state...');
-    //     setUser(currentUser);
-    //   }
-    // }, 1000);
     
     return () => {
       window.removeEventListener("storage", onChange);
       window.removeEventListener("auth-change", onChange);
-      // clearInterval(interval); // ลบแล้ว
     };
   }, [user]);
-
-  // ⭐ Log current state
-  // console.log('🎯 useAuthUser current state:', user ? `${user.name}` : 'null');
   
   return user;
 }
@@ -66,22 +47,11 @@ function RequireAuth({ children }) {
   const token = localStorage.getItem("token");
   const user = localStorage.getItem("user");
   
-  // console.log('🔐 RequireAuth check:', {
-  //   hasToken: !!token,
-  //   hasUser: !!user,
-  //   tokenLength: token ? token.length : 0,
-  //   userEmail: user ? JSON.parse(user)?.email : 'No email'
-  // });
-  
-  // ⭐ ถ้าไม่มี token ให้ redirect ทันที
   if (!token) {
-    // console.log('❌ No token, redirecting to login');
     return <Navigate to="/login" replace />;
   }
   
-  // ⭐ ถ้ามี token แต่ไม่มี user ให้รอสักครู่
   if (!user) {
-    // console.log('⏳ Has token but no user, waiting...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -92,23 +62,19 @@ function RequireAuth({ children }) {
     );
   }
   
-  // ⭐ ตรวจสอบว่า user data ถูกต้อง
   try {
     const userData = JSON.parse(user);
     if (!userData || !userData.email) {
-      console.log('❌ Invalid user data, clearing and redirecting');
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       return <Navigate to="/login" replace />;
     }
   } catch (e) {
-    console.log('❌ Cannot parse user data, clearing and redirecting');
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     return <Navigate to="/login" replace />;
   }
   
-  // console.log('✅ Auth check passed, rendering children');
   return children;
 }
 
@@ -159,14 +125,9 @@ export default function App() {
             element={
               <LoginPage 
                 onAuth={(user, token) => {
-                  console.log('🎯 App.js onAuth callback triggered:', user.email);
-                  
-                  // ⭐ Force re-read user state หลัง login สำเร็จ
                   window.dispatchEvent(new Event("auth-change"));
                   
-                  // ⭐ Manual trigger หลังจาก delay เล็กน้อย
                   setTimeout(() => {
-                    console.log('🔄 Manual auth-change trigger after delay');
                     window.dispatchEvent(new Event("auth-change"));
                   }, 100);
                 }}
@@ -185,9 +146,6 @@ export default function App() {
 
           {/* ✅ เลือก Role สำหรับ Social Login */}
           <Route path="/role-selection" element={<RoleSelection />} />
-
-          {/* 🧪 ทดสอบระบบ Payment Status Check */}
-          <Route path="/payment-demo" element={<PaymentStatusDemo />} />
 
           {/* กันหลงทาง */}
           <Route path="*" element={<Navigate to="/" replace />} />

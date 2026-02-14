@@ -45,13 +45,12 @@ export async function ensureThread(arg1, arg2, arg3) {
   }
 
   if (!res.ok) {
-    console.error("❌ ensureThread failed:", res.status, data);
     throw new Error(
       data.message || `เริ่มแชทไม่สำเร็จ (HTTP ${res.status})`
     );
   }
 
-  return data; // object ของ ChatThread
+  return data;
 }
 
 /**
@@ -80,7 +79,6 @@ export async function listMyThreads(arg) {
   }
 
   if (!res.ok) {
-    console.error("❌ listMyThreads failed:", res.status, data);
     throw new Error(data.message || "ดึงรายการแชทไม่สำเร็จ");
   }
 
@@ -122,7 +120,6 @@ export async function fetchMessages(arg1, arg2) {
   }
 
   if (!res.ok) {
-    console.error("❌ fetchMessages failed:", res.status, data);
     throw new Error(data.message || "ดึงข้อความไม่สำเร็จ");
   }
 
@@ -162,7 +159,6 @@ export async function sendMessage(arg1, arg2, arg3) {
   }
 
   if (!res.ok) {
-    console.error("❌ sendMessage failed:", res.status, data);
     throw new Error(data.message || "ส่งข้อความไม่สำเร็จ");
   }
 
@@ -195,10 +191,8 @@ export async function contactAdmin(arg) {
   }
 
   if (!res.ok) {
-    console.error("❌ contactAdmin failed:", res.status, data);
     throw new Error(data.message || "ไม่สามารถติดต่อแอดมินได้");
   }
 
-  // Backend ส่งมาเป็น { thread: {...} }
   return data;
 }

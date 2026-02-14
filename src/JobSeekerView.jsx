@@ -120,7 +120,6 @@ export default function JobSeekerView({ user, onLogout }) {
         }
       }
     } catch (e) {
-      console.error("load profile error:", e);
     }
   };
 
@@ -192,7 +191,6 @@ export default function JobSeekerView({ user, onLogout }) {
           setJobs(Array.isArray(data) ? data : []);
         }
       } catch (e) {
-        console.error("load jobs error:", e);
         setJobs([]);
         setJobsError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
       } finally {
@@ -238,7 +236,6 @@ export default function JobSeekerView({ user, onLogout }) {
         setMyApps(Array.isArray(data) ? data : []);
       }
     } catch (e) {
-      console.error("loadMyApplications error:", e);
       setMyApps([]);
       setMyAppsError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
     } finally {
@@ -853,8 +850,6 @@ export default function JobSeekerView({ user, onLogout }) {
                           shareData.files = [file];
                         }
                       } catch (err) {
-                        console.log('Cannot fetch image for sharing:', err);
-                        // ไม่เป็นไร แชร์แบบไม่มีรูปก็ได้
                       }
                     }
 
@@ -865,7 +860,6 @@ export default function JobSeekerView({ user, onLogout }) {
                       } catch (err) {
                         // ถ้ายกเลิกการแชร์ ไม่ต้องทำอะไร
                         if (err.name !== 'AbortError') {
-                          console.error('Share error:', err);
                         }
                       }
                     } else {
@@ -923,7 +917,6 @@ export default function JobSeekerView({ user, onLogout }) {
                             className="w-full h-32 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition"
                             onClick={() => window.open(photo, '_blank')}
                             onError={(e) => {
-                              console.error("Failed to load image:", photo);
                               e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12">ไม่สามารถโหลดรูป</text></svg>';
                             }}
                           />

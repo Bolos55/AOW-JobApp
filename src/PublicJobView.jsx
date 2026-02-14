@@ -1,6 +1,6 @@
 // src/PublicJobView.jsx
 import { useState, useEffect } from "react";
-import { X, MapPin, DollarSign, Briefcase } from "lucide-react";
+import { MapPin, DollarSign, Briefcase } from "lucide-react";
 import { API_BASE } from "./api";
 
 export default function PublicJobView() {
@@ -29,7 +29,6 @@ export default function PublicJobView() {
           setJob(data);
         }
       } catch (err) {
-        console.error("Load job error:", err);
         setError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
       } finally {
         setLoading(false);

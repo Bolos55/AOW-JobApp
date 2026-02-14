@@ -102,7 +102,6 @@ export default function EmployerView({ user, onLogout }) {
           setMyJobs(Array.isArray(data) ? data : []);
         }
       } else {
-        console.error("โหลด my-jobs ไม่ได้:", jobsRes.status);
         if (mountedRef.current) {
           setMyJobs([]);
           setError("โหลดรายการงานไม่สำเร็จ");
@@ -120,14 +119,12 @@ export default function EmployerView({ user, onLogout }) {
           setApplications(Array.isArray(data) ? data : []);
         }
       } else {
-        console.error("โหลด my-applications-received ไม่ได้:", appsRes.status);
         if (mountedRef.current) {
           setApplications([]);
           setError((prev) => prev || "โหลดข้อมูลผู้สมัครไม่สำเร็จ");
         }
       }
     } catch (err) {
-      console.error("โหลด dashboard นายจ้างพัง:", err);
       if (mountedRef.current) {
         setMyJobs([]);
         setApplications([]);
@@ -262,7 +259,6 @@ export default function EmployerView({ user, onLogout }) {
       }
 
     } catch (err) {
-      console.error("error updateApplicationStatus:", err);
       if (mountedRef.current) {
         alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
       }
@@ -289,7 +285,6 @@ export default function EmployerView({ user, onLogout }) {
       });
 
       if (!res.ok) {
-        console.error("ปิดงานไม่สำเร็จ:", res.status);
         if (mountedRef.current) {
           alert("ปิดงานไม่สำเร็จ กรุณาลองใหม่");
         }
@@ -297,7 +292,6 @@ export default function EmployerView({ user, onLogout }) {
       }
 
       const updated = await res.json().catch(() => null);
-      console.log("✅ Close job response:", updated);
       
       if (!updated || !mountedRef.current) return;
 
@@ -314,7 +308,6 @@ export default function EmployerView({ user, onLogout }) {
       
       alert("ปิดงานเรียบร้อยแล้ว");
     } catch (err) {
-      console.error("closeJob error:", err);
       if (mountedRef.current) {
         alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
       }
@@ -1046,7 +1039,6 @@ function JobDetailModal({ open, job, onClose }) {
                       className="w-full h-24 object-cover rounded-lg border cursor-pointer hover:opacity-90 transition"
                       onClick={() => window.open(photo, '_blank')}
                       onError={(e) => {
-                        console.error("Failed to load image:", photo);
                         e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="10">โหลดไม่ได้</text></svg>';
                       }}
                     />
@@ -1371,25 +1363,12 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
       }
 
     } catch (err) {
-
-      console.error("Initialize chat error:", err);
-
       
-
-      // ✅ เช็คว่าเป็น trial expired หรือไม่
-
       if (err.message && err.message.includes("ระยะทดลอง")) {
-
-        // แสดง error แต่ไม่ปิด modal เพื่อให้เห็นปุ่มชำระเงิน
-
         setThread({ trialExpired: true });
-
       } else {
-
         alert("ไม่สามารถเริ่มการแชทได้: " + err.message);
-
       }
-
     } finally {
 
       setLoading(false);
@@ -1411,16 +1390,9 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
     // ✅ ถ้ายังไม่มี thread ให้ลอง initialize ก่อน
 
     if (!thread?._id) {
-
-      console.log("No thread ID, trying to initialize...");
-
       await initializeChat();
-
       return;
-
     }
-
-
 
     setSending(true);
 
@@ -1445,15 +1417,9 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
       // Add new message to list
 
       setMessages([...messages, result]);
-
       setNewMessage("");
-
     } catch (err) {
-
-      console.error("Send message error:", err);
-
       alert("ส่งข้อความไม่สำเร็จ: " + err.message);
-
     } finally {
 
       setSending(false);

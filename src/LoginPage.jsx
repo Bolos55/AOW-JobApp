@@ -27,16 +27,13 @@ export default function LoginPage({ onAuth }) {
     const token = localStorage.getItem("token");
     const user = localStorage.getItem("user");
     
-    // ตรวจสอบว่ามี token และ user data ครบถ้วน
     if (token && user) {
       try {
         const userData = JSON.parse(user);
         if (userData && userData.email) {
-          console.log('🔄 User already logged in, redirecting to home...');
           navigate("/", { replace: true });
         }
       } catch (e) {
-        console.log('⚠️ Invalid user data in localStorage, clearing...');
         localStorage.removeItem("token");
         localStorage.removeItem("user");
       }
@@ -115,23 +112,17 @@ export default function LoginPage({ onAuth }) {
 
   // ⭐ Handler สำหรับ Social Login สำเร็จ
   const handleSocialSuccess = async (data) => {
-    console.log('🎯 handleSocialSuccess called with data:', data);
     setSocialLoading(true);
     
     try {
       if (!data || !data.user || !data.token) {
-        console.error('❌ Invalid data structure:', data);
         setError("รูปแบบข้อมูลตอบกลับไม่ถูกต้อง");
         return;
       }
 
       const token = data.token;
-      console.log('✅ Token received:', token ? `${token.substring(0, 20)}...` : 'No token');
 
-      // ⭐ ดึงโปรไฟล์จาก backend มาผูกกับ user
-      console.log('📡 Fetching user profile...');
       const profile = await fetchMyProfile(token);
-      console.log('👤 Profile fetched:', profile ? 'Success' : 'No profile');
 
       const user = {
         ...data.user,
@@ -139,55 +130,25 @@ export default function LoginPage({ onAuth }) {
         profile: profile || data.user.profile || null,
       };
 
-      console.log('👤 Final user object:', {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        hasProfile: !!user.profile
-      });
-
-      // ⭐ เก็บข้อมูลใน localStorage ก่อน
-      console.log('💾 Saving to localStorage...');
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
       
-      // ⭐ ตรวจสอบว่าเก็บสำเร็จ
       const savedToken = localStorage.getItem("token");
       const savedUser = localStorage.getItem("user");
-      console.log('✅ localStorage check:', {
-        tokenSaved: !!savedToken,
-        userSaved: !!savedUser,
-        canParseUser: savedUser ? !!JSON.parse(savedUser) : false
-      });
 
-      // ⭐ เรียก onAuth callback ก่อน dispatch event
       if (typeof onAuth === "function") {
-        console.log('📞 Calling onAuth callback...');
         onAuth(user, token);
-      } else {
-        console.log('⚠️ onAuth callback not provided');
       }
 
-      // ⭐ Dispatch event เพื่อให้ App.js อัปเดต user state
-      console.log('📢 Dispatching auth-change event...');
       window.dispatchEvent(new Event("auth-change"));
       
-      // ⭐ รอให้ event ถูกประมวลผล
       await new Promise(resolve => setTimeout(resolve, 200));
       
-      // ⭐ ตรวจสอบว่า useAuthUser อัปเดตแล้ว
       const currentUser = JSON.parse(localStorage.getItem("user") || "null");
-      console.log('🔍 Final check - current user in localStorage:', currentUser ? currentUser.email : 'Still null');
-
-      console.log('🎉 Login successful, preparing to navigate...');
       
-      // ⭐ Force navigate โดยไม่รอ
-      console.log('🚀 Navigating to home page...');
       navigate("/", { replace: true });
       
     } catch (err) {
-      console.error("❌ Social login error:", err);
       setError(`เกิดข้อผิดพลาดในการเข้าสู่ระบบ: ${err.message}`);
     } finally {
       setSocialLoading(false);
@@ -210,14 +171,12 @@ export default function LoginPage({ onAuth }) {
       });
 
       if (!res.ok) {
-        console.log("fetchMyProfile not ok:", res.status);
         return null;
       }
 
       const data = await res.json().catch(() => null);
       return data || null;
     } catch (err) {
-      console.log("fetchMyProfile error:", err && err.message);
       return null;
     }
   };
@@ -306,7 +265,6 @@ export default function LoginPage({ onAuth }) {
             };
 
       const url = `${API_BASE}${endpoint}`;
-      console.log("🔎 Calling API:", url, { ...body, password: "[HIDDEN]" });
 
       const res = await fetch(url, {
         method: "POST",
@@ -409,7 +367,6 @@ export default function LoginPage({ onAuth }) {
 
       navigate("/", { replace: true });
     } catch (err) {
-      console.error("❌ Network error:", err);
       setError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
     } finally {
       setLoading(false);
