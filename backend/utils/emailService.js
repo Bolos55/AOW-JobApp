@@ -29,10 +29,16 @@ const sendEmailViaResend = async (to, subject, html) => {
       html: html
     });
 
-    console.log('✅ Email sent via Resend:', result.data?.id || result.id);
+    // ✅ Debug: แสดง response structure
+    console.log('📧 Resend Response:', JSON.stringify(result, null, 2));
+    
+    // ✅ ดึง messageId จาก response
+    const messageId = result?.data?.id || result?.id || 'unknown';
+    
+    console.log('✅ Email sent via Resend:', messageId);
     return { 
       success: true, 
-      messageId: result.data?.id || result.id, 
+      messageId: messageId, 
       provider: 'resend' 
     };
     
