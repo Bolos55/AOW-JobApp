@@ -94,7 +94,9 @@ router.post("/google", async (req, res) => {
     });
 
   } catch (err) {
-    console.log("Google auth error:", err);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Google auth error:", err);
+    }
     res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
   }
 });
@@ -173,33 +175,43 @@ router.post("/facebook", async (req, res) => {
     });
 
   } catch (err) {
-    console.log("Facebook auth error:", err);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Facebook auth error:", err);
+    }
     res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
   }
 });
 
 // ===================== FIREBASE GOOGLE LOGIN =====================
 router.post("/firebase-google", async (req, res) => {
-  console.log("🔥 Firebase Google Login endpoint hit!");
-  console.log("📋 Request body:", req.body);
-  console.log("🌐 Request headers:", req.headers);
+  if (process.env.NODE_ENV === 'development') {
+    console.log("🔥 Firebase Google Login endpoint hit!");
+    console.log("📋 Request body:", req.body);
+    console.log("🌐 Request headers:", req.headers);
+  }
   
   try {
     const { uid, email, name, photoURL, emailVerified } = req.body;
     
     if (!uid || !email) {
-      console.log("❌ Missing uid or email:", { uid, email });
+      if (process.env.NODE_ENV === 'development') {
+        console.log("❌ Missing uid or email:", { uid, email });
+      }
       return res.status(400).json({ message: "ไม่พบข้อมูล Firebase UID หรือ email" });
     }
 
-    console.log("✅ Firebase data received:", { uid, email, name, emailVerified });
+    if (process.env.NODE_ENV === 'development') {
+      console.log("✅ Firebase data received:", { uid, email, name, emailVerified });
+    }
 
     // ✅ ตรวจสอบว่ามีผู้ใช้นี้ในระบบแล้วหรือไม่
     let user = await User.findOne({ email });
 
     if (user) {
       // ✅ ผู้ใช้มีอยู่แล้ว - login ปกติ
-      console.log(`🔄 Existing user social login: ${email} (Firebase Google)`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔄 Existing user social login: ${email} (Firebase Google)`);
+      }
       
       // อัปเดตข้อมูล social provider ถ้ายังไม่มี
       if (!user.socialProvider) {
@@ -213,7 +225,9 @@ router.post("/firebase-google", async (req, res) => {
           user.isActive = true;
         }
         await user.save();
-        console.log("✅ Updated user with Firebase data");
+        if (process.env.NODE_ENV === 'development') {
+          console.log("✅ Updated user with Firebase data");
+        }
       }
 
       // ตรวจสอบว่าบัญชีถูกระงับหรือไม่
@@ -244,7 +258,9 @@ router.post("/firebase-google", async (req, res) => {
       });
     } else {
       // ✅ ผู้ใช้ใหม่ - ต้องเลือก role ก่อน
-      console.log(`👤 New user from Firebase Google: ${email} - needs role selection`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`👤 New user from Firebase Google: ${email} - needs role selection`);
+      }
       
       return res.json({
         message: "ผู้ใช้ใหม่ - ต้องเลือกประเภทการใช้งาน",
@@ -262,7 +278,9 @@ router.post("/firebase-google", async (req, res) => {
     }
 
   } catch (err) {
-    console.log("Firebase Google auth error:", err);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Firebase Google auth error:", err);
+    }
     res.status(500).json({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
   }
 });
@@ -373,7 +391,9 @@ router.get("/github/callback", async (req, res) => {
     res.redirect(`${frontendUrl}/login?token=${token}&success=github`);
 
   } catch (err) {
-    console.log("GitHub callback error:", err);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("GitHub callback error:", err);
+    }
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
     res.redirect(`${frontendUrl}/login?error=github_auth_failed`);
   }

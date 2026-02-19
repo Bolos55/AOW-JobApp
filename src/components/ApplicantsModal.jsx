@@ -109,14 +109,11 @@ export default function ApplicantsModal({
         // บังคับเป็น string กัน backend งง
         participantId: String(participantId),
       };
-      console.log("ensureThread payload:", payload);
 
       const thread = await ensureThread({
         ...payload,
         token,
       });
-
-      console.log("ensureThread success, thread:", thread);
 
       if (typeof onOpenChat === "function") {
         onOpenChat(thread);
@@ -166,13 +163,11 @@ export default function ApplicantsModal({
               jobId: job._id,
               participantId: String(participantId),
             };
-            console.log("ensureThread (from hired) payload:", payload);
 
             const thread = await ensureThread({
               ...payload,
               token,
             });
-            console.log("ensureThread (from hired) success:", thread);
             if (typeof onOpenChat === "function") {
               onOpenChat(thread);
             }

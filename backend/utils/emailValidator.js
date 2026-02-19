@@ -120,7 +120,9 @@ export async function hasMxRecord(domain) {
     const mxRecords = await resolveMx(domain);
     return mxRecords && mxRecords.length > 0;
   } catch (error) {
-    console.log(`❌ MX lookup failed for ${domain}:`, error.message);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`❌ MX lookup failed for ${domain}:`, error.message);
+    }
     return false;
   }
 }
@@ -223,7 +225,9 @@ export async function validateEmail(email) {
       notes.push('Domain ไม่สามารถรับอีเมลได้');
     }
   } catch (error) {
-    console.log('MX check failed:', error.message);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('MX check failed:', error.message);
+    }
   }
   
   // กำหนดสถานะ

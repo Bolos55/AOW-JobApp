@@ -35,7 +35,6 @@ export default function JobSeekerProfileView({ open, onClose, userId, userName }
         }
 
         const data = await res.json().catch(() => ({}));
-        console.log("📥 Profile data:", data);
         setProfile(data);
       } catch (e) {
         console.error("loadProfile error:", e);

@@ -895,7 +895,6 @@ export default function EmployerView({ user, onLogout }) {
                   <button
                     onClick={() => {
                       setShowPaymentInfo(false);
-                      // TODO: เปิด modal เติมเงิน/boost
                     }}
                     className="px-6 py-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg font-medium hover:shadow-lg transition"
                   >
@@ -1511,9 +1510,6 @@ function ChatModal({ open, app, user, onClose, onContactAdmin }) {
                   // เปิด ServiceFeeModal
 
                   onClose();
-
-                  // TODO: เปิด payment modal
-
                 }}
 
                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium"

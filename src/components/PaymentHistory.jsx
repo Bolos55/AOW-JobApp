@@ -16,7 +16,6 @@ export default function PaymentHistory({ open, onClose }) {
     setError("");
 
     try {
-      console.log("🔍 Loading payments with filter:", filter);
       
       // ✅ สำหรับ filter "failed" ให้โหลดทั้งหมดแล้ว filter ฝั่ง client
       const apiFilter = filter === "failed" ? "" : (filter === "all" ? "" : filter);
@@ -24,8 +23,6 @@ export default function PaymentHistory({ open, onClose }) {
       const res = await fetch(`${API_BASE}/api/payments/my-payments?status=${apiFilter}`, {
         headers: authHeader()
       });
-
-      console.log("🔍 Payment API response status:", res.status);
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -44,7 +41,6 @@ export default function PaymentHistory({ open, onClose }) {
       }
 
       const data = await res.json();
-      console.log("🔍 Payment API response data:", data);
       
       // ✅ Validate response structure
       if (!data || typeof data !== 'object') {

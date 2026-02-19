@@ -91,31 +91,22 @@ export default function ApplyJobModal({ open, onClose, job }) {
 
   // ✅ handler สำหรับไฟล์บัตรประชาชน (เฉพาะรูป)
   const onPickIdCard = (e) => {
-    console.log("onPickIdCard called");
     const file = e.target.files?.[0];
-    console.log("Selected file:", file);
     
     if (!file) {
-      console.log("No file selected");
       return;
     }
 
-    console.log("File size:", file.size, "bytes");
-    console.log("File type:", file.type);
-
     if (file.size > 5 * 1024 * 1024) {
       setMsg("รูปบัตรประชาชนต้องไม่เกิน 5MB");
-      console.log("File too large");
       return;
     }
     if (!["image/jpeg", "image/png"].includes(file.type)) {
       setMsg("รูปบัตรประชาชนรองรับเฉพาะ JPG / PNG");
-      console.log("Invalid file type");
       return;
     }
 
     // ✅ ไม่ตรวจสอบขนาดรูปภาพ - รับทุกขนาด
-    console.log("Setting ID card:", file.name);
     setIdCard(file);
     setIdCardName(file.name);
     setMsg("");

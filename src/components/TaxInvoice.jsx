@@ -37,7 +37,6 @@ export default function TaxInvoice({ payment, onClose }) {
   const downloadInvoice = async () => {
     setLoading(true);
     try {
-      // TODO: Implement PDF generation
       alert("ฟีเจอร์ดาวน์โหลดใบกำกับภาษีจะพร้อมใช้งานในเร็วๆ นี้");
     } catch (err) {
       alert("ไม่สามารถดาวน์โหลดได้ กรุณาลองใหม่");

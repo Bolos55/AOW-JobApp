@@ -48,7 +48,7 @@ export const getPhotoUrl = (profile, fieldName = "photoUrl") => {
     
     const resolvedUrl = resolveImageUrl(url);
     
-    if (!resolvedUrl && url) {
+    if (!resolvedUrl && url && process.env.NODE_ENV === 'development') {
       console.log("🔄 Could not resolve photo URL:", url);
     }
     

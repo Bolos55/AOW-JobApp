@@ -53,7 +53,6 @@ export default function EmployerProfileModal({ open, onClose, user, onSaved }) {
         }
 
         const data = await res.json().catch(() => ({}));
-        console.log("📥 Employer profile data:", data);
 
         // รองรับทั้งแบบ { ... } และ { profile: { ... } }
         const p = data.profile || data || {};
@@ -139,8 +138,6 @@ export default function EmployerProfileModal({ open, onClose, user, onSaved }) {
         logoUrl: profile.logoUrl || "",
       };
 
-      console.log("📤 PUT /api/profile/me payload:", payload);
-
       const res = await fetch(`${API_BASE}/api/profile/me`, {
         method: "PUT",
         headers: {
@@ -151,7 +148,6 @@ export default function EmployerProfileModal({ open, onClose, user, onSaved }) {
       });
 
       const data = await res.json().catch(() => ({}));
-      console.log("📥 PUT /api/profile/me response:", data);
 
       if (!res.ok) {
         throw new Error(

@@ -45,7 +45,7 @@ export function useOnlineStatus(user = null) {
         });
 
         if (response.ok && isMountedRef.current) {
-          // console.log('📡 Heartbeat sent:', currentPage); // ลด console logs
+          // Heartbeat sent successfully
         }
       } catch (err) {
         if (isMountedRef.current) {
@@ -78,7 +78,6 @@ export function useOnlineStatus(user = null) {
           }
         });
 
-        console.log('📴 Set offline');
       } catch (err) {
         console.error('❌ Set offline error:', err);
       }
@@ -90,11 +89,9 @@ export function useOnlineStatus(user = null) {
       
       if (document.hidden) {
         isActiveRef.current = false;
-        console.log('👁️ Page hidden - pausing heartbeat');
       } else {
         isActiveRef.current = true;
         sendHeartbeat(); // ส่งทันทีเมื่อกลับมา
-        console.log('👁️ Page visible - resuming heartbeat');
       }
     };
 
@@ -177,7 +174,6 @@ export function useOnlineStatus(user = null) {
         }
       });
 
-      console.log('📴 Manual set offline');
     } catch (err) {
       console.error('❌ Manual set offline error:', err);
     }

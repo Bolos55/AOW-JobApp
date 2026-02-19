@@ -551,7 +551,6 @@ router.patch(
 
       // ส่งอีเมลแจ้งเตือน (ถ้ามี email service)
       try {
-        // TODO: ส่งอีเมลแจ้งเตือนผู้สมัคร
         const emailContent = `
 เรียน คุณ${app.applicantName || app.applicant?.name}
 

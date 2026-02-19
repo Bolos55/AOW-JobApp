@@ -48,6 +48,9 @@ import onlineStatusRoutes from "./routes/onlineStatusRoutes.js";
 dotenv.config();
 const app = express();
 
+// ✅ FIX: Trust proxy for Render deployment (แก้ ERR_ERL_UNEXPECTED_X_FORWARDED_FOR)
+app.set('trust proxy', 1);
+
 // ===============================
 // Global Security Middleware
 // ===============================
@@ -82,7 +85,9 @@ const corsOptions = {
       return callback(null, true);
     }
     
-    console.log('❌ CORS blocked origin:', origin);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('❌ CORS blocked origin:', origin);
+    }
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -166,13 +171,10 @@ app.use("/uploads", (req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   
   const filePath = `uploads${req.path}`;
-  console.log(`📁 Static file request: ${filePath}`);
   
   if (fs.existsSync(filePath)) {
-    console.log(`✅ File exists: ${filePath}`);
     return next();
   } else {
-    console.log(`❌ File not found: ${filePath}`);
     return res.status(404).json({ 
       error: "File not found",
       path: req.path,
@@ -261,12 +263,10 @@ app.use("/api/payments/webhook", createRateLimit(5 * 60 * 1000, 50)); // 50 webh
 
 // ✅ Explicitly bypass rate limits for payment history and status checks
 app.use("/api/payments/my-payments", (req, res, next) => {
-  console.log("🔍 Payment history request - bypassing rate limits");
   next();
 });
 
 app.use("/api/payments/:paymentId/status", (req, res, next) => {
-  console.log("🔍 Payment status request - bypassing rate limits");
   next();
 });
 
@@ -509,7 +509,9 @@ const ensureUploadsDirectories = () => {
   directories.forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
-      console.log(`📁 Created directory: ${dir}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📁 Created directory: ${dir}`);
+      }
     }
   });
 };

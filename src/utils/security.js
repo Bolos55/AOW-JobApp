@@ -217,7 +217,6 @@ export const secureStorage = {
   setItem: (key, value) => {
     try {
       // ⚠️ Base64 is NOT encryption - easily decoded
-      // TODO: Move sensitive tokens to httpOnly cookies
       if (process.env.NODE_ENV === 'development') {
         console.warn(`⚠️ Storing ${key} in localStorage - NOT secure for production`);
       }

@@ -37,7 +37,6 @@ export default function EmployerProfileView({ open, onClose, userId, companyName
         }
 
         const data = await res.json().catch(() => ({}));
-        console.log("📥 Employer profile data:", data);
         setProfile(data);
       } catch (e) {
         console.error("loadEmployerProfile error:", e);

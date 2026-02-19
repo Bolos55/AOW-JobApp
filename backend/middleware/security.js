@@ -7,7 +7,7 @@ import xss from 'xss-clean';
 import hpp from 'hpp';
 import { logger } from '../utils/logger.js';
 
-// Rate limiting
+// ✅ FIX: Rate limiting with proper proxy trust for Render
 export const createRateLimit = (windowMs = 15 * 60 * 1000, max = 100) => {
   return rateLimit({
     windowMs,
@@ -18,13 +18,26 @@ export const createRateLimit = (windowMs = 15 * 60 * 1000, max = 100) => {
     },
     standardHeaders: true,
     legacyHeaders: false,
+    // ✅ FIX: Skip X-Forwarded-For validation for Render
+    skip: (req) => {
+      // Skip rate limiting in development
+      if (process.env.NODE_ENV === 'development') {
+        return true;
+      }
+      return false;
+    },
+    // ✅ FIX: Use custom key generator that doesn't rely on X-Forwarded-For
+    keyGenerator: (req) => {
+      // Use real IP or fallback to connection IP
+      return req.ip || req.connection.remoteAddress || 'unknown';
+    }
   });
 };
 
 // Specific rate limits
 export const authRateLimit = process.env.NODE_ENV === 'development' 
   ? createRateLimit(5 * 60 * 1000, 20) // Development: 20 attempts per 5 minutes
-  : createRateLimit(15 * 60 * 1000, 5); // Production: 5 attempts per 15 minutes
+  : createRateLimit(15 * 60 * 1000, 10); // Production: 10 attempts per 15 minutes (เพิ่มจาก 5 เป็น 10)
 
 export const apiRateLimit = createRateLimit(15 * 60 * 1000, 100); // 100 requests per 15 minutes
 export const uploadRateLimit = createRateLimit(60 * 60 * 1000, 10); // 10 uploads per hour

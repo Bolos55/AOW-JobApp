@@ -88,7 +88,9 @@ export const verifyServiceFeePayment = async (payment) => {
  * Mock Service Fee Payment Verification สำหรับทดสอบ
  */
 const verifyMockServiceFeePayment = async (payment) => {
-  console.log(`🧪 Mock service fee verification for payment: ${payment.paymentId}`);
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🧪 Mock service fee verification for payment: ${payment.paymentId}`);
+  }
   
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 1000));

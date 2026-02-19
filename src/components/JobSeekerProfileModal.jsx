@@ -56,8 +56,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
         const data = await res.json().catch(() => ({}));
 
-        console.log("📥 /api/profile/me ->", data);
-
         // รองรับทั้งแบบ { ... } และ { profile: { ... } }
         const p = data.profile || data || {};
 
@@ -148,8 +146,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
         photoUrl: profile.photoUrl || "",
       };
 
-      console.log("📤 PUT /api/profile/me payload:", payload);
-
       const res = await fetch(`${API_BASE}/api/profile/me`, {
         method: "PUT",
         headers: {
@@ -160,8 +156,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
       });
 
       const data = await res.json().catch(() => ({}));
-
-      console.log("📥 PUT /api/profile/me response:", data);
 
       if (!res.ok) {
         throw new Error(
@@ -236,8 +230,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
     setUploadingPhoto(true);
     try {
-      console.log("🗑️ Starting photo deletion...");
-      
       const res = await fetch(`${API_BASE}/api/profile/me/photo`, {
         method: "DELETE",
         headers: {
@@ -245,8 +237,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
         },
       });
 
-      console.log("🗑️ Delete response status:", res.status);
-      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         console.error("🗑️ Delete failed:", errorData);
@@ -254,7 +244,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
       }
 
       const data = await res.json();
-      console.log("🗑️ Delete success:", data);
 
       // ✅ Check if component is still mounted before setState
       if (mountedRef.current) {
@@ -274,7 +263,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
           localStorage.setItem("user", JSON.stringify(currentUser));
         }
         
-        console.log("✅ Photo deleted and all states cleared successfully");
         alert("ลบรูปโปรไฟล์เรียบร้อยแล้ว");
         
         // ✅ Call onSaved to refresh parent component
@@ -302,9 +290,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
     setUploadingPhoto(true);
     try {
-      console.log("📸 Starting photo upload...");
-      console.log("📸 File:", file.name, file.size, file.type);
-      
       const form = new FormData();
       form.append("photo", file);
 
@@ -324,9 +309,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
 
       clearTimeout(timeoutId);
 
-      console.log("📸 Upload response status:", res.status);
-      console.log("📸 Upload response headers:", res.headers);
-      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         console.error("📸 Upload failed:", errorData);
@@ -356,11 +338,9 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
       }
 
       const data = await res.json();
-      console.log("📸 Upload success:", data);
 
       const photoUrl = data.photoUrl;
       if (photoUrl) {
-        console.log("📸 Setting new photoUrl:", photoUrl);
         
         // ✅ Check if component is still mounted before setState
         if (mountedRef.current) {
@@ -372,7 +352,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
           // ✅ อัปเดต localStorage ด้วย photoUrl ใหม่
           updateProfileInStorage({ photoUrl: photoUrl });
           
-          console.log("✅ Photo uploaded and state updated successfully");
           alert("อัปโหลดรูปโปรไฟล์เรียบร้อยแล้ว");
         }
       } else {
@@ -460,17 +439,6 @@ export default function JobSeekerProfileModal({ open, onClose, user, onSaved }) 
     "";
 
   const profilePhoto = getPhotoUrl({ photoUrl: rawPhoto });
-
-  // ✅ Debug logging
-  console.log("🔍 Profile photo debug:", {
-    "profile.photoUrl": profile.photoUrl,
-    "user?.profilePhotoUrl": user?.profilePhotoUrl,
-    "user?.photoUrl": user?.photoUrl,
-    "user?.avatarUrl": user?.avatarUrl,
-    "rawPhoto": rawPhoto,
-    "profilePhoto": profilePhoto,
-    "hasPhoto": !!profilePhoto
-  });
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">

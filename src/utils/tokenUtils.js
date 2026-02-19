@@ -22,7 +22,6 @@ export const clearAllTokens = () => {
     // Dispatch event เพื่อให้ components อื่นรู้
     window.dispatchEvent(new Event("auth-change"));
     
-    console.log('✅ All tokens and auth data cleared');
     return true;
   } catch (error) {
     console.error('❌ Error clearing tokens:', error);
