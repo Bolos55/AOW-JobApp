@@ -1,55 +1,17 @@
 // backend/utils/emailService.js
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-// ✅ FIX: ใช้ Resend API แทน SMTP (แก้ปัญหา timeout บน Render)
-const sendEmailViaResend = async (to, subject, html, text) => {
+// ✅ สร้าง Resend instance
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// ✅ ฟังก์ชันส่งอีเมลผ่าน Resend
+const sendEmailViaResend = async (to, subject, html) => {
   try {
-    // ✅ ถ้ามี RESEND_API_KEY ให้ใช้ Resend
-    if (process.env.RESEND_API_KEY) {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: process.env.EMAIL_FROM || 'AOW Job App <onboarding@resend.dev>',
-          to: [to],
-          subject: subject,
-          html: html,
-          text: text
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send email via Resend');
-      }
-
-      console.log('✅ Email sent via Resend:', data.id);
-      return { success: true, messageId: data.id, provider: 'resend' };
-    }
-    
-    // ✅ Fallback: ใช้ SMTP (สำหรับ local development)
-    return await sendEmailViaSMTP(to, subject, html, text);
-    
-  } catch (error) {
-    console.error('❌ Send email via Resend error:', error);
-    
-    // ✅ Fallback: ลอง SMTP
-    console.log('⚠️ Resend failed, trying SMTP fallback...');
-    return await sendEmailViaSMTP(to, subject, html, text);
-  }
-};
-
-// ✅ SMTP Fallback (สำหรับ development หรือเมื่อ Resend ล้มเหลว)
-const sendEmailViaSMTP = async (to, subject, html, text) => {
-  try {
-    // ✅ ถ้าไม่ได้ตั้งค่าอีเมลจริง ให้ใช้ mock mode
-    if (!process.env.EMAIL_USER || process.env.EMAIL_USER === 'your-email@gmail.com') {
+    // ✅ ตรวจสอบว่ามี API Key หรือไม่
+    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'your-resend-api-key') {
       console.log('📧 MOCK EMAIL MODE - Email would be sent to:', to);
       console.log('📧 Subject:', subject);
+      console.log('⚠️ RESEND_API_KEY not configured. Using mock mode.');
       
       return { 
         success: true, 
@@ -59,70 +21,42 @@ const sendEmailViaSMTP = async (to, subject, html, text) => {
       };
     }
 
-    const transporter = createTransporter();
-    
-    const mailOptions = {
-      from: `"AOW Job App" <${process.env.EMAIL_USER}>`,
-      to: to,
+    // ✅ ส่งอีเมลผ่าน Resend
+    const result = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'AOW Job App <onboarding@resend.dev>',
+      to: [to],
       subject: subject,
-      html: html,
-      text: text
-    };
+      html: html
+    });
 
-    const result = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent via SMTP:', result.messageId);
-    return { success: true, messageId: result.messageId, provider: 'smtp' };
+    console.log('✅ Email sent via Resend:', result.data?.id || result.id);
+    return { 
+      success: true, 
+      messageId: result.data?.id || result.id, 
+      provider: 'resend' 
+    };
     
   } catch (error) {
-    console.error('❌ Send email via SMTP error:', error);
-    return { success: false, error: error.message, provider: 'smtp' };
+    console.error('❌ Send email via Resend error:', error);
+    
+    // ✅ ถ้า error เป็น API key ไม่ถูกต้อง ให้ใช้ mock mode
+    if (error.message?.includes('API key') || error.message?.includes('Invalid')) {
+      console.log('⚠️ Invalid RESEND_API_KEY. Using mock mode.');
+      return { 
+        success: true, 
+        messageId: 'mock-' + Date.now(),
+        mockMode: true,
+        provider: 'mock',
+        warning: 'Invalid API key - using mock mode'
+      };
+    }
+    
+    return { 
+      success: false, 
+      error: error.message,
+      provider: 'resend'
+    };
   }
-};
-
-// ✅ สร้าง transporter สำหรับส่งอีเมล (SMTP Fallback)
-const createTransporter = () => {
-  // ✅ FIX: Add timeout and connection settings
-  const transportConfig = {
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    // ✅ FIX: Add timeout settings
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 5000, // 5 seconds
-    socketTimeout: 10000, // 10 seconds
-    // ✅ FIX: Add TLS settings
-    tls: {
-      rejectUnauthorized: false, // Allow self-signed certificates
-      minVersion: 'TLSv1.2'
-    },
-    // ✅ FIX: Add debug mode in development
-    debug: process.env.NODE_ENV === 'development',
-    logger: process.env.NODE_ENV === 'development'
-  };
-
-  // ใช้ Gmail SMTP (ต้องตั้งค่า App Password)
-  if (process.env.EMAIL_SERVICE === 'gmail') {
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER, // your-email@gmail.com
-        pass: process.env.EMAIL_PASS, // App Password (ไม่ใช่รหัสผ่านปกติ)
-      },
-      // ✅ FIX: Add timeout for Gmail too
-      connectionTimeout: 10000,
-      greetingTimeout: 5000,
-      socketTimeout: 10000,
-      debug: process.env.NODE_ENV === 'development',
-      logger: process.env.NODE_ENV === 'development'
-    });
-  }
-  
-  // ใช้ SMTP ทั่วไป
-  return nodemailer.createTransport(transportConfig);
 };
 
 // ✅ ส่งอีเมลยืนยัน
@@ -192,29 +126,9 @@ export const sendVerificationEmail = async (email, name, verificationToken) => {
         </div>
       </div>
     `;
-    
-    const text = `
-      ยินดีต้อนรับ ${name}!
-      
-      ขอบคุณที่สมัครสมาชิก AOW Job App
-      
-      เพื่อยืนยันอีเมลของคุณ กรุณาคลิกลิงก์ด้านล่าง:
-      ${verificationLink}
-      
-      ลิงก์นี้จะหมดอายุใน 24 ชั่วโมง
-      
-      ข้อมูลบัญชี:
-      - อีเมล: ${email}
-      - ชื่อ: ${name}
-      - วันที่สมัคร: ${new Date().toLocaleDateString('th-TH')}
-      
-      หากคุณไม่ได้สมัครสมาชิก กรุณาเพิกเฉยต่ออีเมลนี้
-      
-      AOW Job App
-    `;
 
-    // ✅ ใช้ Resend API แทน SMTP
-    const result = await sendEmailViaResend(email, subject, html, text);
+    // ✅ ส่งอีเมลผ่าน Resend
+    const result = await sendEmailViaResend(email, subject, html);
     
     if (result.success) {
       return { 
@@ -222,7 +136,8 @@ export const sendVerificationEmail = async (email, name, verificationToken) => {
         messageId: result.messageId,
         mockMode: result.mockMode,
         verificationLink: result.mockMode ? verificationLink : undefined,
-        provider: result.provider
+        provider: result.provider,
+        warning: result.warning
       };
     }
     
@@ -237,83 +152,83 @@ export const sendVerificationEmail = async (email, name, verificationToken) => {
 // ✅ ส่งอีเมลแจ้งเตือนการสมัครสำเร็จ
 export const sendWelcomeEmail = async (email, name, role) => {
   try {
-    // ✅ ถ้าไม่ได้ตั้งค่าอีเมลจริง ให้ใช้ mock mode
-    if (!process.env.EMAIL_USER || process.env.EMAIL_USER === 'your-email@gmail.com') {
-      console.log('📧 MOCK EMAIL MODE - Welcome email would be sent to:', email);
-      return { success: true, messageId: 'mock-welcome-' + Date.now(), mockMode: true };
-    }
-
-    const transporter = createTransporter();
-    
     const roleText = role === 'employer' ? 'นายจ้าง' : 'ผู้หางาน';
     const dashboardLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/`;
     
-    const mailOptions = {
-      from: `"AOW Job App" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: '🎉 ยินดีต้อนรับสู่ AOW Job App - เริ่มต้นใช้งานได้เลย!',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">🎉 ยินดีต้อนรับ!</h1>
-            <p style="color: white; margin: 10px 0 0 0; font-size: 16px;">บัญชีของคุณพร้อมใช้งานแล้ว</p>
-          </div>
-          
-          <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; margin-bottom: 30px;">
-            <h2 style="color: #333; margin-top: 0;">สวัสดี ${name}!</h2>
-            <p style="color: #666; line-height: 1.6; font-size: 16px;">
-              ขอบคุณที่ยืนยันอีเมลเรียบร้อยแล้ว ✅
-            </p>
-            <p style="color: #666; line-height: 1.6; font-size: 16px;">
-              บัญชี<strong>${roleText}</strong>ของคุณพร้อมใช้งานแล้ว เริ่มต้นการใช้งาน AOW Job App กันเลย!
-            </p>
-          </div>
-          
-          <div style="text-align: center; margin: 40px 0;">
-            <a href="${dashboardLink}" 
-               style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
-                      color: white; 
-                      padding: 15px 30px; 
-                      text-decoration: none; 
-                      border-radius: 25px; 
-                      font-weight: bold; 
-                      font-size: 16px;
-                      display: inline-block;
-                      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);">
-              🚀 เข้าใช้งานระบบ
-            </a>
-          </div>
-          
-          <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin: 30px 0;">
-            <h3 style="color: #2e7d32; margin-top: 0;">🎯 ขั้นตอนต่อไป</h3>
-            ${role === 'employer' ? `
-              <ul style="color: #2e7d32; line-height: 1.8;">
-                <li><strong>กรอกข้อมูลบริษัท</strong> - เพิ่มรายละเอียดบริษัทและโลโก้</li>
-                <li><strong>โพสต์งานแรก</strong> - เริ่มรับสมัครพนักงานใหม่</li>
-                <li><strong>จัดการใบสมัคร</strong> - ดูและคัดเลือกผู้สมัครงาน</li>
-                <li><strong>ใช้ระบบแชท</strong> - สื่อสารกับผู้สมัครงาน</li>
-              </ul>
-            ` : `
-              <ul style="color: #2e7d32; line-height: 1.8;">
-                <li><strong>กรอกข้อมูลส่วนตัว</strong> - เพิ่มประวัติและทักษะ</li>
-                <li><strong>อัปโหลดเรซูเม่</strong> - แนบไฟล์ CV ของคุณ</li>
-                <li><strong>ค้นหางาน</strong> - เริ่มสมัครงานที่ใช่</li>
-                <li><strong>ใช้ระบบแชท</strong> - สื่อสารกับนายจ้าง</li>
-              </ul>
-            `}
-          </div>
-          
-          <div style="border-top: 1px solid #eee; padding-top: 20px; text-align: center; color: #999; font-size: 14px;">
-            <p><strong>AOW Job App</strong> - ระบบหางานและรับสมัครงานออนไลน์</p>
-            <p>📧 ${process.env.EMAIL_USER || 'support@aow-jobapp.com'}</p>
-          </div>
+    const subject = '🎉 ยินดีต้อนรับสู่ AOW Job App - เริ่มต้นใช้งานได้เลย!';
+    
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🎉 ยินดีต้อนรับ!</h1>
+          <p style="color: white; margin: 10px 0 0 0; font-size: 16px;">บัญชีของคุณพร้อมใช้งานแล้ว</p>
         </div>
-      `
-    };
+        
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; margin-bottom: 30px;">
+          <h2 style="color: #333; margin-top: 0;">สวัสดี ${name}!</h2>
+          <p style="color: #666; line-height: 1.6; font-size: 16px;">
+            ขอบคุณที่ยืนยันอีเมลเรียบร้อยแล้ว ✅
+          </p>
+          <p style="color: #666; line-height: 1.6; font-size: 16px;">
+            บัญชี<strong>${roleText}</strong>ของคุณพร้อมใช้งานแล้ว เริ่มต้นการใช้งาน AOW Job App กันเลย!
+          </p>
+        </div>
+        
+        <div style="text-align: center; margin: 40px 0;">
+          <a href="${dashboardLink}" 
+             style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
+                    color: white; 
+                    padding: 15px 30px; 
+                    text-decoration: none; 
+                    border-radius: 25px; 
+                    font-weight: bold; 
+                    font-size: 16px;
+                    display: inline-block;
+                    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);">
+            🚀 เข้าใช้งานระบบ
+          </a>
+        </div>
+        
+        <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin: 30px 0;">
+          <h3 style="color: #2e7d32; margin-top: 0;">🎯 ขั้นตอนต่อไป</h3>
+          ${role === 'employer' ? `
+            <ul style="color: #2e7d32; line-height: 1.8;">
+              <li><strong>กรอกข้อมูลบริษัท</strong> - เพิ่มรายละเอียดบริษัทและโลโก้</li>
+              <li><strong>โพสต์งานแรก</strong> - เริ่มรับสมัครพนักงานใหม่</li>
+              <li><strong>จัดการใบสมัคร</strong> - ดูและคัดเลือกผู้สมัครงาน</li>
+              <li><strong>ใช้ระบบแชท</strong> - สื่อสารกับผู้สมัครงาน</li>
+            </ul>
+          ` : `
+            <ul style="color: #2e7d32; line-height: 1.8;">
+              <li><strong>กรอกข้อมูลส่วนตัว</strong> - เพิ่มประวัติและทักษะ</li>
+              <li><strong>อัปโหลดเรซูเม่</strong> - แนบไฟล์ CV ของคุณ</li>
+              <li><strong>ค้นหางาน</strong> - เริ่มสมัครงานที่ใช่</li>
+              <li><strong>ใช้ระบบแชท</strong> - สื่อสารกับนายจ้าง</li>
+            </ul>
+          `}
+        </div>
+        
+        <div style="border-top: 1px solid #eee; padding-top: 20px; text-align: center; color: #999; font-size: 14px;">
+          <p><strong>AOW Job App</strong> - ระบบหางานและรับสมัครงานออนไลน์</p>
+          <p>📧 ${process.env.EMAIL_FROM || 'support@aow-jobapp.com'}</p>
+        </div>
+      </div>
+    `;
 
-    const result = await transporter.sendMail(mailOptions);
-    console.log('✅ Welcome email sent:', result.messageId);
-    return { success: true, messageId: result.messageId };
+    // ✅ ส่งอีเมลผ่าน Resend
+    const result = await sendEmailViaResend(email, subject, html);
+    
+    if (result.success) {
+      return { 
+        success: true, 
+        messageId: result.messageId,
+        mockMode: result.mockMode,
+        provider: result.provider,
+        warning: result.warning
+      };
+    }
+    
+    return result;
     
   } catch (error) {
     console.error('❌ Send welcome email error:', error);
@@ -389,32 +304,9 @@ export const sendPasswordResetEmail = async (email, name, resetToken) => {
         </div>
       </div>
     `;
-    
-    const text = `
-      รีเซ็ตรหัสผ่าน - AOW Job App
-      
-      สวัสดี ${name}!
-      
-      เราได้รับคำขอรีเซ็ตรหัสผ่านสำหรับบัญชีของคุณ
-      
-      กรุณาคลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่:
-      ${resetLink}
-      
-      ⚠️ สำคัญ:
-      - ลิงก์นี้จะหมดอายุใน 15 นาที
-      - ใช้ได้เพียงครั้งเดียวเท่านั้น
-      - หากไม่ได้ขอรีเซ็ต กรุณาเพิกเฉยต่ออีเมลนี้
-      
-      ข้อมูลการขอรีเซ็ต:
-      - อีเมล: ${email}
-      - เวลาที่ขอ: ${new Date().toLocaleString('th-TH')}
-      - หมดอายุ: ${new Date(Date.now() + 15 * 60 * 1000).toLocaleString('th-TH')}
-      
-      AOW Job App
-    `;
 
-    // ✅ ใช้ Resend API แทน SMTP
-    const result = await sendEmailViaResend(email, subject, html, text);
+    // ✅ ส่งอีเมลผ่าน Resend
+    const result = await sendEmailViaResend(email, subject, html);
     
     if (result.success) {
       return { 
@@ -422,7 +314,8 @@ export const sendPasswordResetEmail = async (email, name, resetToken) => {
         messageId: result.messageId,
         mockMode: result.mockMode,
         resetLink: result.mockMode ? resetLink : undefined,
-        provider: result.provider
+        provider: result.provider,
+        warning: result.warning
       };
     }
     
